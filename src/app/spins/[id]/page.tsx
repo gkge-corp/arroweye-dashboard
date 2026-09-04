@@ -10,36 +10,36 @@ import Icon from "@mdi/react";
 import type { StyleSpecification } from "maplibre-gl";
 import { Map, MapControls, MapPopup } from "@/components/ui/map";
 
-const createCartoStyle = (
-  variant: "light_all" | "dark_all",
-): StyleSpecification => ({
+const SPIN_MAP_STYLE: StyleSpecification = {
   version: 8,
   sources: {
-    carto: {
+    openStreetMap: {
       type: "raster",
-      tiles: ["a", "b", "c", "d"].map(
-        (subdomain) =>
-          `https://${subdomain}.basemaps.cartocdn.com/${variant}/{z}/{x}/{y}.png`,
-      ),
+      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
       tileSize: 256,
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     },
   },
   layers: [
     {
-      id: `carto-${variant}`,
+      id: "open-street-map",
       type: "raster",
-      source: "carto",
+      source: "openStreetMap",
       minzoom: 0,
-      maxzoom: 20,
+      maxzoom: 19,
+      paint: {
+        "raster-brightness-max": 0.55,
+        "raster-contrast": 0.15,
+        "raster-saturation": -0.7,
+      },
     },
   ],
-});
+};
 
 const SPIN_MAP_STYLES = {
-  light: createCartoStyle("light_all"),
-  dark: createCartoStyle("dark_all"),
+  light: SPIN_MAP_STYLE,
+  dark: SPIN_MAP_STYLE,
 };
 
 type SpinNotificationResponse = {

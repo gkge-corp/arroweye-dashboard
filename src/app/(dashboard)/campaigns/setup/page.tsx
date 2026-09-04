@@ -40,6 +40,14 @@ const getFirstName = (name?: string, email?: string) => {
   return value.split(/[\s._-]+/)[0];
 };
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+
+  if (hour < 12) return "Good Morning";
+  if (hour < 18) return "Good Afternoon";
+  return "Good Evening";
+};
+
 export default function CreateContent() {
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const { isAuthenticated, user, userProfile } = useAuth();
@@ -50,6 +58,7 @@ export default function CreateContent() {
   });
 
   const firstName = getFirstName(userProfile?.fullname, user?.email);
+  const greeting = getGreeting();
   const tokenBalance = Number(walletData?.available_balance) || 0;
   const formattedBalance = new Intl.NumberFormat("en-NG").format(tokenBalance);
 
@@ -72,12 +81,17 @@ export default function CreateContent() {
 
   return (
     <div className="bg-background text-foreground">
-      <section className="flex h-dvh px-4 py-10 sm:px-8">
+      <section
+        className={`flex h-dvh px-4 sm:px-8 transition-[padding] duration-500 ease-in-out ${
+          isSecurityExpanded ? "pt-10 pb-2" : "py-10"
+        }`}
+      >
         <div className="mx-auto flex w-full max-w-5xl flex-col">
           <div className="my-auto w-full">
             <header className="text-center">
               <h1 className="text-[25px] font-semibold leading-tight tracking-[-0.025em] sm:text-[27px]">
-                Good Morning{isAuthenticated ? `, ${firstName}` : ""}!
+                {greeting}
+                {isAuthenticated ? `, ${firstName}` : ""}!
               </h1>
               {/* {isAuthenticated && (
             <>
@@ -160,7 +174,11 @@ export default function CreateContent() {
             </section>
           </div>
 
-          <div className="mx-auto mt-8 flex shrink-0 flex-col items-center gap-1 px-4 py-2 text-[12px] font-semibold tracking-[0.12em] text-[#2f80ed] uppercase">
+          <div
+            className={`mx-auto flex shrink-0 flex-col items-center px-4 text-[12px] font-semibold tracking-[0.12em] text-[#2f80ed] uppercase transition-all duration-500 ${
+              isSecurityExpanded ? "mt-6 py-1" : "mt-8 gap-1 py-2"
+            }`}
+          >
             <span>Security and fraud detection</span>
             {!isSecurityExpanded && (
               <button
@@ -190,7 +208,7 @@ export default function CreateContent() {
       >
         <div className="overflow-hidden">
           <div className="px-4 pb-10 sm:px-8">
-            <div className="mx-auto w-full max-w-5xl pt-14">
+            <div className="mx-auto w-full max-w-5xl pt-4 sm:pt-6">
               <SecurityFraudSection />
 
               <button
