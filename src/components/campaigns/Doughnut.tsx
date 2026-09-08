@@ -46,6 +46,10 @@ interface InsightChartProps<TFilters extends ChartFilterState> {
   info?: string;
   isLoading?: boolean;
   placeholder?: string;
+  /** Shown instead of the grey placeholder ring when a source is switched off. */
+  emptyMessage?: string;
+  /** Optional control rendered under emptyMessage, e.g. "Choose countries". */
+  emptyAction?: React.ReactNode;
   setFilters?: React.Dispatch<React.SetStateAction<TFilters>>;
 }
 
@@ -98,6 +102,8 @@ const DoughnutChart = <TFilters extends ChartFilterState = ChartFilterState>({
   placeholder,
   info,
   isLoading = false,
+  emptyMessage,
+  emptyAction,
   setFilters,
 }: InsightChartProps<TFilters>) => {
   const weeksOptions = [
@@ -257,86 +263,99 @@ const DoughnutChart = <TFilters extends ChartFilterState = ChartFilterState>({
         </div>
 
         <div>
-          {displayPieChartData.length > 0 && (
-            <div>
-              <div className="mb-3 flex min-h-[22px] flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[13px] leading-none text-[#6f6f6f]">
-                {displayPieChartData.map((item) => {
-                  const isHidden =
-                    hasChartData && hiddenSegments.has(item.segment);
-                  return (
-                    <button
-                      type="button"
-                      key={item.segment}
-                      disabled={!hasChartData}
-                      onClick={() => {
-                        if (hasChartData) toggleSegment(item.segment);
-                      }}
-                      className="flex items-center gap-2 transition-opacity"
-                      style={{ opacity: isHidden || !hasChartData ? 0.55 : 1 }}
-                    >
-                      <span
-                        className="h-[14px] w-7 shrink-0 border bg-[var(--chart-legend-bg)] dark:bg-[var(--chart-legend-dark-bg)] border-[var(--chart-legend-border)] dark:border-[var(--chart-legend-dark-border)]"
-                        style={
-                          {
-                            "--chart-legend-bg": hasChartData
-                              ? getLightChartFillColor(item.color)
-                              : emptyChartFillColor,
-                            "--chart-legend-border": item.color,
-                            "--chart-legend-dark-bg": item.darkColor,
-                            "--chart-legend-dark-border": item.darkColor,
-                          } as React.CSSProperties
-                        }
-                      />
-                      <span
-                        className={
-                          isHidden ? "line-through decoration-[#6f6f6f]/60" : ""
-                        }
-                      >
-                        {item.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {visiblePieChartData.length > 0 ? (
-                <ChartContainer
-                  config={chartConfig}
-                  className="mx-auto aspect-square w-full max-w-[350px] font-SansFlex"
-                >
-                  <PieChart>
-                    {hasChartData && (
-                      <ChartTooltip
-                        cursor={false}
-                        content={
-                          <ChartTooltipContent hideLabel nameKey="segment" />
-                        }
-                      />
-                    )}
-                    <Pie
-                      data={visiblePieChartData}
-                      dataKey="value"
-                      nameKey="segment"
-                      innerRadius="43%"
-                      outerRadius="88%"
-                    >
-                      {visiblePieChartData.map((item) => (
-                        <Cell
-                          key={item.segment}
-                          fill={item.fill}
-                          stroke={item.stroke}
-                          strokeWidth={1}
-                        />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ChartContainer>
-              ) : (
-                <div className="mx-auto flex aspect-square w-full max-w-[350px] items-center justify-center text-[13px] text-[#6f6f6f]">
-                  All segments hidden
-                </div>
-              )}
+          {!hasChartData && emptyMessage ? (
+            <div className="mx-auto flex aspect-square w-full max-w-[350px] flex-col items-center justify-center gap-3 px-6 text-center">
+              <p className="font-SansFlex text-[13px] leading-relaxed text-[#6f6f6f]">
+                {emptyMessage}
+              </p>
+              {emptyAction}
             </div>
+          ) : (
+            displayPieChartData.length > 0 && (
+              <div>
+                <div className="mb-3 flex min-h-[22px] flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[13px] leading-none text-[#6f6f6f]">
+                  {displayPieChartData.map((item) => {
+                    const isHidden =
+                      hasChartData && hiddenSegments.has(item.segment);
+                    return (
+                      <button
+                        type="button"
+                        key={item.segment}
+                        disabled={!hasChartData}
+                        onClick={() => {
+                          if (hasChartData) toggleSegment(item.segment);
+                        }}
+                        className="flex items-center gap-2 transition-opacity"
+                        style={{
+                          opacity: isHidden || !hasChartData ? 0.55 : 1,
+                        }}
+                      >
+                        <span
+                          className="h-[14px] w-7 shrink-0 border bg-[var(--chart-legend-bg)] dark:bg-[var(--chart-legend-dark-bg)] border-[var(--chart-legend-border)] dark:border-[var(--chart-legend-dark-border)]"
+                          style={
+                            {
+                              "--chart-legend-bg": hasChartData
+                                ? getLightChartFillColor(item.color)
+                                : emptyChartFillColor,
+                              "--chart-legend-border": item.color,
+                              "--chart-legend-dark-bg": item.darkColor,
+                              "--chart-legend-dark-border": item.darkColor,
+                            } as React.CSSProperties
+                          }
+                        />
+                        <span
+                          className={
+                            isHidden
+                              ? "line-through decoration-[#6f6f6f]/60"
+                              : ""
+                          }
+                        >
+                          {item.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {visiblePieChartData.length > 0 ? (
+                  <ChartContainer
+                    config={chartConfig}
+                    className="mx-auto aspect-square w-full max-w-[350px] font-SansFlex"
+                  >
+                    <PieChart>
+                      {hasChartData && (
+                        <ChartTooltip
+                          cursor={false}
+                          content={
+                            <ChartTooltipContent hideLabel nameKey="segment" />
+                          }
+                        />
+                      )}
+                      <Pie
+                        data={visiblePieChartData}
+                        dataKey="value"
+                        nameKey="segment"
+                        innerRadius="43%"
+                        outerRadius="88%"
+                      >
+                        {visiblePieChartData.map((item) => (
+                          <Cell
+                            key={item.segment}
+                            fill={item.fill}
+                            stroke={item.stroke}
+                            strokeWidth={1}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="mx-auto flex aspect-square w-full max-w-[350px] items-center justify-center text-[13px] text-[#6f6f6f]">
+                    All segments hidden
+                  </div>
+                )}
+              </div>
+            )
           )}
         </div>
       </CardContent>

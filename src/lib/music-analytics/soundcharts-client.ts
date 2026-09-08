@@ -131,17 +131,14 @@ const writeCache = (path: string, value: unknown, ttlMs: number) => {
   responseCache.set(path, { value, expiresAt: Date.now() + ttlMs });
 };
 
-export const soundchartsRequest = async <T>(
-  path: string,
-  options: { ttlMs?: number; skipCache?: boolean } = {},
-) => {
-  const { ttlMs = DEFAULT_TTL_MS, skipCache = false } = options;
+/**
+ * The cache only helps once a request has finished. Identical calls issued
+ * before that — React re-invoking an effect, two people opening the same
+ * campaign — would each be billed, so concurrent callers share one promise.
+ */
+const inFlight = new Map<string, Promise<unknown>>();
 
-  if (!skipCache) {
-    const cached = readCache<T & SoundchartsErrorBody>(path);
-    if (cached) return cached;
-  }
-
+const requestUncached = async <T>(path: string, ttlMs: number) => {
   const token = await getAccessToken();
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -163,6 +160,28 @@ export const soundchartsRequest = async <T>(
 
   writeCache(path, payload, ttlMs);
   return payload;
+};
+
+export const soundchartsRequest = async <T>(
+  path: string,
+  options: { ttlMs?: number; skipCache?: boolean } = {},
+) => {
+  const { ttlMs = DEFAULT_TTL_MS, skipCache = false } = options;
+
+  if (!skipCache) {
+    const cached = readCache<T & SoundchartsErrorBody>(path);
+    if (cached) return cached;
+
+    const pending = inFlight.get(path);
+    if (pending) return (await pending) as T & SoundchartsErrorBody;
+  }
+
+  const request = requestUncached<T>(path, ttlMs).finally(() => {
+    inFlight.delete(path);
+  });
+  inFlight.set(path, request);
+
+  return request;
 };
 
 export const clearSoundchartsCache = (pathPrefix?: string) => {

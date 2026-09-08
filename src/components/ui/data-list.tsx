@@ -84,7 +84,7 @@ export function DataList<Row>({
   const allColumns = showRank ? [rankColumn, ...columns] : columns;
 
   return (
-    <div className="w-full space-y-[20px]">
+    <div className="flex h-full min-h-0 w-full flex-col gap-[20px]">
       <p className="!text-[12px] font-[400] tracking-[.1rem] text-foreground font-SansFlex uppercase">
         {title}
       </p>
@@ -160,7 +160,7 @@ export function DataList<Row>({
         </div>
       )}
 
-      {footer}
+      {footer && <div className="mt-auto">{footer}</div>}
     </div>
   );
 }

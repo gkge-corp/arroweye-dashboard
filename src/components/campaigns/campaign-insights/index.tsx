@@ -4,7 +4,7 @@ import AddData from "../AddData";
 import AddMedia from "../AddMedia";
 import AddDataSocials from "../AddDataSocials";
 import AddDataDsp from "../AddDataDsp";
-import { Plus } from "lucide-react";
+import { Plus, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PieChart from "@/app/(dashboard)/payments/component/PieChart";
 import DoughnutChart from "../Doughnut";
@@ -13,13 +13,23 @@ import ColumnChart from "../ColumnChart";
 import { BottomDock } from "./bottom-dock";
 import { PlaylistsCard } from "./playlists-card";
 import { LinkSongDialog } from "./link-song-dialog";
+import {
+  InsightSourcesDialog,
+  type InsightSourceScope,
+} from "./insight-sources-dialog";
 import { useCampaignInsights } from "./hooks/use-campaign-insights";
 import { useCampaignSong } from "@/hooks/use-campaign-song";
 import { useCampaignPlaylists } from "./hooks/use-campaign-playlists";
 import { useCampaignRadio } from "./hooks/use-campaign-radio";
-import { useCampaignCharts } from "./hooks/use-campaign-charts";
+import { useCampaignSocialTraction } from "./hooks/use-campaign-social-traction";
+import { useCampaignInsightStats } from "./hooks/use-campaign-insight-stats";
+import {
+  deriveAirplayMarkets,
+  useAirplayMarkets,
+} from "@/hooks/use-airplay-markets";
+import { useInsightSources } from "@/hooks/use-insight-sources";
 import { TopRadioCard } from "./top-radio-card";
-import { TopChartsCard } from "./top-charts-card";
+import { SocialTractionCard } from "./social-traction-card";
 
 const selectOptions = [
   [
@@ -86,6 +96,55 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   refreshContent,
   onRequestEditModeChange,
 }) => {
+  const [linkSongModal, setLinkSongModal] = React.useState(false);
+  const { linkedSong, linkSong } = useCampaignSong(content?.id);
+  const [sourcesModal, setSourcesModal] = React.useState(false);
+  const [sourcesScope, setSourcesScope] =
+    React.useState<InsightSourceScope>("airplay");
+  const {
+    sources,
+    isLoaded: sourcesLoaded,
+    saveSources,
+  } = useInsightSources(content?.id);
+  const {
+    selected: selectedMarkets,
+    isLoaded: marketsLoaded,
+    airplayDisabled,
+    setMarkets,
+  } = useAirplayMarkets(content?.id);
+
+  const openSources = (scope: InsightSourceScope) => {
+    setSourcesScope(scope);
+    setSourcesModal(true);
+  };
+
+  const { insightStats } = useCampaignInsightStats(linkedSong?.uuid, {
+    radio: !airplayDisabled,
+    social: true,
+    reachPlatforms: sources.reachPlatforms,
+    playlistPlatforms: sources.playlistPlatforms,
+    artistPlatforms: sources.artistSocialPlatforms,
+    countries: selectedMarkets,
+    ready: sourcesLoaded && marketsLoaded,
+  });
+  const {
+    availableMarkets,
+    activeMarkets,
+    airplayData: airplayMarketData,
+  } = React.useMemo(
+    () =>
+      deriveAirplayMarkets(
+        selectedMarkets,
+        insightStats?.availableAirplayCountries ??
+          insightStats?.airplayByCountry,
+      ),
+    [
+      selectedMarkets,
+      insightStats?.availableAirplayCountries,
+      insightStats?.airplayByCountry,
+    ],
+  );
+
   const {
     initialTab,
     setInitialTab,
@@ -125,10 +184,19 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     onAddDataSuccess,
     onAddDataDspSuccess,
     targetRef,
-  } = useCampaignInsights({ content, refreshContent });
+  } = useCampaignInsights({
+    content,
+    refreshContent,
+    statsOverrides: {
+      ...insightStats,
+      airplayByCountry: airplayDisabled
+        ? { total_count: 0 }
+        : airplayMarketData.total_count > 0
+          ? airplayMarketData
+          : undefined,
+    },
+  });
 
-  const [linkSongModal, setLinkSongModal] = React.useState(false);
-  const { linkedSong, linkSong } = useCampaignSong(content?.id);
   const {
     playlists,
     failedPlatforms,
@@ -137,24 +205,27 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     hasMorePlaylists,
     loadMorePlaylists,
     retryPlaylists,
-  } = useCampaignPlaylists(linkedSong?.uuid);
+  } = useCampaignPlaylists(linkedSong?.uuid, {
+    platforms: sources.playlistPlatforms,
+    ready: sourcesLoaded && marketsLoaded,
+  });
   const {
     stations,
     isRadioLoading,
     isLoadingMoreRadio,
     hasMoreRadio,
     loadMoreRadio,
-  } = useCampaignRadio(linkedSong?.uuid);
+  } = useCampaignRadio(linkedSong?.uuid, {
+    enabled: marketsLoaded && !airplayDisabled,
+    countries: selectedMarkets,
+  });
   const {
-    charts,
-    failedPlatforms: chartsFailedPlatforms,
-    isChartsLoading,
-    isLoadingMoreCharts,
-    hasMoreCharts,
-    loadMoreCharts,
-    retryCharts,
-  } = useCampaignCharts(linkedSong?.uuid);
-
+    socialTraction,
+    socialTractionPeriodDays,
+    isSocialTractionLoading,
+    hasSocialTractionError,
+    retrySocialTraction,
+  } = useCampaignSocialTraction(linkedSong?.uuid);
   const songTitle =
     content?.title || content?.song_title || content?.campaign?.song_title;
 
@@ -181,6 +252,12 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                       .join(" · ")
                   : "Match this campaign to a recording to pull playlist placements."}
               </p>
+              {linkedSong && insightStats && (
+                <p className="mt-1 font-SansFlex text-[12px] text-muted-foreground">
+                  Airplay, social media, streaming and performance are live from
+                  Soundcharts. Audience and actions use entered data.
+                </p>
+              )}
             </div>
             <Button
               type="button"
@@ -201,22 +278,10 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                   type="button"
                   variant="outline"
                   className={editActionButtonClassName}
-                  onClick={() => setAddDataModal(true)}
+                  onClick={() => openSources("airplay")}
                 >
-                  <Plus className="size-4" />
-                  Add data
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={editActionButtonClassName}
-                  onClick={() => {
-                    setInitialTab("moments");
-                    setAddMediaModal(true);
-                  }}
-                >
-                  <Plus className="size-4" />
-                  Add media
+                  <Settings2 className="size-4" />
+                  Data controls
                 </Button>
               </div>
             )}
@@ -232,6 +297,27 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 setFilters={setairplayChannelsFilters}
                 placeholder="Country"
                 info="Estimated total number of airplay instances this campaign received across radio, television, and DJ/club activations."
+                emptyMessage={
+                  airplayDisabled
+                    ? "Airplay is off — no countries selected. Radio spins and stations stay hidden until at least one country is picked."
+                    : undefined
+                }
+                emptyAction={
+                  airplayDisabled ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 rounded-full px-4 text-[13px] font-medium"
+                      onClick={() =>
+                        editMode
+                          ? openSources("airplay")
+                          : onRequestEditModeChange?.(true)
+                      }
+                    >
+                      Choose countries
+                    </Button>
+                  ) : undefined
+                }
               />
             </div>
 
@@ -257,6 +343,12 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               isLoadingMore={isLoadingMoreRadio}
               onLoadMore={loadMoreRadio}
               onLinkSong={() => onRequestEditModeChange?.(true)}
+              airplayDisabled={airplayDisabled}
+              onChooseMarkets={() =>
+                editMode
+                  ? openSources("airplay")
+                  : onRequestEditModeChange?.(true)
+              }
             />
           </div>
           <div className={insightCardClass}>
@@ -265,7 +357,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  className={editActionButtonClassName}
+                  className={`hidden ${editActionButtonClassName}`}
                   onClick={() => setAddDataModalSocial(true)}
                 >
                   <Plus className="size-4" />
@@ -274,7 +366,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  className={editActionButtonClassName}
+                  className={`hidden ${editActionButtonClassName}`}
                   onClick={() => {
                     setInitialTab("Recap");
                     setAddMediaModal(true);
@@ -282,6 +374,15 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 >
                   <Plus className="size-4" />
                   Add media
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={editActionButtonClassName}
+                  onClick={() => openSources("social")}
+                >
+                  <Settings2 className="size-4" />
+                  Data controls
                 </Button>
               </div>
             )}
@@ -310,17 +411,20 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               />
             </div>
 
-            <TopChartsCard
-              charts={charts}
-              loading={isChartsLoading}
-              songTitle={songTitle}
-              downloadButtonText="Download Data"
-              failedPlatforms={chartsFailedPlatforms}
-              onRetry={retryCharts}
-              hasMore={hasMoreCharts}
-              isLoadingMore={isLoadingMoreCharts}
-              onLoadMore={loadMoreCharts}
-              onLinkSong={() => onRequestEditModeChange?.(true)}
+            <SocialTractionCard
+              rows={socialTraction}
+              periodDays={socialTractionPeriodDays}
+              loading={isSocialTractionLoading}
+              hasError={hasSocialTractionError}
+              onRetry={retrySocialTraction}
+              onLinkSong={() => {
+                if (editMode) {
+                  setLinkSongModal(true);
+                  return;
+                }
+
+                onRequestEditModeChange?.(true);
+              }}
             />
           </div>
           <div className={insightCardClass}>
@@ -329,7 +433,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  className={editActionButtonClassName}
+                  className={`hidden ${editActionButtonClassName}`}
                   onClick={() => setAddDspModal(true)}
                 >
                   <Plus className="size-4" />
@@ -338,7 +442,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  className={editActionButtonClassName}
+                  className={`hidden ${editActionButtonClassName}`}
                   onClick={() => {
                     setInitialTab("Dsp");
                     setAddMediaModal(true);
@@ -346,6 +450,15 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 >
                   <Plus className="size-4" />
                   Add media
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={editActionButtonClassName}
+                  onClick={() => openSources("streaming")}
+                >
+                  <Settings2 className="size-4" />
+                  Data controls
                 </Button>
               </div>
             )}
@@ -370,7 +483,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 chartData={pieChartDataDSPPerformance}
                 isLoading={isDspPerformanceDataLoading}
                 setFilters={setDspPerformanceFilters}
-                info="Estimated breakdown of activities and engagement metrics recorded across all DSPs. These figures are estimates; please verify the actual data with your distributor."
+                info="Playlist reach split by how each placement was curated: editorial playlists programmed by the platform, user-created playlists, and algorithmic or radio placements. These figures are estimates; please verify the actual data with your distributor."
               />
             </div>
 
@@ -406,6 +519,18 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
         onHide={() => setAddMediaModal(false)}
         onSuccess={refreshContent}
         initialTab={initialTab}
+      />
+
+      <InsightSourcesDialog
+        open={sourcesModal}
+        scope={sourcesScope}
+        sources={sources}
+        markets={availableMarkets}
+        selectedMarkets={activeMarkets}
+        spinsByCountry={insightStats?.availableAirplayCountries}
+        onOpenChange={setSourcesModal}
+        onApplySources={saveSources}
+        onApplyMarkets={setMarkets}
       />
 
       <LinkSongDialog

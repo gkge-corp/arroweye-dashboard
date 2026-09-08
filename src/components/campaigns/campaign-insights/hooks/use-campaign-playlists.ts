@@ -54,7 +54,11 @@ const fetchPlaylists = async (
   };
 };
 
-export function useCampaignPlaylists(uuid?: string) {
+export function useCampaignPlaylists(
+  uuid?: string,
+  options?: { platforms?: string[]; ready?: boolean },
+) {
+  const platforms = options?.platforms ?? [];
   const {
     data,
     isFetching,
@@ -64,11 +68,12 @@ export function useCampaignPlaylists(uuid?: string) {
     refetch,
     isError,
   } = useInfiniteQuery({
-    queryKey: ["campaign-playlists", uuid],
+    queryKey: ["campaign-playlists", uuid, platforms],
     queryFn: ({ pageParam }) => fetchPlaylists(uuid!, pageParam),
-    initialPageParam: { offset: 0, platforms: null } as PlaylistCursor,
+    initialPageParam: { offset: 0, platforms } as PlaylistCursor,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    enabled: Boolean(uuid),
+    enabled:
+      Boolean(uuid) && (options?.ready ?? true) && platforms.length > 0,
     staleTime: 5 * 60_000,
   });
 

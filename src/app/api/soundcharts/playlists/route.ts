@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { mapWithConcurrency, withRetry } from "@/lib/music-analytics/fan-out";
 import {
+  PLAYLIST_PLATFORMS as platforms,
+  parsePlatforms,
+} from "@/lib/music-analytics/platforms";
+import {
   SoundchartsError,
   soundchartsRequest,
 } from "@/lib/music-analytics/soundcharts-client";
@@ -9,17 +13,6 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const platforms = [
-  { code: "spotify", label: "Spotify" },
-  { code: "apple-music", label: "Apple Music" },
-  { code: "deezer", label: "Deezer" },
-  { code: "amazon", label: "Amazon" },
-  { code: "youtube", label: "YouTube" },
-  { code: "audiomack", label: "Audiomack" },
-  { code: "boomplay", label: "Boomplay" },
-  { code: "soundcloud", label: "SoundCloud" },
-  { code: "tidal", label: "Tidal" },
-] as const;
 
 interface PlaylistEntry {
   playlist?: {
@@ -57,11 +50,11 @@ export async function GET(request: NextRequest) {
 
   // Later pages only ask the platforms that filled the previous one. Without
   // this every page costs a call for platforms already known to be exhausted.
-  const requested = request.nextUrl.searchParams.get("platforms")?.trim();
-  const requestedCodes = requested ? new Set(requested.split(",")) : null;
-  const targetPlatforms = requestedCodes
-    ? platforms.filter((platform) => requestedCodes.has(platform.code))
-    : platforms;
+  // Platforms the viewer switched off are never requested.
+  const targetPlatforms = parsePlatforms(
+    request.nextUrl.searchParams.get("platforms"),
+    platforms,
+  );
 
   if (!uuid) {
     return NextResponse.json(

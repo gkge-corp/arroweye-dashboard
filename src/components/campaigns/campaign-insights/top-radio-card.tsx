@@ -23,6 +23,9 @@ interface TopRadioCardProps {
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
   onLinkSong?: () => void;
+  /** Every market switched off, so no radio call was made. */
+  airplayDisabled?: boolean;
+  onChooseMarkets?: () => void;
 }
 
 const csvColumns: CsvColumn<RadioRow>[] = [
@@ -66,6 +69,8 @@ export function TopRadioCard({
   isLoadingMore,
   onLoadMore,
   onLinkSong,
+  airplayDisabled = false,
+  onChooseMarkets,
 }: TopRadioCardProps) {
   const handleDownload = () => {
     if (stations.length === 0) {
@@ -87,13 +92,20 @@ export function TopRadioCard({
       hasMore={hasMore}
       isLoadingMore={isLoadingMore}
       onLoadMore={onLoadMore}
+      emptyMessage={
+        airplayDisabled ? "Airplay is off — no countries selected." : undefined
+      }
       emptyAction={
-        onLinkSong
-          ? {
-              label: songTitle ? `Link "${songTitle}"` : "Link this song",
-              onClick: onLinkSong,
-            }
-          : undefined
+        airplayDisabled
+          ? onChooseMarkets
+            ? { label: "Choose countries", onClick: onChooseMarkets }
+            : undefined
+          : onLinkSong
+            ? {
+                label: songTitle ? `Link "${songTitle}"` : "Link this song",
+                onClick: onLinkSong,
+              }
+            : undefined
       }
       footer={
         <button

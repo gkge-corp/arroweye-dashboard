@@ -13,10 +13,11 @@ interface RadioPage {
 const fetchTopRadio = async (
   uuid: string,
   offset: number,
+  countries: string[] | null,
 ): Promise<RadioPage> => {
-  const response = await fetch(
-    `/api/soundcharts/top-radio?uuid=${encodeURIComponent(uuid)}&offset=${offset}`,
-  );
+  const query = new URLSearchParams({ uuid, offset: String(offset) });
+  if (countries) query.set("countries", countries.join(","));
+  const response = await fetch(`/api/soundcharts/top-radio?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: RadioRow[];
     nextOffset?: number | null;
@@ -30,7 +31,11 @@ const fetchTopRadio = async (
   return { items: payload.items ?? [], nextOffset: payload.nextOffset ?? null };
 };
 
-export function useCampaignRadio(uuid?: string) {
+export function useCampaignRadio(
+  uuid?: string,
+  options?: { enabled?: boolean; countries?: string[] | null },
+) {
+  const countries = options?.countries ?? null;
   const {
     data,
     isFetching,
@@ -39,11 +44,11 @@ export function useCampaignRadio(uuid?: string) {
     fetchNextPage,
     isError,
   } = useInfiniteQuery({
-    queryKey: ["campaign-top-radio", uuid],
-    queryFn: ({ pageParam }) => fetchTopRadio(uuid!, pageParam),
+    queryKey: ["campaign-top-radio", uuid, countries],
+    queryFn: ({ pageParam }) => fetchTopRadio(uuid!, pageParam, countries),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextOffset,
-    enabled: Boolean(uuid),
+    enabled: Boolean(uuid) && (options?.enabled ?? true),
     staleTime: 5 * 60_000,
   });
 

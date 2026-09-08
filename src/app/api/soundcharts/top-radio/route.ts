@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { withRetry } from "@/lib/music-analytics/fan-out";
 import {
   SoundchartsError,
   soundchartsRequest,
@@ -41,6 +42,15 @@ export async function GET(request: NextRequest) {
   const endDate =
     asDate(request.nextUrl.searchParams.get("endDate")) ??
     new Date().toISOString().slice(0, 10);
+  const countryParam = request.nextUrl.searchParams.get("countries");
+  const selectedCountries = countryParam
+    ? new Set(
+        countryParam
+          .split(",")
+          .map((country) => country.trim())
+          .filter(Boolean),
+      )
+    : null;
 
   if (!uuid) {
     return NextResponse.json(
@@ -51,13 +61,22 @@ export async function GET(request: NextRequest) {
 
   try {
     const page = Number.isFinite(offset) && offset > 0 ? offset : 0;
-    const payload = await soundchartsRequest<{ items?: BroadcastGroup[] }>(
-      `/api/v2/song/${uuid}/broadcast-groups?startDate=${startDate}&endDate=${endDate}&offset=${page}&limit=${PAGE_SIZE}`,
+    const payload = await withRetry(() =>
+      soundchartsRequest<{ items?: BroadcastGroup[] }>(
+        `/api/v2/song/${uuid}/broadcast-groups?startDate=${startDate}&endDate=${endDate}&offset=${page}&limit=${PAGE_SIZE}`,
+      ),
     );
 
-    const items = (payload.items ?? [])
+    const sourceItems = payload.items ?? [];
+    const items = sourceItems
+      .filter((item) => {
+        if (!selectedCountries) return true;
+        const country = item.radio?.countryName ?? item.radio?.countryCode;
+        return Boolean(country && selectedCountries.has(country));
+      })
       .map((item) => ({
-        id: item.radio?.slug ?? `${item.radio?.name}-${item.radio?.countryCode}`,
+        id:
+          item.radio?.slug ?? `${item.radio?.name}-${item.radio?.countryCode}`,
         name: item.radio?.name ?? "Unknown station",
         country: item.radio?.countryName ?? item.radio?.countryCode ?? "",
         city: item.radio?.cityName ?? "",
@@ -67,7 +86,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       items,
-      nextOffset: items.length === PAGE_SIZE ? page + PAGE_SIZE : null,
+      nextOffset: sourceItems.length === PAGE_SIZE ? page + PAGE_SIZE : null,
       window: { startDate, endDate },
     });
   } catch (error) {
