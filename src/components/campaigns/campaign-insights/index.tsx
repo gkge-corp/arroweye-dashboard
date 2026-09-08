@@ -7,14 +7,19 @@ import AddDataDsp from "../AddDataDsp";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PieChart from "@/app/(dashboard)/payments/component/PieChart";
-import MomentCardRewards from "../MomentCardRewards";
-import MomentCard from "../MomentCard";
-import MomentSliderCard from "../MomentSliderCard";
 import DoughnutChart from "../Doughnut";
 import ColumnChart from "../ColumnChart";
 
 import { BottomDock } from "./bottom-dock";
+import { PlaylistsCard } from "./playlists-card";
+import { LinkSongDialog } from "./link-song-dialog";
 import { useCampaignInsights } from "./hooks/use-campaign-insights";
+import { useCampaignSong } from "@/hooks/use-campaign-song";
+import { useCampaignPlaylists } from "./hooks/use-campaign-playlists";
+import { useCampaignRadio } from "./hooks/use-campaign-radio";
+import { useCampaignCharts } from "./hooks/use-campaign-charts";
+import { TopRadioCard } from "./top-radio-card";
+import { TopChartsCard } from "./top-charts-card";
 
 const selectOptions = [
   [
@@ -69,6 +74,7 @@ interface InsightChartProps {
   isAdvertiser?: boolean | null;
   content?: any;
   refreshContent?: () => void;
+  onRequestEditModeChange?: (enabled: boolean) => void;
 }
 
 const CampaignInsights: React.FC<InsightChartProps> = ({
@@ -78,6 +84,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   isAdvertiser,
   content,
   refreshContent,
+  onRequestEditModeChange,
 }) => {
   const {
     initialTab,
@@ -96,12 +103,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     audienceData,
     smactionData,
     dspPerformanceData,
-    momentMediaData,
-    momentReportUrls,
-    giftingsReportUrls,
-    recapMediaData,
-    dspMediaData,
-    mediaLoading,
     setairplayChannelsFilters,
     setairplayAudienceFilters,
     setSocialMediaPlatformFilters,
@@ -126,6 +127,37 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     targetRef,
   } = useCampaignInsights({ content, refreshContent });
 
+  const [linkSongModal, setLinkSongModal] = React.useState(false);
+  const { linkedSong, linkSong } = useCampaignSong(content?.id);
+  const {
+    playlists,
+    failedPlatforms,
+    isPlaylistsLoading,
+    isLoadingMore,
+    hasMorePlaylists,
+    loadMorePlaylists,
+    retryPlaylists,
+  } = useCampaignPlaylists(linkedSong?.uuid);
+  const {
+    stations,
+    isRadioLoading,
+    isLoadingMoreRadio,
+    hasMoreRadio,
+    loadMoreRadio,
+  } = useCampaignRadio(linkedSong?.uuid);
+  const {
+    charts,
+    failedPlatforms: chartsFailedPlatforms,
+    isChartsLoading,
+    isLoadingMoreCharts,
+    hasMoreCharts,
+    loadMoreCharts,
+    retryCharts,
+  } = useCampaignCharts(linkedSong?.uuid);
+
+  const songTitle =
+    content?.title || content?.song_title || content?.campaign?.song_title;
+
   const insightGridClass = editMode
     ? "grid grid-cols-1 gap-x-[10px] gap-y-[20px] w-full md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto]"
     : "grid grid-cols-1 gap-x-[10px] gap-y-[20px] w-full md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto]";
@@ -136,6 +168,31 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   return (
     <div ref={targetRef}>
       <div className="mt-[20px] mb-[80px]">
+        {editMode && (
+          <div className="mb-[20px] flex flex-wrap items-center justify-between gap-3 rounded-[8px] border p-[20px]">
+            <div className="min-w-0">
+              <p className="!text-[12px] font-[400] tracking-[.1rem] text-foreground font-SansFlex uppercase">
+                Linked song
+              </p>
+              <p className="mt-1 font-SansFlex text-[14px] text-muted-foreground">
+                {linkedSong
+                  ? [linkedSong.title, linkedSong.artist]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : "Match this campaign to a recording to pull playlist placements."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 rounded-[8px] border-zinc-300 !bg-white px-5 text-sm font-medium !text-zinc-950 shadow-none hover:!bg-zinc-100 hover:!text-zinc-950 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-violet-500/25 dark:border-zinc-700 dark:!bg-zinc-900 dark:!text-zinc-100 dark:hover:!bg-zinc-800 dark:hover:!text-zinc-100"
+              onClick={() => setLinkSongModal(true)}
+            >
+              {linkedSong ? "Change song" : "Link song"}
+            </Button>
+          </div>
+        )}
+
         <div className={insightGridClass}>
           <div className={insightCardClass}>
             {editMode && (
@@ -191,17 +248,15 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               />
             </div>
 
-            <MomentCard
-              MomentsTitle="MOMENTS"
-              csvData={{ ...airPlayData, ...audienceData }}
-              videoUrls={momentMediaData}
-              reportUrls={momentReportUrls}
-              videoTitle="Moments"
-              watchButtonText="Watch"
+            <TopRadioCard
+              stations={stations}
+              loading={isRadioLoading}
+              songTitle={songTitle}
               downloadButtonText="Download Data"
-              radioButtonText="Radio Monitor"
-              // subText="Radio monitor report is populating..."
-              loading={mediaLoading}
+              hasMore={hasMoreRadio}
+              isLoadingMore={isLoadingMoreRadio}
+              onLoadMore={loadMoreRadio}
+              onLinkSong={() => onRequestEditModeChange?.(true)}
             />
           </div>
           <div className={insightCardClass}>
@@ -255,20 +310,17 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               />
             </div>
 
-            <MomentCardRewards
-              MomentsTitle="INSIGHTS"
-              giftingPin={content?.pin}
-              giftings={giftingsReportUrls}
-              csvData={{ ...socialMediaData, ...smactionData }}
-              videoUrls={recapMediaData}
-              reportUrls={momentReportUrls}
-              videoTitle="Recap"
-              watchButtonText="Watch"
+            <TopChartsCard
+              charts={charts}
+              loading={isChartsLoading}
+              songTitle={songTitle}
               downloadButtonText="Download Data"
-              radioButtonText="Claim Reward"
-              subText="Special delivery just for you 🎁💗 "
-              outline={true}
-              loading={mediaLoading}
+              failedPlatforms={chartsFailedPlatforms}
+              onRetry={retryCharts}
+              hasMore={hasMoreCharts}
+              isLoadingMore={isLoadingMoreCharts}
+              onLoadMore={loadMoreCharts}
+              onLinkSong={() => onRequestEditModeChange?.(true)}
             />
           </div>
           <div className={insightCardClass}>
@@ -322,37 +374,17 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               />
             </div>
 
-            <MomentSliderCard
-              images={dspMediaData}
-              loading={mediaLoading}
-              csvData={{ ...dspData, ...dspPerformanceData }}
+            <PlaylistsCard
+              playlists={playlists}
+              loading={isPlaylistsLoading}
+              songTitle={songTitle}
               downloadButtonText="Download Data"
-              downloadIcon={true}
-              MomentsTitle="PLAYLISTS"
-              assetsButton="Download Assets"
-              links={[
-                "https://www.google.com",
-                "https://www.figma.com",
-                "https://www.youtube.com",
-              ]}
-              additionalContent={
-                <div className="hidden">
-                  <p className=" text-start font-[400] text-[8px] font-SansFlex">
-                    TOP TERRITORIES
-                  </p>
-                  <div className="flex gap-4 mt-2 relative">
-                    {countryFlags.map((country, index) => (
-                      <div
-                        key={index}
-                        className="group  cursor-pointer"
-                        title={country.name}
-                      >
-                        <span className="text-[12px]">{country.flag}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              }
+              failedPlatforms={failedPlatforms}
+              onRetry={retryPlaylists}
+              hasMore={hasMorePlaylists}
+              isLoadingMore={isLoadingMore}
+              onLoadMore={loadMorePlaylists}
+              onLinkSong={() => onRequestEditModeChange?.(true)}
             />
           </div>
         </div>
@@ -374,6 +406,14 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
         onHide={() => setAddMediaModal(false)}
         onSuccess={refreshContent}
         initialTab={initialTab}
+      />
+
+      <LinkSongDialog
+        open={linkSongModal}
+        songTitle={songTitle}
+        artistName={content?.artist_name}
+        onOpenChange={setLinkSongModal}
+        onLink={linkSong}
       />
 
       <AddDataDsp

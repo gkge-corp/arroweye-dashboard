@@ -159,9 +159,9 @@ export function NotificationCard({
           }
         >
           {mdiIcon ? (
-            <Icon path={mdiIcon.path} size={0.8} />
+            <Icon path={mdiIcon.path} size={0.9} />
           ) : (
-            <NotificationIcon className="size-3" />
+            <NotificationIcon className="size-4" />
           )}
         </div>
       )}

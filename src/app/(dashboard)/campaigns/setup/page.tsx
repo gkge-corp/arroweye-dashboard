@@ -111,7 +111,7 @@ export default function CreateContent() {
             </>
           )} */}
 
-              <div className="mt-[36px] flex items-center justify-center">
+              <div className="mt-6 flex items-center justify-center">
                 <Button
                   asChild
                   className="h-11 min-w-[160px] rounded-full px-7 text-sm font-semibold"
@@ -120,15 +120,24 @@ export default function CreateContent() {
                 </Button>
               </div>
             </header>
-
-            <section className="mt-[47px]" aria-labelledby="how-it-works-title">
-              <h2
-                id="how-it-works-title"
-                className="mb-[17px] text-center text-[12px] font-medium text-muted-foreground uppercase"
+            <section
+              className={`pb-[35px] text-center transition-[margin] mt-6 duration-500 ease-in-out`}
+              aria-label="Trusted partners"
+            >
+              <p className="text-muted-foreground text-[12px] font-semibold tracking-[0.12em] uppercase">
+                Trusted by artistes and labels globally
+              </p>
+              <div
+                className="mt-[36px] flex items-center justify-center gap-[20px] text-muted"
+                aria-hidden="true"
               >
-                How it works
-              </h2>
+                <span className="h-0 w-0 border-x-[20px] border-b-[35px] border-x-transparent border-b-current" />
+                <span className="h-[35px] w-[84px] bg-current" />
+                <span className="size-[39px] rounded-full bg-current" />
+              </div>
+            </section>
 
+            <section className="mt-[40px]" aria-labelledby="how-it-works-title">
               <div className="grid gap-[14px] sm:grid-cols-3">
                 {featureCards.map((card) => (
                   <article
@@ -166,7 +175,7 @@ export default function CreateContent() {
                   <p className="text-[9px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
                     {stat.label}
                   </p>
-                  <p className="mt-[18px] text-[38px] font-medium leading-none tracking-[-0.04em]">
+                  <p className="mt-[18px] text-[38px] font-bold leading-none tracking-[-0.04em]">
                     {stat.value}
                   </p>
                 </article>
@@ -225,24 +234,6 @@ export default function CreateContent() {
           </div>
         </div>
       </div>
-      <section
-        className={`pb-[35px] text-center transition-[margin] duration-500 ease-in-out ${
-          isSecurityExpanded ? "mt-[35px]" : "mt-2"
-        }`}
-        aria-label="Trusted partners"
-      >
-        <p className="text-[11px] font-medium text-muted-foreground uppercase">
-          Trusted by artistes and labels globally
-        </p>
-        <div
-          className="mt-[36px] flex items-center justify-center gap-[20px] text-muted"
-          aria-hidden="true"
-        >
-          <span className="h-0 w-0 border-x-[20px] border-b-[35px] border-x-transparent border-b-current" />
-          <span className="h-[35px] w-[84px] bg-current" />
-          <span className="size-[39px] rounded-full bg-current" />
-        </div>
-      </section>
     </div>
   );
 }
