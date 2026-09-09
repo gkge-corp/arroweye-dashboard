@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     if (error instanceof SoundchartsError) {
       const message =
         error.status === 403
-          ? "Soundcharts social data is not available on the current plan."
+          ? "Social data is not available on the current plan."
           : error.message;
 
       return NextResponse.json(
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Could not reach Soundcharts.", code: "UNKNOWN" },
+      { error: "Could not reach the analytics provider.", code: "UNKNOWN" },
       { status: 502 },
     );
   }

@@ -27,7 +27,11 @@ import {
   deriveAirplayMarkets,
   useAirplayMarkets,
 } from "@/hooks/use-airplay-markets";
-import { useInsightSources } from "@/hooks/use-insight-sources";
+import {
+  mergeStreamingPlatforms,
+  resolveStreamingSelection,
+  useInsightSources,
+} from "@/hooks/use-insight-sources";
 import { TopRadioCard } from "./top-radio-card";
 import { SocialTractionCard } from "./social-traction-card";
 
@@ -98,6 +102,9 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
 }) => {
   const [linkSongModal, setLinkSongModal] = React.useState(false);
   const { linkedSong, linkSong } = useCampaignSong(content?.id);
+  const hasIsrc = [content?.song_isrc, content?.isrc, linkedSong?.isrc].some(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  );
   const [sourcesModal, setSourcesModal] = React.useState(false);
   const [sourcesScope, setSourcesScope] =
     React.useState<InsightSourceScope>("airplay");
@@ -110,6 +117,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     selected: selectedMarkets,
     isLoaded: marketsLoaded,
     airplayDisabled,
+    knownMarkets,
+    rememberMarkets,
     setMarkets,
   } = useAirplayMarkets(content?.id);
 
@@ -119,14 +128,48 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   };
 
   const { insightStats } = useCampaignInsightStats(linkedSong?.uuid, {
-    radio: !airplayDisabled,
+    // Switching every market off skips the airplay call, but that call is the
+    // only source of the country list. With nothing remembered yet the picker
+    // would have nothing to offer, so it is fetched once to fill the cache and
+    // skipped on every load after that.
+    radio: !airplayDisabled || knownMarkets.length === 0,
     social: true,
     reachPlatforms: sources.reachPlatforms,
-    playlistPlatforms: sources.playlistPlatforms,
     artistPlatforms: sources.artistSocialPlatforms,
     countries: selectedMarkets,
     ready: sourcesLoaded && marketsLoaded,
   });
+
+  // Soundcharts reports audience for platforms with no playlist endpoint
+  // (Anghami, JioSaavn), so the STREAMING chart can show more than the
+  // playlist picker used to list. Hiding is applied here rather than in the
+  // route so toggling a platform costs no further Soundcharts calls.
+  const streamingOptions = React.useMemo(
+    () => mergeStreamingPlatforms(insightStats?.availableStreamingPlatforms),
+    [insightStats?.availableStreamingPlatforms],
+  );
+  const visibleStreamingLabels = React.useMemo(() => {
+    const selected = new Set(
+      resolveStreamingSelection(sources, streamingOptions),
+    );
+    return new Set(
+      streamingOptions
+        .filter((platform) => selected.has(platform.code))
+        .map((platform) => platform.label),
+    );
+  }, [sources, streamingOptions]);
+  const visibleDsp = React.useMemo(() => {
+    const dsp = insightStats?.dsp;
+    if (!dsp) return undefined;
+
+    const kept = Object.entries(dsp).filter(
+      ([label]) => label !== "total_count" && visibleStreamingLabels.has(label),
+    );
+    return {
+      ...Object.fromEntries(kept),
+      total_count: kept.reduce((sum, [, value]) => sum + Number(value), 0),
+    };
+  }, [insightStats?.dsp, visibleStreamingLabels]);
   const {
     availableMarkets,
     activeMarkets,
@@ -144,6 +187,16 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       insightStats?.airplayByCountry,
     ],
   );
+
+  React.useEffect(() => {
+    if (availableMarkets.length > 0) rememberMarkets(availableMarkets);
+  }, [availableMarkets, rememberMarkets]);
+
+  // The airplay call is skipped while every market is off, so the picker falls
+  // back to the countries last seen — otherwise switching them all off would
+  // leave an empty list and no way to switch any back on.
+  const pickerMarkets =
+    availableMarkets.length > 0 ? availableMarkets : knownMarkets;
 
   const {
     initialTab,
@@ -189,6 +242,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     refreshContent,
     statsOverrides: {
       ...insightStats,
+      dsp: visibleDsp,
       airplayByCountry: airplayDisabled
         ? { total_count: 0 }
         : airplayMarketData.total_count > 0
@@ -254,8 +308,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               </p>
               {linkedSong && insightStats && (
                 <p className="mt-1 font-SansFlex text-[12px] text-muted-foreground">
-                  Airplay, social media, streaming and performance are live from
-                  Soundcharts. Audience and actions use entered data.
+                  Airplay, social media, streaming and performance update
+                  automatically. Audience and actions use entered data.
                 </p>
               )}
             </div>
@@ -274,15 +328,41 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
           <div className={insightCardClass}>
             {editMode && (
               <div className="space-y-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={editActionButtonClassName}
-                  onClick={() => openSources("airplay")}
-                >
-                  <Settings2 className="size-4" />
-                  Data controls
-                </Button>
+                {hasIsrc ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={editActionButtonClassName}
+                    onClick={() => openSources("airplay")}
+                  >
+                    <Settings2 className="size-4" />
+                    Data controls
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={editActionButtonClassName}
+                      onClick={() => setAddDataModal(true)}
+                    >
+                      <Plus className="size-4" />
+                      Add data
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={editActionButtonClassName}
+                      onClick={() => {
+                        setInitialTab("moments");
+                        setAddMediaModal(true);
+                      }}
+                    >
+                      <Plus className="size-4" />
+                      Add media
+                    </Button>
+                  </>
+                )}
               </div>
             )}
 
@@ -354,36 +434,41 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
           <div className={insightCardClass}>
             {editMode && (
               <div className="space-y-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={`hidden ${editActionButtonClassName}`}
-                  onClick={() => setAddDataModalSocial(true)}
-                >
-                  <Plus className="size-4" />
-                  Add data
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={`hidden ${editActionButtonClassName}`}
-                  onClick={() => {
-                    setInitialTab("Recap");
-                    setAddMediaModal(true);
-                  }}
-                >
-                  <Plus className="size-4" />
-                  Add media
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={editActionButtonClassName}
-                  onClick={() => openSources("social")}
-                >
-                  <Settings2 className="size-4" />
-                  Data controls
-                </Button>
+                {hasIsrc ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={editActionButtonClassName}
+                    onClick={() => openSources("social")}
+                  >
+                    <Settings2 className="size-4" />
+                    Data controls
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={editActionButtonClassName}
+                      onClick={() => setAddDataModalSocial(true)}
+                    >
+                      <Plus className="size-4" />
+                      Add data
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={editActionButtonClassName}
+                      onClick={() => {
+                        setInitialTab("Recap");
+                        setAddMediaModal(true);
+                      }}
+                    >
+                      <Plus className="size-4" />
+                      Add media
+                    </Button>
+                  </>
+                )}
               </div>
             )}
 
@@ -430,36 +515,41 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
           <div className={insightCardClass}>
             {editMode && (
               <div className="space-y-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={`hidden ${editActionButtonClassName}`}
-                  onClick={() => setAddDspModal(true)}
-                >
-                  <Plus className="size-4" />
-                  Add data
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={`hidden ${editActionButtonClassName}`}
-                  onClick={() => {
-                    setInitialTab("Dsp");
-                    setAddMediaModal(true);
-                  }}
-                >
-                  <Plus className="size-4" />
-                  Add media
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={editActionButtonClassName}
-                  onClick={() => openSources("streaming")}
-                >
-                  <Settings2 className="size-4" />
-                  Data controls
-                </Button>
+                {hasIsrc ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={editActionButtonClassName}
+                    onClick={() => openSources("streaming")}
+                  >
+                    <Settings2 className="size-4" />
+                    Data controls
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={editActionButtonClassName}
+                      onClick={() => setAddDspModal(true)}
+                    >
+                      <Plus className="size-4" />
+                      Add data
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={editActionButtonClassName}
+                      onClick={() => {
+                        setInitialTab("Dsp");
+                        setAddMediaModal(true);
+                      }}
+                    >
+                      <Plus className="size-4" />
+                      Add media
+                    </Button>
+                  </>
+                )}
               </div>
             )}
 
@@ -525,7 +615,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
         open={sourcesModal}
         scope={sourcesScope}
         sources={sources}
-        markets={availableMarkets}
+        markets={pickerMarkets}
+        streamingPlatforms={insightStats?.availableStreamingPlatforms}
         selectedMarkets={activeMarkets}
         spinsByCountry={insightStats?.availableAirplayCountries}
         onOpenChange={setSourcesModal}

@@ -14,7 +14,7 @@ const fetchSocialTraction = async (
   uuid: string,
 ): Promise<SocialTractionResponse> => {
   const response = await fetch(
-    `/api/soundcharts/social-traction?uuid=${encodeURIComponent(uuid)}`,
+    `/api/music-analytics/social-traction?uuid=${encodeURIComponent(uuid)}`,
   );
   const payload = (await response
     .json()

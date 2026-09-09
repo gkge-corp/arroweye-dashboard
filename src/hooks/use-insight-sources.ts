@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   PLAYLIST_PLATFORMS,
   REACH_PLATFORMS,
+  type AnalyticsPlatform,
 } from "@/lib/music-analytics/platforms";
 
 export interface InsightSources {
@@ -14,6 +15,14 @@ export interface InsightSources {
   reachPlatforms: string[];
   /** Artist follower counts. One call each, plus one to resolve the artist. */
   artistSocialPlatforms: string[];
+  /**
+   * Which streaming platforms the picker was offering when this was saved.
+   * Soundcharts reports audience for platforms with no playlist endpoint
+   * (Anghami, JioSaavn), and that set varies per song, so a platform missing
+   * from playlistPlatforms is only "switched off" if it was on offer at the
+   * time. Anything newer is unseen, not declined.
+   */
+  knownStreamingPlatforms: string[];
 }
 
 export const defaultInsightSources = (): InsightSources => ({
@@ -22,7 +31,43 @@ export const defaultInsightSources = (): InsightSources => ({
   // Off by default: these are artist figures, not song figures, and each is a
   // billable call.
   artistSocialPlatforms: [],
+  knownStreamingPlatforms: PLAYLIST_PLATFORMS.map((platform) => platform.code),
 });
+
+/**
+ * Everything the Streaming picker should list for this song: the platforms
+ * playlists can be pulled from, plus any extra platform Soundcharts reports
+ * audience for.
+ */
+export const mergeStreamingPlatforms = (
+  available: AnalyticsPlatform[] | undefined,
+) => {
+  const merged = new Map(
+    PLAYLIST_PLATFORMS.map((platform) => [platform.code, platform]),
+  );
+  for (const platform of available ?? []) {
+    if (!merged.has(platform.code)) merged.set(platform.code, platform);
+  }
+  return [...merged.values()];
+};
+
+/**
+ * Platforms to actually show, given what this song turned out to offer. A
+ * platform the viewer has never been shown counts as on.
+ */
+export const resolveStreamingSelection = (
+  sources: InsightSources,
+  offered: AnalyticsPlatform[],
+) => {
+  const known = new Set(sources.knownStreamingPlatforms);
+  const selected = new Set(sources.playlistPlatforms);
+
+  for (const platform of offered) {
+    if (!known.has(platform.code)) selected.add(platform.code);
+  }
+
+  return [...selected];
+};
 
 /** Every enabled source is one Soundcharts call on a cold load. */
 export const countSourceCalls = (sources: InsightSources) =>
@@ -58,7 +103,10 @@ const writeSources = (
 
   try {
     if (sources) {
-      window.localStorage.setItem(storageKey(campaignId), JSON.stringify(sources));
+      window.localStorage.setItem(
+        storageKey(campaignId),
+        JSON.stringify(sources),
+      );
     } else {
       window.localStorage.removeItem(storageKey(campaignId));
     }
@@ -68,9 +116,7 @@ const writeSources = (
 };
 
 export function useInsightSources(campaignId?: string | number) {
-  const [sources, setSources] = useState<InsightSources>(
-    defaultInsightSources,
-  );
+  const [sources, setSources] = useState<InsightSources>(defaultInsightSources);
   // Nothing should be fetched under default settings before the stored choice
   // has loaded, or a disabled source still costs a call on every page open.
   const [isLoaded, setIsLoaded] = useState(false);

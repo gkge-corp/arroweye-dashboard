@@ -31,14 +31,14 @@ const searchSongs = async (params: { term?: string; isrc?: string }) => {
   if (params.isrc) query.set("isrc", params.isrc);
   if (params.term) query.set("term", params.term);
 
-  const response = await fetch(`/api/soundcharts/song-search?${query}`);
+  const response = await fetch(`/api/music-analytics/song-search?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: SongCandidate[];
     error?: string;
   };
 
   if (!response.ok) {
-    throw new Error(payload.error ?? "Could not search Soundcharts.");
+    throw new Error(payload.error ?? "Could not search recordings.");
   }
 
   return payload.items ?? [];
@@ -73,9 +73,9 @@ export function LinkSongDialog({
       setCandidates(items);
       setHasSearched(true);
     } catch (error) {
-      console.error("Soundcharts search failed:", error);
+      console.error("Song search failed:", error);
       toast.error(
-        error instanceof Error ? error.message : "Could not search Soundcharts.",
+        error instanceof Error ? error.message : "Could not search recordings.",
       );
     } finally {
       setIsSearching(false);
@@ -101,7 +101,7 @@ export function LinkSongDialog({
             Link song
           </DialogTitle>
           <DialogDescription className="text-sm text-zinc-500 dark:text-zinc-400">
-            Match this campaign to the exact recording on Soundcharts. Playlist
+            Match this campaign to the exact recording. Playlist
             placements are pulled for whichever recording you pick.
           </DialogDescription>
         </DialogHeader>

@@ -18,7 +18,11 @@ import {
   REACH_PLATFORMS,
   type AnalyticsPlatform,
 } from "@/lib/music-analytics/platforms";
-import type { InsightSources } from "@/hooks/use-insight-sources";
+import {
+  mergeStreamingPlatforms,
+  resolveStreamingSelection,
+  type InsightSources,
+} from "@/hooks/use-insight-sources";
 
 export type InsightSourceScope = "airplay" | "social" | "streaming";
 type StreamingTab = "streaming" | "performance";
@@ -29,6 +33,13 @@ interface InsightSourcesDialogProps {
   sources: InsightSources;
   /** Markets this song actually has spins in, most played first. */
   markets: string[];
+  /**
+   * Streaming platforms offered for this song: the ones playlists can be
+   * pulled from, plus any extra platform Soundcharts reports audience for
+   * (Anghami, JioSaavn and friends have no playlist endpoint but still draw a
+   * bar on the STREAMING chart).
+   */
+  streamingPlatforms?: AnalyticsPlatform[];
   selectedMarkets: string[];
   spinsByCountry?: Record<string, number>;
   onOpenChange: (open: boolean) => void;
@@ -119,6 +130,7 @@ export function InsightSourcesDialog({
   scope,
   sources,
   markets,
+  streamingPlatforms,
   selectedMarkets,
   spinsByCountry,
   onOpenChange,
@@ -129,12 +141,20 @@ export function InsightSourcesDialog({
   const [marketDraft, setMarketDraft] = useState<string[]>(selectedMarkets);
   const [tab, setTab] = useState<StreamingTab>("streaming");
 
+  const streamingOptions = React.useMemo(
+    () => mergeStreamingPlatforms(streamingPlatforms),
+    [streamingPlatforms],
+  );
+
   useEffect(() => {
     if (!open) return;
-    setDraft(sources);
+    setDraft({
+      ...sources,
+      playlistPlatforms: resolveStreamingSelection(sources, streamingOptions),
+    });
     setMarketDraft(selectedMarkets);
     setTab("streaming");
-  }, [open, sources, selectedMarkets]);
+  }, [open, sources, selectedMarkets, streamingOptions]);
 
   const isAirplay = scope === "airplay";
   const isSocial = scope === "social";
@@ -143,7 +163,14 @@ export function InsightSourcesDialog({
     if (isAirplay) {
       onApplyMarkets(marketDraft);
     } else {
-      onApplySources(draft);
+      // Record what was on offer, so a platform left unchecked here reads as
+      // declined next time rather than as one the viewer never saw.
+      onApplySources({
+        ...draft,
+        knownStreamingPlatforms: streamingOptions.map(
+          (platform) => platform.code,
+        ),
+      });
     }
     onOpenChange(false);
   };
@@ -229,7 +256,7 @@ export function InsightSourcesDialog({
             )
           ) : tab === "streaming" ? (
             <PlatformPicker
-              platforms={PLAYLIST_PLATFORMS}
+              platforms={streamingOptions}
               selected={draft.playlistPlatforms}
               onChange={(codes) =>
                 setDraft((current) => ({
@@ -264,7 +291,7 @@ export function InsightSourcesDialog({
               else
                 setDraft((current) => ({
                   ...current,
-                  playlistPlatforms: PLAYLIST_PLATFORMS.map((p) => p.code),
+                  playlistPlatforms: streamingOptions.map((p) => p.code),
                   reachPlatforms: REACH_PLATFORMS.map((p) => p.code),
                 }));
             }}

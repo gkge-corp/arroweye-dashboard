@@ -61,7 +61,7 @@ const getAccessToken = async () => {
   const { clientId, clientSecret, teamId } = getCredentials();
   if (!clientId || !clientSecret) {
     throw new SoundchartsError(
-      "Soundcharts credentials are not configured.",
+      "Analytics credentials are not configured.",
       503,
       "SOUNDCHARTS_UNCONFIGURED",
     );
@@ -80,7 +80,7 @@ const getAccessToken = async () => {
 
   if (!response.ok || !payload.access_token) {
     throw new SoundchartsError(
-      "Soundcharts rejected the configured credentials.",
+      "The analytics provider rejected the configured credentials.",
       502,
       "SOUNDCHARTS_AUTH_FAILED",
     );

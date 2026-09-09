@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Could not reach Soundcharts.", code: "UNKNOWN" },
+      { error: "Could not reach the analytics provider.", code: "UNKNOWN" },
       { status: 502 },
     );
   }

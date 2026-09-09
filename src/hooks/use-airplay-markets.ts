@@ -10,6 +10,41 @@ import { useCallback, useEffect, useState } from "react";
 const storageKey = (campaignId: string | number) =>
   `airplay-markets:${campaignId}`;
 
+// Switching every market off stops the airplay call, and that same call is
+// what lists the countries to pick from. Without a remembered list the picker
+// would come up empty, leaving no way back on, so the last known countries are
+// kept beside the selection.
+const availableKey = (campaignId: string | number) =>
+  `airplay-markets-available:${campaignId}`;
+
+const readAvailable = (campaignId: string | number): string[] => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(availableKey(campaignId));
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch (error) {
+    console.error("Failed to read the remembered airplay markets:", error);
+    return [];
+  }
+};
+
+const writeAvailable = (campaignId: string | number, markets: string[]) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      availableKey(campaignId),
+      JSON.stringify(markets),
+    );
+  } catch (error) {
+    console.error("Failed to persist the remembered airplay markets:", error);
+  }
+};
+
 const readMarkets = (campaignId: string | number): string[] | null => {
   if (typeof window === "undefined") return null;
 
@@ -84,12 +119,29 @@ export const deriveAirplayMarkets = (
 export function useAirplayMarkets(campaignId: string | number | undefined) {
   const [selected, setSelected] = useState<string[] | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [knownMarkets, setKnownMarkets] = useState<string[]>([]);
 
   useEffect(() => {
     if (campaignId === undefined) return;
     setSelected(readMarkets(campaignId));
+    setKnownMarkets(readAvailable(campaignId));
     setIsLoaded(true);
   }, [campaignId]);
+
+  /** Remember the countries the last live response listed. */
+  const rememberMarkets = useCallback(
+    (markets: string[]) => {
+      if (campaignId === undefined || markets.length === 0) return;
+      setKnownMarkets((current) =>
+        current.length === markets.length &&
+        current.every((market, index) => market === markets[index])
+          ? current
+          : markets,
+      );
+      writeAvailable(campaignId, markets);
+    },
+    [campaignId],
+  );
 
   const setMarkets = useCallback(
     (markets: string[] | null) => {
@@ -103,5 +155,12 @@ export function useAirplayMarkets(campaignId: string | number | undefined) {
   // An explicit empty selection is a deliberate "do not fetch airplay".
   const airplayDisabled = selected !== null && selected.length === 0;
 
-  return { selected, isLoaded, airplayDisabled, setMarkets };
+  return {
+    selected,
+    isLoaded,
+    airplayDisabled,
+    knownMarkets,
+    rememberMarkets,
+    setMarkets,
+  };
 }

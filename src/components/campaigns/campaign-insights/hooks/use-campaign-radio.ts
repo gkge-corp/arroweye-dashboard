@@ -17,7 +17,7 @@ const fetchTopRadio = async (
 ): Promise<RadioPage> => {
   const query = new URLSearchParams({ uuid, offset: String(offset) });
   if (countries) query.set("countries", countries.join(","));
-  const response = await fetch(`/api/soundcharts/top-radio?${query}`);
+  const response = await fetch(`/api/music-analytics/top-radio?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: RadioRow[];
     nextOffset?: number | null;

@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { mapWithConcurrency, withRetry } from "@/lib/music-analytics/fan-out";
 import {
   ARTIST_SOCIAL_PLATFORMS,
-  PLAYLIST_PLATFORMS,
   REACH_PLATFORMS,
   parsePlatforms,
 } from "@/lib/music-analytics/platforms";
@@ -133,18 +132,12 @@ const pickPlatforms = (
   stats: StatPlot[],
   wantSocial: boolean,
   read: (stat: StatPlot) => number,
-  // A platform the viewer switched off in Streaming sources. Only platforms
-  // the picker actually lists can be hidden, so a DSP that is not offered
-  // there still reaches the chart rather than vanishing.
-  isHidden: (platform: string) => boolean = () => false,
 ) =>
   withTotal(
     stats
       .filter(
         (stat) =>
-          stat.platform &&
-          SOCIAL_PLATFORMS.has(stat.platform) === wantSocial &&
-          !isHidden(stat.platform),
+          stat.platform && SOCIAL_PLATFORMS.has(stat.platform) === wantSocial,
       )
       .map((stat) => [
         toLabel(stat.platform!),
@@ -187,22 +180,6 @@ export async function GET(request: NextRequest) {
       ? []
       : REACH_PLATFORMS,
   );
-
-  // The STREAMING chart is drawn from the same song audience call as the
-  // playlists, so switching a platform off in Streaming sources has to hide it
-  // here too rather than only stopping the playlist call.
-  const playlistParam = request.nextUrl.searchParams.get("playlistPlatforms");
-  const selectedPlaylistPlatforms = new Set(
-    parsePlatforms(playlistParam, PLAYLIST_PLATFORMS).map(
-      (platform) => platform.code,
-    ),
-  );
-  const offeredPlaylistPlatforms = new Set(
-    PLAYLIST_PLATFORMS.map((platform) => platform.code),
-  );
-  const isHiddenDsp = (platform: string) =>
-    offeredPlaylistPlatforms.has(platform) &&
-    !selectedPlaylistPlatforms.has(platform);
 
   try {
     const radioQuery = new URLSearchParams({
@@ -375,6 +352,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Every streaming platform this song has audience for, switched off ones
+    // included, so the picker can still list what it is hiding.
+    const availableStreamingPlatforms = audience
+      .filter(
+        (stat) =>
+          stat.platform &&
+          !SOCIAL_PLATFORMS.has(stat.platform) &&
+          Number(stat.value ?? 0) > 0,
+      )
+      .map((stat) => ({
+        code: stat.platform!,
+        label: toLabel(stat.platform!),
+      }));
+
     const songSocial = pickPlatforms(audience, true, (s) =>
       Number(s.value ?? 0),
     );
@@ -401,16 +392,14 @@ export async function GET(request: NextRequest) {
             ([label]) => !songSocial[label.replace(/ followers$/, "")],
           ),
         ]),
-        dsp: pickPlatforms(
-          audience,
-          false,
-          (s) => Number(s.value ?? 0),
-          isHiddenDsp,
-        ),
+        // Left unfiltered: which platforms the viewer wants shown is applied
+        // on the client, so toggling one costs no further Soundcharts calls.
+        dsp: pickPlatforms(audience, false, (s) => Number(s.value ?? 0)),
         radioSpins,
         airplayByCountry,
         availableAirplayCountries,
         airplayCountryCodes,
+        availableStreamingPlatforms,
         performance,
       },
     });
@@ -425,7 +414,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Could not reach Soundcharts.", code: "UNKNOWN" },
+      { error: "Could not reach the analytics provider.", code: "UNKNOWN" },
       { status: 502 },
     );
   }

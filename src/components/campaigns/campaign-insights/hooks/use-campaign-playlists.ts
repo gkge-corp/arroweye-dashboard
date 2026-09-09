@@ -28,7 +28,7 @@ const fetchPlaylists = async (
     query.set("platforms", cursor.platforms.join(","));
   }
 
-  const response = await fetch(`/api/soundcharts/playlists?${query}`);
+  const response = await fetch(`/api/music-analytics/playlists?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: PlaylistRow[];
     nextOffset?: number | null;

@@ -93,7 +93,7 @@ export function TopRadioCard({
       isLoadingMore={isLoadingMore}
       onLoadMore={onLoadMore}
       emptyMessage={
-        airplayDisabled ? "Airplay is off — no countries selected." : undefined
+        airplayDisabled ? "Airplay is off - no countries selected." : undefined
       }
       emptyAction={
         airplayDisabled
