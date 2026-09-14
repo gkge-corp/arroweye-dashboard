@@ -189,9 +189,6 @@ const MomentCard: React.FC<MomentCardProps> = ({
           // disabled={!reportUrls[currentVideoIndex]}
         >
           <p>{downloadButtonText}</p>
-          <sup className="font-bold p-2 rounded-full bg-white text-black mt-1">
-            CSV
-          </sup>
         </button>
 
         {/* {radioButtonText && (

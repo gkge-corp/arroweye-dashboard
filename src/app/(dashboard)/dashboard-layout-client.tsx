@@ -98,7 +98,7 @@ const DashboardLayoutClient: FC<LayoutProps> = ({
                     pathname !== "/campaigns/setup/promoter"
                       ? "mx-[20px]"
                       : ""
-                  } border-none rounded-xl mt-5`
+                  } border-none rounded-xl`
             }
           >
             {isSetupLanding ? (
@@ -138,7 +138,7 @@ const DashboardLayoutClient: FC<LayoutProps> = ({
                   pathname !== "/campaigns/setup/promoter"
                     ? "mx-[20px]"
                     : ""
-                } border-none rounded-xl mt-5`
+                } border-none rounded-xl`
           }
         >
           {children}

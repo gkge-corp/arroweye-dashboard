@@ -12,7 +12,7 @@ export function InsightChartSkeleton({
 }: InsightChartSkeletonProps) {
   return (
     <div className="w-full space-y-5 font-SansFlex">
-      <div className="flex items-center justify-between">
+      <div className="flex min-h-9 items-center justify-between">
         <Skeleton className="h-3 w-20" />
         {showFilter && <Skeleton className="h-9 w-[120px]" />}
       </div>
@@ -21,7 +21,7 @@ export function InsightChartSkeleton({
       <Skeleton className="h-3 w-28" />
 
       <div className="pt-2">
-        <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+        <div className="mb-3 flex min-h-[22px] flex-wrap items-center justify-center gap-x-3 gap-y-2">
           {Array.from({ length: 3 }, (_, index) => (
             <div key={index} className="flex items-center gap-2">
               <Skeleton className="h-[14px] w-7 rounded-none" />

@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useDrops } from "../../../hooks/use-drops";
-import LibraryCard from "./component/library-card";
+import LibraryCard, { LibraryCardSkeleton } from "./component/library-card";
 import { DropsIcon } from "../sidebar";
 import NotificationsMenu from "../notifications-menu";
 import Icon from "@mdi/react";
@@ -263,7 +263,7 @@ const AssetsLibrary = () => {
         >
           <div className="flex min-w-0 items-center gap-[10px]">
             <DropsIcon className="shrink-0 text-primary" size={24} />
-            <p className="truncate text-[30px] font-bold text-primary">
+            <p className="truncate text-[27px] font-bold text-primary">
               Asset Library
             </p>
           </div>
@@ -443,6 +443,10 @@ const AssetsLibrary = () => {
               />
             </div>
           ))}
+          {(isLoading || isFetchingNextPage) &&
+            Array.from({ length: 3 }).map((_, index) => (
+              <LibraryCardSkeleton key={`drop-skeleton-${index}`} />
+            ))}
         </div>
         {content.length === 0 && !isLoading && (
           <p className="py-10 text-center text-sm text-muted-foreground">
@@ -455,7 +459,7 @@ const AssetsLibrary = () => {
           aria-live="polite"
         >
           {(isLoading || isFetchingNextPage) && (
-            <p className="text-sm text-muted-foreground">Loading drops…</p>
+            <span className="sr-only">Loading drops…</span>
           )}
         </div>
       </div>

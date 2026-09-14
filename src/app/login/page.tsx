@@ -69,7 +69,7 @@ const Login = () => {
             <div className="mx-auto w-full px-[32px]">
               {!isOtpSent ? (
                 <form
-                  className="mt-[34px] w-full space-y-[38px]"
+                  className="mt-8.5 w-full space-y-[38px]"
                   onSubmit={handleLoginSubmit}
                 >
                   <Input

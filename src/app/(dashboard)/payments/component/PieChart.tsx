@@ -35,7 +35,6 @@ interface InsightChartProps<TFilters extends ChartFilterState> {
   selectOptions?: Array<{ value: string; label: string }[]>;
   selectOptionsBottom?: Array<{ value: string; label: string }[]>;
   chartData?: ChartData<"pie", number[], string>;
-  valuePlaceHolder?: string;
   info?: string;
   isLoading?: boolean;
   setFilters?: React.Dispatch<React.SetStateAction<TFilters>>;
@@ -104,7 +103,6 @@ const CampaignPieChart = <
   selectOptionsBottom,
   chartData,
   info,
-  valuePlaceHolder,
   isLoading = false,
   setFilters,
 }: InsightChartProps<TFilters>) => {
@@ -198,38 +196,39 @@ const CampaignPieChart = <
   }
 
   return (
-    <Card className="flex flex-col !gap-5 border-0 bg-transparent p-0 shadow-none">
-      <CardHeader className="!flex items-center justify-between space-y-0 p-0">
-        <div className="flex items-center gap-1 text-muted-foreground">
-          <CardTitle className="text-xs font-normal uppercase tracking-[.1rem]">
+    <Card className="flex flex-col !gap-5 border-0 bg-transparent p-0 shadow-none font-SansFlex">
+      <CardHeader className="!flex min-h-9 items-center justify-between space-y-0 p-0">
+        <div className="flex items-center gap-[5px] text-[#7a8081]">
+          <CardTitle className="!text-[12px] font-[400] tracking-[.1rem] uppercase">
             {title}
           </CardTitle>
           {info && <ChartInfoTooltip content={info} />}
         </div>
 
         {selectOptions && (
-          <div className="shrink-0">
+          <div className="flex flex-1 justify-end">
             {selectOptions.map((options, index) => (
-              <ChartFilterSelect
-                key={index}
-                options={options}
-                placeholder="Channels"
-                className={filterSelectClassName}
-                onChange={(selectedValue) => {
-                  setFilters?.((previous) => ({
-                    ...previous,
-                    channels: selectedValue,
-                  }));
-                }}
-              />
+              <div key={index} className="shrink-0">
+                <ChartFilterSelect
+                  options={options}
+                  placeholder="Channels"
+                  className={filterSelectClassName}
+                  onChange={(selectedValue) => {
+                    setFilters?.((previous) => ({
+                      ...previous,
+                      channels: selectedValue,
+                    }));
+                  }}
+                />
+              </div>
             ))}
           </div>
         )}
       </CardHeader>
 
-      <CardContent className="space-y-5 p-0">
+      <CardContent className="space-y-2 p-0">
         <div className="flex items-center gap-2">
-          <p className="text-2xl font-semibold lg:text-[56px]">
+          <p className="text-2xl font-semibold lg:text-[56px] font-SansFlex leading-tight">
             {formatNumber(displayValue)}
           </p>
           {Number(value) > 1000 && (
@@ -237,13 +236,9 @@ const CampaignPieChart = <
           )}
         </div>
 
-        <p className="pt-1 text-xs uppercase text-muted-foreground">
-          {valuePlaceHolder}
-        </p>
-
         {displayPieData.length > 0 && (
-          <div className="pt-2">
-            <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[13px] leading-none text-[#6f6f6f]">
+          <div>
+            <div className="mb-3 flex min-h-[22px] flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[13px] leading-none text-[#6f6f6f]">
               {displayPieData.map((item) => {
                 const isHidden =
                   hasChartData && hiddenSegments.has(item.segment);

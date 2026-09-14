@@ -3,6 +3,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from "recharts";
 import { ChartData } from "chart.js";
 import { formatNumber } from "@/lib/utils";
 import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -27,7 +34,6 @@ interface InsightChartProps<TFilters extends ChartFilterState> {
   selectOptions?: Array<{ value: string; label: string }[]>;
   selectOptionsBottom?: Array<{ value: string; label: string }[]>;
   chartData?: ChartData<"bar", number[], string>;
-  valuePlaceholder?: string;
   info?: string;
   isLoading?: boolean;
   placeholder?: string;
@@ -66,7 +72,6 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
   selectOptionsBottom,
   chartData,
   placeholder,
-  valuePlaceholder,
   info,
   isLoading = false,
   setFilters,
@@ -171,43 +176,45 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
     return <EmptyInsightChartCard />;
   }
 
+  const displayValue = Number(value) > 0 ? value : 0;
+
   return (
-    <div className="space-y-5 font-SansFlex w-full">
-      <div className="flex items-center justify-between">
+    <Card className="flex flex-col !gap-5 border-0 bg-transparent p-0 shadow-none font-SansFlex">
+      <CardHeader className="!flex min-h-9 items-center justify-between space-y-0 p-0">
         <div className="flex items-center gap-[5px] text-[#7a8081]">
-          <p className="!text-[12px] font-[400] tracking-[.1rem]">{title}</p>
+          <CardTitle className="!text-[12px] font-[400] tracking-[.1rem] uppercase">
+            {title}
+          </CardTitle>
           {info && <ChartInfoTooltip content={info} />}
         </div>
         {selectOptions && (
-          <div>
+          <div className="flex flex-1 justify-end">
             {selectOptions.map((options, index) => (
-              <div key={index} className="max-w-[180px] w-full">
+              <div key={index} className="shrink-0">
                 <ChartFilterSelect
                   options={options}
                   placeholder={placeholder}
+                  className="w-[120px]"
                 />
               </div>
             ))}
           </div>
         )}
-      </div>
+      </CardHeader>
 
-      <div className="flex items-center gap-2">
-        <p className="text-2xl lg:text-[56px] font-[600] font-SansFlex">
-          {!!value && formatNumber(value)}
-        </p>
-        {Number(value) > 1000 && (
-          <ChartInfoTooltip content={value.toLocaleString()} />
-        )}
-      </div>
-      <div>
-        <p className="!text-[12px] font-[400] mb-2 tracking-[.1rem] text-black">
-          {valuePlaceholder}
-        </p>
+      <CardContent className="space-y-2 p-0">
+        <div className="flex items-center gap-2">
+          <p className="text-2xl font-semibold lg:text-[56px] font-SansFlex leading-tight">
+            {formatNumber(displayValue)}
+          </p>
+          {Number(value) > 1000 && (
+            <ChartInfoTooltip content={value.toLocaleString()} />
+          )}
+        </div>
 
-        <div className="w-full h-full flex flex-col justify-center items-center">
+        <div>
           {data.length > 0 && (
-            <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[13px] leading-none text-[#6f6f6f]">
+            <div className="mb-3 flex min-h-[22px] flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[13px] leading-none text-[#6f6f6f]">
               {data.map((item) => {
                 const isHidden = hiddenSegments.has(item.segment);
                 return (
@@ -219,7 +226,7 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
                     style={{ opacity: isHidden ? 0.4 : 1 }}
                   >
                     <span
-                      className="h-[14px] w-4 shrink-0 border border-[var(--chart-legend-border)] bg-[var(--chart-legend-bg)] dark:border-[var(--chart-legend-dark-border)] dark:bg-[var(--chart-legend-dark-bg)]"
+                      className="h-[14px] w-7 shrink-0 border border-[var(--chart-legend-border)] bg-[var(--chart-legend-bg)] dark:border-[var(--chart-legend-dark-border)] dark:bg-[var(--chart-legend-dark-bg)]"
                       style={
                         {
                           "--chart-legend-bg": getLightChartFillColor(
@@ -320,9 +327,9 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
             </BarChart>
           </ChartContainer>
         </div>
-      </div>
+      </CardContent>
       {/* told to also hide this */}
-      <div className="hidden items-center justify-between">
+      <CardFooter className="hidden items-center justify-between p-0">
         <div>
           {selectOptionsBottom?.map((options, index) => (
             <div key={index} className="max-w-[200px] w-full">
@@ -355,8 +362,8 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 };
 

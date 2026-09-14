@@ -213,6 +213,7 @@ const ProjectDetails = () => {
                 isAdvertiser={isAdvertiser}
                 content={content}
                 refreshContent={refreshContent}
+                onRequestEditModeChange={requestEditModeChange}
               />
               {/* <ScheduleProject
                 filterIcon={false}

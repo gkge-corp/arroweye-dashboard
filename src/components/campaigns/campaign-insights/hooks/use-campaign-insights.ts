@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChartData } from "chart.js";
@@ -16,6 +16,18 @@ import getDarkerColor from "@/lib/getDarkerColor";
 interface UseCampaignInsightsParams {
   content?: any;
   refreshContent?: () => void;
+  /**
+   * Live figures from Soundcharts for the linked recording. Any section
+   * present here replaces the hand-entered numbers from the Arroweye API;
+   * sections Soundcharts cannot supply fall through to the manual data.
+   */
+  statsOverrides?: {
+    socialMedia?: Record<string, number>;
+    dsp?: Record<string, number>;
+    /** Spins per country for the markets the user selected. */
+    airplayByCountry?: Record<string, number>;
+    performance?: Record<string, number>;
+  };
 }
 
 type DoughnutChartData = {
@@ -69,6 +81,7 @@ const emptyCampaignInsightsData: CampaignInsightsData = {
 export function useCampaignInsights({
   content,
   refreshContent,
+  statsOverrides,
 }: UseCampaignInsightsParams) {
   const queryClient = useQueryClient();
   const [initialTab, setInitialTab] = useState<any>("moments");
@@ -172,13 +185,34 @@ export function useCampaignInsights({
   });
 
   const {
-    airPlayData = emptyInsightData,
-    socialMediaData = emptyInsightData,
-    dspData = emptyInsightData,
+    airPlayData: manualAirPlayData = emptyInsightData,
+    socialMediaData: manualSocialMediaData = emptyInsightData,
+    dspData: manualDspData = emptyInsightData,
     audienceData = emptyInsightData,
     smactionData = emptyInsightData,
-    dspPerformanceData = emptyInsightData,
+    dspPerformanceData: manualDspPerformanceData = emptyInsightData,
   } = insightsData;
+
+  // An override only wins when it actually carries figures, so a song with no
+  // Soundcharts presence still shows whatever ops entered by hand.
+  const preferLive = (
+    live: Record<string, number> | undefined,
+    manual: Record<string, number>,
+  ) => (live && Number(live.total_count) > 0 ? live : manual);
+
+  const socialMediaData = preferLive(
+    statsOverrides?.socialMedia,
+    manualSocialMediaData,
+  );
+  const dspData = preferLive(statsOverrides?.dsp, manualDspData);
+  const dspPerformanceData = preferLive(
+    statsOverrides?.performance,
+    manualDspPerformanceData,
+  );
+
+  // AIRPLAY breaks down by country when Soundcharts has radio data for the
+  // linked song. An explicit empty map means the user cleared every country.
+  const airPlayData = statsOverrides?.airplayByCountry ?? manualAirPlayData;
 
   const generateDoughnutChartData = (
     data: Record<string, number>,

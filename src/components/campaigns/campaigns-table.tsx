@@ -9,6 +9,7 @@ import Link from "next/link";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { Dialog } from "primereact/dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -76,11 +77,23 @@ const TableEmptyState = ({ label }: { label: string }) => (
   </div>
 );
 
-const TableSpinner = () => (
-  <div className="flex h-[30vh] items-center justify-center">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#31bc86] border-t-transparent" />
-  </div>
-);
+const createTableSkeletonRows = (headers: TableHeader[]): TableRow[] =>
+  Array.from({ length: 5 }, (_, rowIndex) => ({
+    id: `campaign-skeleton-${rowIndex}`,
+    data: headers.map((header, columnIndex) => (
+      <Skeleton
+        key={`campaign-skeleton-${rowIndex}-${columnIndex}`}
+        aria-hidden="true"
+        className={
+          header.align === "center"
+            ? "mx-auto size-5 rounded-full bg-muted-foreground/20"
+            : columnIndex === 0
+              ? "h-5 w-36 max-w-full bg-white/35"
+              : "h-5 w-24 max-w-full bg-muted-foreground/20"
+        }
+      />
+    )),
+  }));
 
 const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
   const {
@@ -235,15 +248,20 @@ const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
         </div>
       )}
       <div>
+        <span className="sr-only" role="status">
+          {isLoading ? "Loading campaigns…" : ""}
+        </span>
         {!isAdvertiser && (
           <Table
             aria-label="Campaign projects"
             highlightFirstCell={true}
             headers={projectHeaders}
-            rows={projectRows}
-            emptyState={
-              isLoading ? <TableSpinner /> : <TableEmptyState label="No Data" />
+            rows={
+              isLoading
+                ? createTableSkeletonRows(projectHeaders)
+                : projectRows
             }
+            emptyState={<TableEmptyState label="No Data" />}
           />
         )}
 
@@ -253,14 +271,12 @@ const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
               aria-label="Created campaigns"
               highlightFirstCell={true}
               headers={advertiserHeaders}
-              rows={advertiserRows}
-              emptyState={
-                isLoading ? (
-                  <TableSpinner />
-                ) : (
-                  <TableEmptyState label="No Campaigns" />
-                )
+              rows={
+                isLoading
+                  ? createTableSkeletonRows(advertiserHeaders)
+                  : advertiserRows
               }
+              emptyState={<TableEmptyState label="No Campaigns" />}
             />
             <Pagination
               currentPage={currentPage}

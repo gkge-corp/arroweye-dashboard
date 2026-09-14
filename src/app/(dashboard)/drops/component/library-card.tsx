@@ -4,6 +4,7 @@ import { GrOnedrive } from "react-icons/gr";
 import { FaCloudArrowUp } from "react-icons/fa6";
 import { SiWetransfer } from "react-icons/si";
 import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
@@ -30,6 +31,25 @@ interface CardProps {
   userEmail?: string;
   userColor?: string;
 }
+
+export const LibraryCardSkeleton = () => (
+  <Card
+    aria-hidden="true"
+    className="h-[200px] w-full justify-between gap-0 rounded-[20px] border-border px-[10px] py-[20px] shadow-none"
+  >
+    <CardHeader className="p-0 px-2">
+      <Skeleton className="h-6 w-3/5 rounded-md" />
+    </CardHeader>
+    <CardFooter className="flex items-center justify-between p-0 pl-2">
+      <Skeleton className="size-6 rounded-md" />
+      <div className="flex items-center justify-end space-x-2">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Skeleton key={index} className="size-10 rounded-full" />
+        ))}
+      </div>
+    </CardFooter>
+  </Card>
+);
 
 const LibraryCard: React.FC<CardProps> = ({
   title,
