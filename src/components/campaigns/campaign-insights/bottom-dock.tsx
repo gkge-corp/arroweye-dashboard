@@ -18,7 +18,9 @@ import {
 import MdiIcon, { Icon } from "@mdi/react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
+import { sendCampaignReport } from "@/app/(dashboard)/campaigns/[id]/actions";
 import { NotificationList } from "@/app/(dashboard)/campaigns/notifications/NotificationList";
 import { NotificationCard } from "@/app/(dashboard)/campaigns/notifications/NotificationCard";
 import { DropzoneUploadDialog } from "@/app/(dashboard)/campaigns/notifications/dropzone-upload-dialog";
@@ -35,7 +37,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getProjectDropZone, sendProjectEmail } from "@/services";
+import { getProjectDropZone } from "@/services";
+import type { CampaignReportMetrics } from "@/types/campaign-report";
 import {
   isApiNotification,
   type NotificationByType,
@@ -62,6 +65,8 @@ interface BottomDockProps {
   handleDownloadData?: () => void;
   notifications?: unknown;
   media?: unknown;
+  reportMetrics?: CampaignReportMetrics;
+  reportLoading?: boolean;
 }
 
 const panelTitle: Record<DockPanel, string> = {
@@ -78,6 +83,8 @@ export function BottomDock({
   handleDownloadData,
   notifications,
   media,
+  reportMetrics,
+  reportLoading = false,
 }: BottomDockProps) {
   const router = useRouter();
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -165,21 +172,26 @@ export function BottomDock({
   const closePopover = () => setPopoverOpen(false);
 
   const handleSendEmail = async () => {
-    if (!contentId || !email) return;
+    if (!contentId || !email || !reportMetrics || reportLoading) return;
 
     setIsSending(true);
-    const currentUrl =
-      typeof window !== "undefined" ? window.location.href : "";
 
     try {
-      const response = await sendProjectEmail(contentId, {
-        email,
-        url: currentUrl,
+      const result = await sendCampaignReport({
+        campaignId: String(contentId),
+        recipient: email,
+        metrics: reportMetrics,
       });
 
-      if (response) setEmail("");
+      if (result.success) {
+        setEmail("");
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
     } catch (error) {
       console.error("Error sending email:", error);
+      toast.error("The report could not be sent. Please try again.");
     } finally {
       setIsSending(false);
     }
@@ -492,16 +504,25 @@ export function BottomDock({
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") void handleSendEmail();
+                  if (
+                    event.key === "Enter" &&
+                    !isSending &&
+                    !reportLoading &&
+                    reportMetrics
+                  ) {
+                    void handleSendEmail();
+                  }
                 }}
-                disabled={isSending}
+                disabled={isSending || reportLoading}
               />
               <button
                 type="button"
                 aria-label="Send report email"
                 className="absolute right-1 flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground outline-none transition-[background-color,transform] duration-150 hover:bg-primary/80 active:scale-[0.95] focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
                 onClick={() => void handleSendEmail()}
-                disabled={isSending || !email}
+                disabled={
+                  isSending || reportLoading || !email || !reportMetrics
+                }
               >
                 {isSending ? (
                   <MdiIcon className="size-4 animate-spin" path={mdiLoading} />
@@ -510,6 +531,11 @@ export function BottomDock({
                 )}
               </button>
             </div>
+            {reportLoading && (
+              <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                Preparing the latest campaign data…
+              </p>
+            )}
           </div>
         )}
 
