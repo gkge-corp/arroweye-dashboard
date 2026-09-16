@@ -34,6 +34,7 @@ import {
 } from "@/hooks/use-insight-sources";
 import { TopRadioCard } from "./top-radio-card";
 import { SocialTractionCard } from "./social-traction-card";
+import type { CampaignReportMetrics } from "@/types/campaign-report";
 
 const selectOptions = [
   [
@@ -127,18 +128,21 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     setSourcesModal(true);
   };
 
-  const { insightStats } = useCampaignInsightStats(linkedSong?.uuid, {
-    // Switching every market off skips the airplay call, but that call is the
-    // only source of the country list. With nothing remembered yet the picker
-    // would have nothing to offer, so it is fetched once to fill the cache and
-    // skipped on every load after that.
-    radio: !airplayDisabled || knownMarkets.length === 0,
-    social: true,
-    reachPlatforms: sources.reachPlatforms,
-    artistPlatforms: sources.artistSocialPlatforms,
-    countries: selectedMarkets,
-    ready: sourcesLoaded && marketsLoaded,
-  });
+  const { insightStats, isInsightStatsLoading } = useCampaignInsightStats(
+    linkedSong?.uuid,
+    {
+      // Switching every market off skips the airplay call, but that call is the
+      // only source of the country list. With nothing remembered yet the picker
+      // would have nothing to offer, so it is fetched once to fill the cache and
+      // skipped on every load after that.
+      radio: !airplayDisabled || knownMarkets.length === 0,
+      social: true,
+      reachPlatforms: sources.reachPlatforms,
+      artistPlatforms: sources.artistSocialPlatforms,
+      countries: selectedMarkets,
+      ready: sourcesLoaded && marketsLoaded,
+    },
+  );
 
   // Soundcharts reports audience for platforms with no playlist endpoint
   // (Anghami, JioSaavn), so the STREAMING chart can show more than the
@@ -282,6 +286,30 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   } = useCampaignSocialTraction(linkedSong?.uuid);
   const songTitle =
     content?.title || content?.song_title || content?.campaign?.song_title;
+  const reportMetrics = React.useMemo<CampaignReportMetrics>(
+    () => ({
+      airplay: airPlayData ?? {},
+      streaming: dspData ?? {},
+      audience: audienceData ?? {},
+      socialMedia: socialMediaData ?? {},
+      actions: smactionData ?? {},
+      performance: dspPerformanceData ?? {},
+      // Manual campaign data exposes DJ as an airplay channel. Soundcharts
+      // radio data has no equivalent DJ-spins figure, so it remains zero.
+      spinCount: Number(airPlayData?.DJ ?? content?.spin_count ?? 0),
+    }),
+    [
+      airPlayData,
+      audienceData,
+      content?.spin_count,
+      dspData,
+      dspPerformanceData,
+      smactionData,
+      socialMediaData,
+    ],
+  );
+  const reportLoading =
+    isAirPlayDataLoading || Boolean(linkedSong?.uuid && isInsightStatsLoading);
 
   const insightGridClass = editMode
     ? "grid grid-cols-1 gap-x-[10px] gap-y-[20px] w-full md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto]"
@@ -644,6 +672,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
         handleDownloadData={handleDownloadData}
         notifications={content?.notifications}
         media={content?.media}
+        reportMetrics={reportMetrics}
+        reportLoading={reportLoading}
       />
     </div>
   );

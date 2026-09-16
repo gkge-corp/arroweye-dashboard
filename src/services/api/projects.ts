@@ -13,7 +13,6 @@ import { ContentItem } from "@/types/contents";
 import ls from "localstorage-slim";
 
 import { toast } from "react-toastify";
-import { toast as sonnerToast } from "sonner";
 
 if (typeof window !== "undefined" && window?.localStorage)
   ls.config.storage = localStorage;
@@ -28,16 +27,6 @@ interface ApiRequestResponse<T> {
   data: T;
   message: string;
   status: number | string;
-}
-
-interface SendEmailResponse {
-  message: string;
-  status: string;
-}
-
-interface SendEmailPayload {
-  email: string;
-  url: string;
 }
 
 export const getGenreContents = async (): Promise<ContentItem[] | null> => {
@@ -164,25 +153,6 @@ export const shareProject = async (
     console.log(response);
     toast.success("Action successful!");
   } catch (error: unknown) {}
-};
-
-export const sendProjectEmail = async (
-  id: number | string,
-  payload: SendEmailPayload,
-): Promise<SendEmailResponse | null> => {
-  try {
-    const response = await apiRequest({
-      method: "POST",
-      url: `/api/v1/projects/${id}/share-project/`,
-      data: payload,
-      requireToken: true,
-    });
-
-    sonnerToast.success("Email sent successfully!");
-    return response as SendEmailResponse;
-  } catch (error: unknown) {
-    return null;
-  }
 };
 
 export const campaignStaffAction = async (
