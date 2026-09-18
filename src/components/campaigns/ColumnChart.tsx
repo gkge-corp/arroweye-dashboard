@@ -30,6 +30,7 @@ type ChartFilterState = {
 interface InsightChartProps<TFilters extends ChartFilterState> {
   title: string;
   value: number | string;
+  valueLabel?: string;
   percentageChange?: string;
   selectOptions?: Array<{ value: string; label: string }[]>;
   selectOptionsBottom?: Array<{ value: string; label: string }[]>;
@@ -68,6 +69,7 @@ const getLightChartFillColor = (color: string) =>
 const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
   title,
   value,
+  valueLabel,
   selectOptions,
   selectOptionsBottom,
   chartData,
@@ -211,6 +213,11 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
             <ChartInfoTooltip content={value.toLocaleString()} />
           )}
         </div>
+        {valueLabel && (
+          <p className="font-SansFlex text-[12px] text-muted-foreground">
+            {valueLabel}
+          </p>
+        )}
 
         <div>
           {data.length > 0 && (

@@ -1,12 +1,13 @@
 export type CampaignReportStats = Record<string, number>;
 
-export type CampaignReportHighlightId = "tiktok" | "shazam" | "youtube";
+export type CampaignReportHighlightId = "videoCreations" | "shazam" | "youtube";
 
 export interface CampaignReportHighlight {
   id: CampaignReportHighlightId;
   value: number;
   changePercent: number | null;
   periodDays: number;
+  topPlatform?: string;
   topMarket?: string;
 }
 

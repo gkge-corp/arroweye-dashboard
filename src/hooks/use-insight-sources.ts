@@ -3,47 +3,63 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  DISCOVERY_PLATFORMS,
   PLAYLIST_PLATFORMS,
   REACH_PLATFORMS,
   type AnalyticsPlatform,
 } from "@/lib/music-analytics/platforms";
 
+const DISCOVERY_AND_STREAMING_PLATFORMS = [
+  ...PLAYLIST_PLATFORMS,
+  ...DISCOVERY_PLATFORMS,
+];
+const PLAYLIST_PLATFORM_CODES = new Set(
+  PLAYLIST_PLATFORMS.map((platform) => platform.code),
+);
+
 export interface InsightSources {
-  /** One call per platform. */
+  /** Selected discovery/DSP rows; only playlist-capable DSPs cost a call. */
   playlistPlatforms: string[];
   /** One call per platform. */
   reachPlatforms: string[];
   /** Artist follower counts. One call each, plus one to resolve the artist. */
   artistSocialPlatforms: string[];
   /**
-   * Which streaming platforms the picker was offering when this was saved.
-   * Soundcharts reports audience for platforms with no playlist endpoint
-   * (Anghami, JioSaavn), and that set varies per song, so a platform missing
-   * from playlistPlatforms is only "switched off" if it was on offer at the
-   * time. Anything newer is unseen, not declined.
+   * Which discovery and streaming sources the picker was offering when this
+   * was saved. Soundcharts reports audience for platforms with no playlist
+   * endpoint (Anghami, JioSaavn), and that set varies per song, so a platform
+   * missing from playlistPlatforms is only "switched off" if it was on offer
+   * at the time. Anything newer is unseen, not declined.
    */
   knownStreamingPlatforms: string[];
 }
 
 export const defaultInsightSources = (): InsightSources => ({
-  playlistPlatforms: PLAYLIST_PLATFORMS.map((platform) => platform.code),
+  playlistPlatforms: DISCOVERY_AND_STREAMING_PLATFORMS.map(
+    (platform) => platform.code,
+  ),
   reachPlatforms: REACH_PLATFORMS.map((platform) => platform.code),
   // Off by default: these are artist figures, not song figures, and each is a
   // billable call.
   artistSocialPlatforms: [],
-  knownStreamingPlatforms: PLAYLIST_PLATFORMS.map((platform) => platform.code),
+  knownStreamingPlatforms: DISCOVERY_AND_STREAMING_PLATFORMS.map(
+    (platform) => platform.code,
+  ),
 });
 
 /**
- * Everything the Streaming picker should list for this song: the platforms
- * playlists can be pulled from, plus any extra platform Soundcharts reports
- * audience for.
+ * Everything the Discovery & streaming picker should list for this song:
+ * discovery signals, playlist platforms, and any extra platform Soundcharts
+ * reports audience for.
  */
 export const mergeStreamingPlatforms = (
   available: AnalyticsPlatform[] | undefined,
 ) => {
   const merged = new Map(
-    PLAYLIST_PLATFORMS.map((platform) => [platform.code, platform]),
+    DISCOVERY_AND_STREAMING_PLATFORMS.map((platform) => [
+      platform.code,
+      platform,
+    ]),
   );
   for (const platform of available ?? []) {
     if (!merged.has(platform.code)) merged.set(platform.code, platform);
@@ -69,9 +85,10 @@ export const resolveStreamingSelection = (
   return [...selected];
 };
 
-/** Every enabled source is one Soundcharts call on a cold load. */
+/** Cold-load calls made by the enabled sources; discovery reuses stats data. */
 export const countSourceCalls = (sources: InsightSources) =>
-  sources.playlistPlatforms.length +
+  sources.playlistPlatforms.filter((code) => PLAYLIST_PLATFORM_CODES.has(code))
+    .length +
   sources.reachPlatforms.length +
   (sources.artistSocialPlatforms.length
     ? sources.artistSocialPlatforms.length + 1

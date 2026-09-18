@@ -91,7 +91,12 @@ const renderTrendRow = (
   last = false,
 ) => {
   const width =
-    value > 0 ? Math.max(4, Math.round((value / largestValue) * 100)) : 0;
+    value > 0
+      ? Math.max(
+          1,
+          Math.round((Math.log1p(value) / Math.log1p(largestValue)) * 100),
+        )
+      : 0;
 
   return `<tr><td style="font-size:10px;font-weight:900;text-transform:uppercase;color:#777;width:72px;padding:6px 7px 5px 0;">${escapeHtml(label)}</td><td style="height:6px;padding:0 1px;${last ? "" : "border-bottom:1px solid #f0f0f0;"}"><span style="display:block;height:6px;background:${color};border-radius:4px;width:${width}%;"></span></td></tr>`;
 };

@@ -184,7 +184,7 @@ export function InsightSourcesDialog({
               ? "Countries streamed"
               : isSocial
                 ? "Social sources"
-                : "Streaming sources"}
+                : "Discovery and streaming sources"}
           </DialogTitle>
         </DialogHeader>
 
@@ -195,7 +195,7 @@ export function InsightSourcesDialog({
           >
             <TabsList className="h-auto w-full justify-start rounded-none bg-transparent p-0">
               <TabsTrigger value="streaming" className="text-sm">
-                Streaming
+                Discovery &amp; streaming
               </TabsTrigger>
               <TabsTrigger value="performance" className="text-sm">
                 Performance

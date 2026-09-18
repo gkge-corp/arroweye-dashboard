@@ -22,7 +22,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_STAT_ENTRIES = 50;
 const MAX_METRIC_VALUE = Number.MAX_SAFE_INTEGER;
 const HIGHLIGHT_IDS = new Set<CampaignReportHighlightId>([
-  "tiktok",
+  "videoCreations",
   "shazam",
   "youtube",
 ]);
@@ -75,6 +75,10 @@ const sanitizeMetrics = (
       periodDays: Number.isFinite(rawPeriodDays)
         ? Math.min(365, Math.max(1, Math.round(rawPeriodDays)))
         : 30,
+      topPlatform:
+        typeof highlight.topPlatform === "string"
+          ? highlight.topPlatform.trim().slice(0, 100)
+          : undefined,
       topMarket:
         typeof highlight.topMarket === "string"
           ? highlight.topMarket.trim().slice(0, 100)

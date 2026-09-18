@@ -72,14 +72,14 @@ export function renderCampaignReportEmail({
     detailValue: topAudience?.[0],
   };
   const highlightCards: MetricCard[] = metrics.highlights.map((highlight) => {
-    if (highlight.id === "tiktok") {
+    if (highlight.id === "videoCreations") {
       return {
         label: "Video creations",
         value: highlight.value,
         changePercent: highlight.changePercent,
         changePeriodDays: highlight.periodDays,
         detailLabel: "Top platform",
-        detailValue: "TikTok",
+        detailValue: highlight.topPlatform,
       };
     }
     if (highlight.id === "youtube") {

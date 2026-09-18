@@ -35,8 +35,12 @@ import {
 import { TopRadioCard } from "./top-radio-card";
 import { SocialTractionCard } from "./social-traction-card";
 import type { CampaignReportMetrics } from "@/types/campaign-report";
+import { PLAYLIST_PLATFORMS } from "@/lib/music-analytics/platforms";
 
-const reportHighlightIds = new Set(["tiktok", "shazam", "youtube"]);
+const videoCreationPlatformIds = new Set(["tiktok", "instagram"]);
+const playlistPlatformCodes = new Set(
+  PLAYLIST_PLATFORMS.map((platform) => platform.code),
+);
 
 const selectOptions = [
   [
@@ -134,6 +138,30 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       ready: sourcesLoaded && marketsLoaded,
     },
   );
+  const {
+    socialTraction,
+    socialTractionPeriodDays,
+    isSocialTractionLoading,
+    hasSocialTractionError,
+    retrySocialTraction,
+  } = useCampaignSocialTraction(linkedSong?.uuid);
+  const shazamRow = socialTraction.find((item) => item.id === "shazam");
+  const rawShazamFallback =
+    content?.kpis?.shazams_count ??
+    content?.shazams_count ??
+    content?.campaign?.kpis?.shazams_count;
+  const parsedShazamFallback = Number(rawShazamFallback);
+  const shazamValue =
+    typeof shazamRow?.value === "number"
+      ? shazamRow.value
+      : typeof insightStats?.dsp?.Shazam === "number"
+        ? insightStats.dsp.Shazam
+        : rawShazamFallback !== null &&
+            rawShazamFallback !== undefined &&
+            rawShazamFallback !== "" &&
+            Number.isFinite(parsedShazamFallback)
+          ? parsedShazamFallback
+          : null;
 
   // Soundcharts reports audience for platforms with no playlist endpoint
   // (Anghami, JioSaavn), so the STREAMING chart can show more than the
@@ -158,13 +186,25 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     if (!dsp) return undefined;
 
     const kept = Object.entries(dsp).filter(
-      ([label]) => label !== "total_count" && visibleStreamingLabels.has(label),
+      ([label]) =>
+        label !== "total_count" &&
+        label !== "Shazam" &&
+        visibleStreamingLabels.has(label),
     );
     return {
       ...Object.fromEntries(kept),
       total_count: kept.reduce((sum, [, value]) => sum + Number(value), 0),
     };
   }, [insightStats?.dsp, visibleStreamingLabels]);
+  const discoveryChartData = React.useMemo(
+    () =>
+      visibleStreamingLabels.has("Shazam") &&
+      shazamValue !== null &&
+      shazamValue > 0
+        ? { Shazam: shazamValue }
+        : undefined,
+    [shazamValue, visibleStreamingLabels],
+  );
   const {
     availableMarkets,
     activeMarkets,
@@ -233,6 +273,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   } = useCampaignInsights({
     content,
     refreshContent,
+    discoveryData: discoveryChartData,
     statsOverrides: {
       ...insightStats,
       dsp: visibleDsp,
@@ -253,7 +294,9 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     loadMorePlaylists,
     retryPlaylists,
   } = useCampaignPlaylists(linkedSong?.uuid, {
-    platforms: sources.playlistPlatforms,
+    platforms: sources.playlistPlatforms.filter((code) =>
+      playlistPlatformCodes.has(code),
+    ),
     ready: sourcesLoaded && marketsLoaded,
   });
   const {
@@ -266,17 +309,41 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     enabled: marketsLoaded && !airplayDisabled,
     countries: selectedMarkets,
   });
-  const {
-    socialTraction,
-    socialTractionPeriodDays,
-    isSocialTractionLoading,
-    hasSocialTractionError,
-    retrySocialTraction,
-  } = useCampaignSocialTraction(linkedSong?.uuid);
   const songTitle =
     content?.title || content?.song_title || content?.campaign?.song_title;
-  const reportMetrics = React.useMemo<CampaignReportMetrics>(
-    () => ({
+  const reportMetrics = React.useMemo<CampaignReportMetrics>(() => {
+    const creationRows = socialTraction.filter(
+      (row) =>
+        videoCreationPlatformIds.has(row.id) && typeof row.value === "number",
+    );
+    const videoCreations = creationRows.reduce(
+      (sum, row) => sum + (row.value ?? 0),
+      0,
+    );
+    const topCreationPlatform = creationRows
+      .filter((row) => (row.value ?? 0) > 0)
+      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))[0]?.platform;
+    const hasCompleteEvolution =
+      creationRows.length > 0 &&
+      creationRows.every((row) => typeof row.evolution === "number");
+    const creationEvolution = hasCompleteEvolution
+      ? creationRows.reduce((sum, row) => sum + (row.evolution ?? 0), 0)
+      : null;
+    const previousVideoCreations =
+      creationEvolution === null ? null : videoCreations - creationEvolution;
+    const videoCreationChange =
+      creationRows.length === 1 &&
+      typeof creationRows[0].percentEvolution === "number"
+        ? creationRows[0].percentEvolution
+        : previousVideoCreations !== null && previousVideoCreations > 0
+          ? (creationEvolution! / previousVideoCreations) * 100
+          : creationEvolution === 0
+            ? 0
+            : null;
+    const shazamRow = socialTraction.find((item) => item.id === "shazam");
+    const youtubeRow = socialTraction.find((item) => item.id === "youtube");
+
+    return {
       airplay: airPlayData ?? {},
       streaming: dspData ?? {},
       audience: audienceData ?? {},
@@ -287,54 +354,57 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       // radio data has no equivalent DJ-spins figure, so it remains zero.
       spinCount: Number(airPlayData?.DJ ?? content?.spin_count ?? 0),
       topRadio: stations[0]?.name,
-      highlights: [...reportHighlightIds].flatMap((id) => {
-        const row = socialTraction.find((item) => item.id === id);
-        const rawFallback =
-          id === "shazam"
-            ? (content?.kpis?.shazams_count ??
-              content?.shazams_count ??
-              content?.campaign?.kpis?.shazams_count)
-            : undefined;
-        const fallback = Number(rawFallback);
-        const value =
-          typeof row?.value === "number"
-            ? row.value
-            : rawFallback !== null &&
-                rawFallback !== undefined &&
-                rawFallback !== "" &&
-                Number.isFinite(fallback)
-              ? fallback
-              : null;
-
-        return value === null
-          ? []
-          : [
+      highlights: [
+        ...(creationRows.length > 0
+          ? [
               {
-                id: id as "tiktok" | "shazam" | "youtube",
-                value,
-                changePercent: row?.percentEvolution ?? null,
+                id: "videoCreations" as const,
+                value: videoCreations,
+                changePercent: videoCreationChange,
                 periodDays: socialTractionPeriodDays,
-                topMarket: row?.topMarket ?? undefined,
+                topPlatform: topCreationPlatform,
               },
-            ];
-      }),
-    }),
-    [
-      airPlayData,
-      audienceData,
-      content?.spin_count,
-      content?.kpis?.shazams_count,
-      content?.shazams_count,
-      content?.campaign?.kpis?.shazams_count,
-      dspData,
-      dspPerformanceData,
-      smactionData,
-      socialMediaData,
-      socialTraction,
-      socialTractionPeriodDays,
-      stations,
-    ],
-  );
+            ]
+          : []),
+        ...(shazamValue !== null
+          ? [
+              {
+                id: "shazam" as const,
+                value: shazamValue,
+                changePercent: shazamRow?.percentEvolution ?? null,
+                periodDays: socialTractionPeriodDays,
+                topMarket: shazamRow?.topMarket ?? undefined,
+              },
+            ]
+          : []),
+        ...(typeof youtubeRow?.value === "number"
+          ? [
+              {
+                id: "youtube" as const,
+                value: youtubeRow.value,
+                changePercent: youtubeRow.percentEvolution,
+                periodDays: socialTractionPeriodDays,
+              },
+            ]
+          : []),
+      ],
+    };
+  }, [
+    airPlayData,
+    audienceData,
+    content?.spin_count,
+    content?.kpis?.shazams_count,
+    content?.shazams_count,
+    content?.campaign?.kpis?.shazams_count,
+    dspData,
+    dspPerformanceData,
+    smactionData,
+    socialMediaData,
+    socialTraction,
+    socialTractionPeriodDays,
+    shazamValue,
+    stations,
+  ]);
   const reportLoading =
     isAirPlayDataLoading ||
     Boolean(
@@ -552,6 +622,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               periodDays={socialTractionPeriodDays}
               loading={isSocialTractionLoading}
               hasError={hasSocialTractionError}
+              isLinked={Boolean(linkedSong?.uuid)}
               onRetry={retrySocialTraction}
               onLinkSong={() => {
                 if (editMode) {
@@ -608,11 +679,12 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               <ColumnChart
                 title="DISCOVERY AND STREAMING"
                 value={dspData?.total_count ?? 0}
+                valueLabel="Streaming total"
                 chartData={chartDataForBar}
                 isLoading={isDspDataLoading}
                 setFilters={setDspFilters}
                 selectOptionsBottom={selectOptions}
-                info="Estimated total number of streams and views recorded during this campaign across DSPs. These figures are estimates; please confirm the actual numbers with your distributor."
+                info="Streams and views are shown by DSP, with Shazam recognitions included as a separate discovery signal."
               />
             </div>
 
@@ -624,7 +696,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 chartData={pieChartDataDSPPerformance}
                 isLoading={isDspPerformanceDataLoading}
                 setFilters={setDspPerformanceFilters}
-                info="Playlist reach split by how each placement was curated: editorial playlists programmed by the platform, user-created playlists, and algorithmic or radio placements. These figures are estimates; please verify the actual data with your distributor."
+                info="Playlist reach split by how each placement was curated: editorial playlists programmed by the platform, user-created playlists, and algorithmic or radio placements. These figures are estimates;"
               />
             </div>
 
