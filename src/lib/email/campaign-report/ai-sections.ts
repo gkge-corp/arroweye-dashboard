@@ -7,14 +7,25 @@ import {
   sectionHeading,
 } from "./utils";
 
+const numericClaimPattern =
+  /\d|\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|percent)\b/i;
+
+export const hasNumericClaim = (value: string) =>
+  numericClaimPattern.test(value);
+
 export const getAiSummary = (
   project: UnknownRecord,
   generated?: CampaignAiInsights,
 ) => {
-  if (generated?.summary) return generated.summary;
+  if (generated?.summary && !hasNumericClaim(generated.summary)) {
+    return generated.summary;
+  }
 
   const aiInsights = asRecord(project.ai_insights);
-  return asString(project.ai_summary || aiInsights.summary).trim();
+  const storedSummary = asString(
+    project.ai_summary || aiInsights.summary,
+  ).trim();
+  return hasNumericClaim(storedSummary) ? "" : storedSummary;
 };
 
 export const renderAiRecommendations = (
