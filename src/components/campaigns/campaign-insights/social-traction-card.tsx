@@ -14,6 +14,7 @@ export interface SocialTractionRow {
   evolution: number | null;
   percentEvolution: number | null;
   updatedAt: string | null;
+  topMarket?: string | null;
 }
 
 interface SocialTractionCardProps {

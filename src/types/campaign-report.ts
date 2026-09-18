@@ -1,5 +1,15 @@
 export type CampaignReportStats = Record<string, number>;
 
+export type CampaignReportHighlightId = "tiktok" | "shazam" | "youtube";
+
+export interface CampaignReportHighlight {
+  id: CampaignReportHighlightId;
+  value: number;
+  changePercent: number | null;
+  periodDays: number;
+  topMarket?: string;
+}
+
 /**
  * The resolved values shown on the campaign insights page. Soundcharts has
  * already overridden the eligible sections and the remaining sections have
@@ -13,6 +23,8 @@ export interface CampaignReportMetrics {
   actions: CampaignReportStats;
   performance: CampaignReportStats;
   spinCount: number;
+  topRadio?: string;
+  highlights: CampaignReportHighlight[];
 }
 
 export interface SendCampaignReportInput {

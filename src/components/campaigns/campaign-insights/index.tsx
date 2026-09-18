@@ -36,6 +36,8 @@ import { TopRadioCard } from "./top-radio-card";
 import { SocialTractionCard } from "./social-traction-card";
 import type { CampaignReportMetrics } from "@/types/campaign-report";
 
+const reportHighlightIds = new Set(["tiktok", "shazam", "youtube"]);
+
 const selectOptions = [
   [
     { value: "nigeria", label: "Nigeria" },
@@ -297,20 +299,61 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       // Manual campaign data exposes DJ as an airplay channel. Soundcharts
       // radio data has no equivalent DJ-spins figure, so it remains zero.
       spinCount: Number(airPlayData?.DJ ?? content?.spin_count ?? 0),
+      topRadio: stations[0]?.name,
+      highlights: [...reportHighlightIds].flatMap((id) => {
+        const row = socialTraction.find((item) => item.id === id);
+        const rawFallback =
+          id === "shazam"
+            ? (content?.kpis?.shazams_count ??
+              content?.shazams_count ??
+              content?.campaign?.kpis?.shazams_count)
+            : undefined;
+        const fallback = Number(rawFallback);
+        const value =
+          typeof row?.value === "number"
+            ? row.value
+            : rawFallback !== null &&
+                rawFallback !== undefined &&
+                rawFallback !== "" &&
+                Number.isFinite(fallback)
+              ? fallback
+              : null;
+
+        return value === null
+          ? []
+          : [
+              {
+                id: id as "tiktok" | "shazam" | "youtube",
+                value,
+                changePercent: row?.percentEvolution ?? null,
+                periodDays: socialTractionPeriodDays,
+                topMarket: row?.topMarket ?? undefined,
+              },
+            ];
+      }),
     }),
     [
       airPlayData,
       audienceData,
       content?.spin_count,
+      content?.kpis?.shazams_count,
+      content?.shazams_count,
+      content?.campaign?.kpis?.shazams_count,
       dspData,
       dspPerformanceData,
       smactionData,
       socialMediaData,
+      socialTraction,
+      socialTractionPeriodDays,
+      stations,
     ],
   );
   const reportLoading =
-    isAirPlayDataLoading || Boolean(linkedSong?.uuid && isInsightStatsLoading);
-
+    isAirPlayDataLoading ||
+    Boolean(
+      linkedSong?.uuid &&
+      (isInsightStatsLoading || isRadioLoading || isSocialTractionLoading),
+    );
   const insightGridClass = editMode
     ? "grid grid-cols-1 gap-x-[10px] gap-y-[20px] w-full md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto]"
     : "grid grid-cols-1 gap-x-[10px] gap-y-[20px] w-full md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto]";
