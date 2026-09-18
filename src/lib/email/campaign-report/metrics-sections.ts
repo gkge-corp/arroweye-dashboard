@@ -31,8 +31,7 @@ const renderMetricGrid = (cards: MetricCard[]) => {
           }
 
           const value = card.changePercent;
-          const arrow =
-            value > 0 ? "&#8593;" : value < 0 ? "&#8595;" : "&#8594;";
+          const arrow = value > 0 ? "⇡" : value < 0 ? "&#8595;" : "&#8594;";
           const color = value > 0 ? "#0aaa3f" : value < 0 ? "#dc2626" : "#777";
           const formatted = new Intl.NumberFormat("en", {
             maximumFractionDigits: 1,
@@ -44,7 +43,7 @@ const renderMetricGrid = (cards: MetricCard[]) => {
           ? `<div style="font-size:11px;color:#777;">${escapeHtml(card.detailLabel)} &middot; <strong style="font-weight:800;color:#444;">${escapeHtml(card.detailValue)}</strong></div>`
           : "";
 
-        return `<td width="33%" style="padding:16px 14px;background:#f7f7f7;border:1px solid #e7e7e7;border-radius:8px;vertical-align:top;"><div style="font-size:10px;letter-spacing:1px;font-weight:900;text-transform:uppercase;color:#666;">${escapeHtml(card.label)}</div><div style="font-size:22px;line-height:1;font-weight:900;margin:8px 0 6px;color:#222;">${formatNumber(card.value)}</div>${change}${detail}</td>`;
+        return `<td width="33%" style="padding:16px 14px;background:#f7f7f7;border:1px solid #e7e7e7;border-radius:8px;vertical-align:top;"><div style="font-size:10px;letter-spacing:1px;font-weight:900;text-transform:uppercase;color:#666;">${escapeHtml(card.label)}</div><div style="font-size:22px;line-height:1;font-weight:900;margin:8px 0 6px;color:#222;">${escapeHtml(card.valuePrefix)}${formatNumber(card.value)}</div>${change}${detail}</td>`;
       })
       .join("");
     const fillers = Array.from(
@@ -61,26 +60,14 @@ const renderMetricGrid = (cards: MetricCard[]) => {
 export const renderCampaignSnapshot = (cards: MetricCard[]) => {
   if (cards.length === 0) return "";
 
-  const changePeriods = [
-    ...new Set(
-      cards
-        .filter(
-          (card) =>
-            card.changePercent !== null &&
-            card.changePercent !== undefined &&
-            card.changePeriodDays,
-        )
-        .map((card) => card.changePeriodDays),
-    ),
-  ];
-  const changeNote =
-    changePeriods.length === 1
-      ? ` Percentage changes show the reporting source's change over the latest ${changePeriods[0]} days.`
-      : changePeriods.length > 1
-        ? " Percentage changes use the reporting period shown by the source."
-        : "";
+  const hasPercentageChange = cards.some(
+    (card) => card.changePercent !== null && card.changePercent !== undefined,
+  );
+  const changeNote = hasPercentageChange
+    ? " Percentage changes show the change over the last 28 days."
+    : "";
 
-  return `<div style="margin-top:26px;"><div style="font-size:11px;letter-spacing:1.2px;font-weight:900;text-transform:uppercase;color:#777;margin-bottom:10px;">Campaign snapshot</div>${renderMetricGrid(cards)}<p style="font-size:12px;color:#777;margin:10px 0 0;line-height:1.5;"><strong>&#9432;</strong> Metrics reflect current campaign performance across the selected reporting sources.${changeNote}</p></div>`;
+  return `<div style="margin-top:26px;"><div style="font-size:11px;letter-spacing:1.2px;font-weight:900;text-transform:uppercase;color:#777;margin-bottom:10px;">Campaign snapshot</div>${renderMetricGrid(cards)}<p style="font-size:12px;color:#777;margin:10px 0 0;line-height:1.5;"><strong>&#9432;</strong> Metrics show current campaign performance across selected sources.${changeNote}</p></div>`;
 };
 
 const renderTrendRow = (

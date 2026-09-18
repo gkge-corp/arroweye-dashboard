@@ -23,6 +23,7 @@ export interface CampaignReportTemplateInput {
 export interface MetricCard {
   label: string;
   value: number;
+  valuePrefix?: string;
   detailLabel?: string;
   detailValue?: string;
   changePercent?: number | null;

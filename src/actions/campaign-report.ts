@@ -101,6 +101,22 @@ const sanitizeMetrics = (
       typeof metrics?.topRadio === "string"
         ? metrics.topRadio.trim().slice(0, 120)
         : undefined,
+    audienceGrowth: (() => {
+      const totalGrowth = Number(metrics?.audienceGrowth?.totalGrowth);
+      if (!Number.isFinite(totalGrowth)) return undefined;
+
+      const topPlatform = metrics.audienceGrowth?.topPlatform?.trim();
+      return {
+        totalGrowth: Math.min(
+          MAX_METRIC_VALUE,
+          Math.max(-MAX_METRIC_VALUE, totalGrowth),
+        ),
+        topPlatform:
+          topPlatform && topPlatform.toLowerCase() !== "others"
+            ? topPlatform.slice(0, 100)
+            : undefined,
+      };
+    })(),
     highlights,
   };
 };

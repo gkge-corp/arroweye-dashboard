@@ -11,6 +11,11 @@ export interface CampaignReportHighlight {
   topMarket?: string;
 }
 
+export interface CampaignReportAudienceGrowth {
+  totalGrowth: number;
+  topPlatform?: string;
+}
+
 /**
  * The resolved values shown on the campaign insights page. Soundcharts has
  * already overridden the eligible sections and the remaining sections have
@@ -25,6 +30,7 @@ export interface CampaignReportMetrics {
   performance: CampaignReportStats;
   spinCount: number;
   topRadio?: string;
+  audienceGrowth?: CampaignReportAudienceGrowth;
   highlights: CampaignReportHighlight[];
 }
 

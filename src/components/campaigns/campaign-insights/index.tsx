@@ -19,6 +19,7 @@ import {
 } from "./insight-sources-dialog";
 import { useCampaignInsights } from "./hooks/use-campaign-insights";
 import { useCampaignSong } from "@/hooks/use-campaign-song";
+import { useCampaignAudienceGrowth } from "@/hooks/use-campaign-audience-growth";
 import { useCampaignPlaylists } from "./hooks/use-campaign-playlists";
 import { useCampaignRadio } from "./hooks/use-campaign-radio";
 import { useCampaignSocialTraction } from "./hooks/use-campaign-social-traction";
@@ -41,6 +42,16 @@ const videoCreationPlatformIds = new Set(["tiktok", "instagram"]);
 const playlistPlatformCodes = new Set(
   PLAYLIST_PLATFORMS.map((platform) => platform.code),
 );
+
+const toDateOnly = (value: unknown) => {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const datePrefix = value.trim().match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (datePrefix) return datePrefix;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? undefined
+    : date.toISOString().slice(0, 10);
+};
 
 const selectOptions = [
   [
@@ -98,6 +109,25 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
 }) => {
   const [linkSongModal, setLinkSongModal] = React.useState(false);
   const { linkedSong, linkSong } = useCampaignSong(content?.id);
+  const campaignStartDate = toDateOnly(
+    content?.start_dte ??
+      content?.start_date ??
+      content?.campaign?.start_date ??
+      content?.created,
+  );
+  const campaignEndDate = toDateOnly(
+    content?.end_dte ?? content?.end_date ?? content?.campaign?.end_date,
+  );
+  const campaignIsrc = content?.song_isrc ?? content?.isrc ?? linkedSong?.isrc;
+  const { audienceGrowth, isAudienceGrowthLoading } = useCampaignAudienceGrowth(
+    {
+      uuid: linkedSong?.uuid,
+      isrc: campaignIsrc,
+      startDate: campaignStartDate,
+      endDate: campaignEndDate,
+      enabled: isAdvertiser === false,
+    },
+  );
   const hasIsrc = [content?.song_isrc, content?.isrc, linkedSong?.isrc].some(
     (value) => typeof value === "string" && value.trim().length > 0,
   );
@@ -354,6 +384,16 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       // radio data has no equivalent DJ-spins figure, so it remains zero.
       spinCount: Number(airPlayData?.DJ ?? content?.spin_count ?? 0),
       topRadio: stations[0]?.name,
+      audienceGrowth:
+        audienceGrowth?.available && audienceGrowth.totalGrowth !== null
+          ? {
+              totalGrowth: audienceGrowth.totalGrowth,
+              topPlatform:
+                audienceGrowth.topPlatform?.toLowerCase() === "others"
+                  ? undefined
+                  : (audienceGrowth.topPlatform ?? undefined),
+            }
+          : undefined,
       highlights: [
         ...(creationRows.length > 0
           ? [
@@ -391,6 +431,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     };
   }, [
     airPlayData,
+    audienceGrowth,
     audienceData,
     content?.spin_count,
     content?.kpis?.shazams_count,
@@ -407,6 +448,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   ]);
   const reportLoading =
     isAirPlayDataLoading ||
+    isAudienceGrowthLoading ||
     Boolean(
       linkedSong?.uuid &&
       (isInsightStatsLoading || isRadioLoading || isSocialTractionLoading),
