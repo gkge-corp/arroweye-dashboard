@@ -47,17 +47,6 @@ const selectOptions = [
     { value: "ivoryCoast", label: "Ivory Coast" },
   ],
 ];
-const selectOptionsAirPlay = [
-  [
-    { value: "", label: "Countries" },
-    { value: "Nigeria", label: "Nigeria" },
-    { value: "UK", label: "UK" },
-    { value: "Kenya", label: "Kenya" },
-    { value: "SouthAfrica", label: "S.Africa" },
-    { value: "IvoryCoast", label: "Ivory Coast" },
-    { value: "Ghana", label: "Ghana" },
-  ],
-];
 const selectOptionsAudience = [
   [
     { value: "", label: "Channels" },
@@ -221,8 +210,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     audienceData,
     smactionData,
     dspPerformanceData,
-    setairplayChannelsFilters,
-    setairplayAudienceFilters,
     setSocialMediaPlatformFilters,
     setSocialMediaActionsFilters,
     setDspFilters,
@@ -441,12 +428,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               <DoughnutChart
                 title="AIRPLAY"
                 value={airPlayData?.total_count ?? 0}
-                selectOptions={selectOptionsAirPlay}
-                selectOptionsBottom={selectOptionsAudience}
                 chartData={chartDataForDoughnutAirplay}
                 isLoading={isAirPlayDataLoading}
-                setFilters={setairplayChannelsFilters}
-                placeholder="Country"
                 info="Estimated total number of airplay instances this campaign received across radio, television, and DJ/club activations."
                 emptyMessage={
                   airplayDisabled
@@ -476,11 +459,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               <PieChart
                 title="AUDIENCE"
                 value={audienceData?.total_count ?? 0}
-                selectOptions={selectOptionsAudience}
                 chartData={pieChartDataAudience}
                 isLoading={isAudienceDataLoading}
-                setFilters={setairplayAudienceFilters}
-                selectOptionsBottom={selectOptionsAudience}
                 info="Estimated total number of listeners and viewers reached on radio and television. This data is based on the audience size of the channels where your music was featured."
               />
             </div>
