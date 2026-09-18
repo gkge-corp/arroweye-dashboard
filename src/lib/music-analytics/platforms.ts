@@ -16,6 +16,11 @@ export const PLAYLIST_PLATFORMS: AnalyticsPlatform[] = [
   { code: "tidal", label: "Tidal" },
 ];
 
+/** Discovery metrics that can be plotted beside streams but have no playlists. */
+export const DISCOVERY_PLATFORMS: AnalyticsPlatform[] = [
+  { code: "shazam", label: "Shazam" },
+];
+
 /** Each of these costs one Soundcharts call for the playlist reach split. */
 export const REACH_PLATFORMS: AnalyticsPlatform[] = [
   { code: "spotify", label: "Spotify" },

@@ -19,6 +19,7 @@ import {
 } from "./insight-sources-dialog";
 import { useCampaignInsights } from "./hooks/use-campaign-insights";
 import { useCampaignSong } from "@/hooks/use-campaign-song";
+import { useCampaignAudienceGrowth } from "@/hooks/use-campaign-audience-growth";
 import { useCampaignPlaylists } from "./hooks/use-campaign-playlists";
 import { useCampaignRadio } from "./hooks/use-campaign-radio";
 import { useCampaignSocialTraction } from "./hooks/use-campaign-social-traction";
@@ -35,6 +36,22 @@ import {
 import { TopRadioCard } from "./top-radio-card";
 import { SocialTractionCard } from "./social-traction-card";
 import type { CampaignReportMetrics } from "@/types/campaign-report";
+import { PLAYLIST_PLATFORMS } from "@/lib/music-analytics/platforms";
+
+const videoCreationPlatformIds = new Set(["tiktok", "instagram"]);
+const playlistPlatformCodes = new Set(
+  PLAYLIST_PLATFORMS.map((platform) => platform.code),
+);
+
+const toDateOnly = (value: unknown) => {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const datePrefix = value.trim().match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (datePrefix) return datePrefix;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? undefined
+    : date.toISOString().slice(0, 10);
+};
 
 const selectOptions = [
   [
@@ -43,17 +60,6 @@ const selectOptions = [
     { value: "ghana", label: "Ghana" },
     { value: "kenya", label: "Kenya" },
     { value: "ivoryCoast", label: "Ivory Coast" },
-  ],
-];
-const selectOptionsAirPlay = [
-  [
-    { value: "", label: "Countries" },
-    { value: "Nigeria", label: "Nigeria" },
-    { value: "UK", label: "UK" },
-    { value: "Kenya", label: "Kenya" },
-    { value: "SouthAfrica", label: "S.Africa" },
-    { value: "IvoryCoast", label: "Ivory Coast" },
-    { value: "Ghana", label: "Ghana" },
   ],
 ];
 const selectOptionsAudience = [
@@ -103,6 +109,25 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
 }) => {
   const [linkSongModal, setLinkSongModal] = React.useState(false);
   const { linkedSong, linkSong } = useCampaignSong(content?.id);
+  const campaignStartDate = toDateOnly(
+    content?.start_dte ??
+      content?.start_date ??
+      content?.campaign?.start_date ??
+      content?.created,
+  );
+  const campaignEndDate = toDateOnly(
+    content?.end_dte ?? content?.end_date ?? content?.campaign?.end_date,
+  );
+  const campaignIsrc = content?.song_isrc ?? content?.isrc ?? linkedSong?.isrc;
+  const { audienceGrowth, isAudienceGrowthLoading } = useCampaignAudienceGrowth(
+    {
+      uuid: linkedSong?.uuid,
+      isrc: campaignIsrc,
+      startDate: campaignStartDate,
+      endDate: campaignEndDate,
+      enabled: isAdvertiser === false,
+    },
+  );
   const hasIsrc = [content?.song_isrc, content?.isrc, linkedSong?.isrc].some(
     (value) => typeof value === "string" && value.trim().length > 0,
   );
@@ -143,6 +168,30 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       ready: sourcesLoaded && marketsLoaded,
     },
   );
+  const {
+    socialTraction,
+    socialTractionPeriodDays,
+    isSocialTractionLoading,
+    hasSocialTractionError,
+    retrySocialTraction,
+  } = useCampaignSocialTraction(linkedSong?.uuid);
+  const shazamRow = socialTraction.find((item) => item.id === "shazam");
+  const rawShazamFallback =
+    content?.kpis?.shazams_count ??
+    content?.shazams_count ??
+    content?.campaign?.kpis?.shazams_count;
+  const parsedShazamFallback = Number(rawShazamFallback);
+  const shazamValue =
+    typeof shazamRow?.value === "number"
+      ? shazamRow.value
+      : typeof insightStats?.dsp?.Shazam === "number"
+        ? insightStats.dsp.Shazam
+        : rawShazamFallback !== null &&
+            rawShazamFallback !== undefined &&
+            rawShazamFallback !== "" &&
+            Number.isFinite(parsedShazamFallback)
+          ? parsedShazamFallback
+          : null;
 
   // Soundcharts reports audience for platforms with no playlist endpoint
   // (Anghami, JioSaavn), so the STREAMING chart can show more than the
@@ -167,13 +216,25 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     if (!dsp) return undefined;
 
     const kept = Object.entries(dsp).filter(
-      ([label]) => label !== "total_count" && visibleStreamingLabels.has(label),
+      ([label]) =>
+        label !== "total_count" &&
+        label !== "Shazam" &&
+        visibleStreamingLabels.has(label),
     );
     return {
       ...Object.fromEntries(kept),
       total_count: kept.reduce((sum, [, value]) => sum + Number(value), 0),
     };
   }, [insightStats?.dsp, visibleStreamingLabels]);
+  const discoveryChartData = React.useMemo(
+    () =>
+      visibleStreamingLabels.has("Shazam") &&
+      shazamValue !== null &&
+      shazamValue > 0
+        ? { Shazam: shazamValue }
+        : undefined,
+    [shazamValue, visibleStreamingLabels],
+  );
   const {
     availableMarkets,
     activeMarkets,
@@ -219,8 +280,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     audienceData,
     smactionData,
     dspPerformanceData,
-    setairplayChannelsFilters,
-    setairplayAudienceFilters,
     setSocialMediaPlatformFilters,
     setSocialMediaActionsFilters,
     setDspFilters,
@@ -244,6 +303,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   } = useCampaignInsights({
     content,
     refreshContent,
+    discoveryData: discoveryChartData,
     statsOverrides: {
       ...insightStats,
       dsp: visibleDsp,
@@ -264,7 +324,9 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     loadMorePlaylists,
     retryPlaylists,
   } = useCampaignPlaylists(linkedSong?.uuid, {
-    platforms: sources.playlistPlatforms,
+    platforms: sources.playlistPlatforms.filter((code) =>
+      playlistPlatformCodes.has(code),
+    ),
     ready: sourcesLoaded && marketsLoaded,
   });
   const {
@@ -277,17 +339,41 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     enabled: marketsLoaded && !airplayDisabled,
     countries: selectedMarkets,
   });
-  const {
-    socialTraction,
-    socialTractionPeriodDays,
-    isSocialTractionLoading,
-    hasSocialTractionError,
-    retrySocialTraction,
-  } = useCampaignSocialTraction(linkedSong?.uuid);
   const songTitle =
     content?.title || content?.song_title || content?.campaign?.song_title;
-  const reportMetrics = React.useMemo<CampaignReportMetrics>(
-    () => ({
+  const reportMetrics = React.useMemo<CampaignReportMetrics>(() => {
+    const creationRows = socialTraction.filter(
+      (row) =>
+        videoCreationPlatformIds.has(row.id) && typeof row.value === "number",
+    );
+    const videoCreations = creationRows.reduce(
+      (sum, row) => sum + (row.value ?? 0),
+      0,
+    );
+    const topCreationPlatform = creationRows
+      .filter((row) => (row.value ?? 0) > 0)
+      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))[0]?.platform;
+    const hasCompleteEvolution =
+      creationRows.length > 0 &&
+      creationRows.every((row) => typeof row.evolution === "number");
+    const creationEvolution = hasCompleteEvolution
+      ? creationRows.reduce((sum, row) => sum + (row.evolution ?? 0), 0)
+      : null;
+    const previousVideoCreations =
+      creationEvolution === null ? null : videoCreations - creationEvolution;
+    const videoCreationChange =
+      creationRows.length === 1 &&
+      typeof creationRows[0].percentEvolution === "number"
+        ? creationRows[0].percentEvolution
+        : previousVideoCreations !== null && previousVideoCreations > 0
+          ? (creationEvolution! / previousVideoCreations) * 100
+          : creationEvolution === 0
+            ? 0
+            : null;
+    const shazamRow = socialTraction.find((item) => item.id === "shazam");
+    const youtubeRow = socialTraction.find((item) => item.id === "youtube");
+
+    return {
       airplay: airPlayData ?? {},
       streaming: dspData ?? {},
       audience: audienceData ?? {},
@@ -297,20 +383,76 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       // Manual campaign data exposes DJ as an airplay channel. Soundcharts
       // radio data has no equivalent DJ-spins figure, so it remains zero.
       spinCount: Number(airPlayData?.DJ ?? content?.spin_count ?? 0),
-    }),
-    [
-      airPlayData,
-      audienceData,
-      content?.spin_count,
-      dspData,
-      dspPerformanceData,
-      smactionData,
-      socialMediaData,
-    ],
-  );
+      topRadio: stations[0]?.name,
+      audienceGrowth:
+        audienceGrowth?.available && audienceGrowth.totalGrowth !== null
+          ? {
+              totalGrowth: audienceGrowth.totalGrowth,
+              topPlatform:
+                audienceGrowth.topPlatform?.toLowerCase() === "others"
+                  ? undefined
+                  : (audienceGrowth.topPlatform ?? undefined),
+            }
+          : undefined,
+      highlights: [
+        ...(creationRows.length > 0
+          ? [
+              {
+                id: "videoCreations" as const,
+                value: videoCreations,
+                changePercent: videoCreationChange,
+                periodDays: socialTractionPeriodDays,
+                topPlatform: topCreationPlatform,
+              },
+            ]
+          : []),
+        ...(shazamValue !== null
+          ? [
+              {
+                id: "shazam" as const,
+                value: shazamValue,
+                changePercent: shazamRow?.percentEvolution ?? null,
+                periodDays: socialTractionPeriodDays,
+                topMarket: shazamRow?.topMarket ?? undefined,
+              },
+            ]
+          : []),
+        ...(typeof youtubeRow?.value === "number"
+          ? [
+              {
+                id: "youtube" as const,
+                value: youtubeRow.value,
+                changePercent: youtubeRow.percentEvolution,
+                periodDays: socialTractionPeriodDays,
+              },
+            ]
+          : []),
+      ],
+    };
+  }, [
+    airPlayData,
+    audienceGrowth,
+    audienceData,
+    content?.spin_count,
+    content?.kpis?.shazams_count,
+    content?.shazams_count,
+    content?.campaign?.kpis?.shazams_count,
+    dspData,
+    dspPerformanceData,
+    smactionData,
+    socialMediaData,
+    socialTraction,
+    socialTractionPeriodDays,
+    shazamValue,
+    stations,
+  ]);
   const reportLoading =
-    isAirPlayDataLoading || Boolean(linkedSong?.uuid && isInsightStatsLoading);
-
+    isAirPlayDataLoading ||
+    isAudienceGrowthLoading ||
+    Boolean(
+      linkedSong?.uuid &&
+      (isInsightStatsLoading || isRadioLoading || isSocialTractionLoading),
+    );
   const insightGridClass = editMode
     ? "grid grid-cols-1 gap-x-[10px] gap-y-[20px] w-full md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto]"
     : "grid grid-cols-1 gap-x-[10px] gap-y-[20px] w-full md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto]";
@@ -398,12 +540,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               <DoughnutChart
                 title="AIRPLAY"
                 value={airPlayData?.total_count ?? 0}
-                selectOptions={selectOptionsAirPlay}
-                selectOptionsBottom={selectOptionsAudience}
                 chartData={chartDataForDoughnutAirplay}
                 isLoading={isAirPlayDataLoading}
-                setFilters={setairplayChannelsFilters}
-                placeholder="Country"
                 info="Estimated total number of airplay instances this campaign received across radio, television, and DJ/club activations."
                 emptyMessage={
                   airplayDisabled
@@ -433,11 +571,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               <PieChart
                 title="AUDIENCE"
                 value={audienceData?.total_count ?? 0}
-                selectOptions={selectOptionsAudience}
                 chartData={pieChartDataAudience}
                 isLoading={isAudienceDataLoading}
-                setFilters={setairplayAudienceFilters}
-                selectOptionsBottom={selectOptionsAudience}
                 info="Estimated total number of listeners and viewers reached on radio and television. This data is based on the audience size of the channels where your music was featured."
               />
             </div>
@@ -529,6 +664,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               periodDays={socialTractionPeriodDays}
               loading={isSocialTractionLoading}
               hasError={hasSocialTractionError}
+              isLinked={Boolean(linkedSong?.uuid)}
               onRetry={retrySocialTraction}
               onLinkSong={() => {
                 if (editMode) {
@@ -585,11 +721,12 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               <ColumnChart
                 title="DISCOVERY AND STREAMING"
                 value={dspData?.total_count ?? 0}
+                valueLabel="Streaming total"
                 chartData={chartDataForBar}
                 isLoading={isDspDataLoading}
                 setFilters={setDspFilters}
                 selectOptionsBottom={selectOptions}
-                info="Estimated total number of streams and views recorded during this campaign across DSPs. These figures are estimates; please confirm the actual numbers with your distributor."
+                info="Streams and views are shown by DSP, with Shazam recognitions included as a separate discovery signal."
               />
             </div>
 
@@ -601,7 +738,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 chartData={pieChartDataDSPPerformance}
                 isLoading={isDspPerformanceDataLoading}
                 setFilters={setDspPerformanceFilters}
-                info="Playlist reach split by how each placement was curated: editorial playlists programmed by the platform, user-created playlists, and algorithmic or radio placements. These figures are estimates; please verify the actual data with your distributor."
+                info="Playlist reach split by how each placement was curated: editorial playlists programmed by the platform, user-created playlists, and algorithmic or radio placements. These figures are estimates;"
               />
             </div>
 

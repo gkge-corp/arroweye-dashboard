@@ -3,6 +3,8 @@
 import React from "react";
 import InsightCard from "./InsightCard";
 import { ContentItem } from "@/types/contents";
+import { useCampaignSong } from "@/hooks/use-campaign-song";
+import { useCampaignAudienceGrowth } from "@/hooks/use-campaign-audience-growth";
 
 interface ProjectSingleInsightProps {
   isAdvertiser: boolean | null;
@@ -13,6 +15,8 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
   isAdvertiser,
   content,
 }) => {
+  const { linkedSong } = useCampaignSong(content?.id);
+
   function formatNumber(num: any) {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
@@ -22,6 +26,52 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
     }
     return num.toString();
   }
+
+  const toDateOnly = (value: unknown) => {
+    if (typeof value !== "string" || !value.trim()) return undefined;
+    const datePrefix = value.trim().match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+    if (datePrefix) return datePrefix;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? undefined
+      : date.toISOString().slice(0, 10);
+  };
+
+  const campaignStartDate = toDateOnly(
+    content?.start_dte ??
+      (content as any)?.start_date ??
+      (content as any)?.campaign?.start_date ??
+      content?.created,
+  );
+  const campaignEndDate = toDateOnly(
+    content?.end_dte ??
+      (content as any)?.end_date ??
+      (content as any)?.campaign?.end_date,
+  );
+  const campaignIsrc =
+    (content as any)?.song_isrc ?? (content as any)?.isrc ?? linkedSong?.isrc;
+  const { audienceGrowth, isAudienceGrowthLoading } = useCampaignAudienceGrowth(
+    {
+      uuid: linkedSong?.uuid,
+      isrc: campaignIsrc,
+      startDate: campaignStartDate,
+      endDate: campaignEndDate,
+      enabled: isAdvertiser === false,
+    },
+  );
+  const soundchartsAudienceGrowth = audienceGrowth?.available
+    ? audienceGrowth.totalGrowth
+    : null;
+  const formattedAudienceGrowth = isAudienceGrowthLoading
+    ? "…"
+    : soundchartsAudienceGrowth === null
+      ? "—"
+      : `${soundchartsAudienceGrowth > 0 ? "+ " : soundchartsAudienceGrowth < 0 ? "− " : ""}${formatNumber(Math.abs(soundchartsAudienceGrowth))}`;
+  const audienceGrowthPercentage =
+    audienceGrowth?.changePercent === null ||
+    audienceGrowth?.changePercent === undefined
+      ? undefined
+      : Math.abs(audienceGrowth.changePercent).toFixed(1);
 
   return (
     <div className="mt-[20px] relative font-SansFlex">
@@ -71,22 +121,24 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
             title={!isAdvertiser ? "AUDIENCE GROWTH" : "SHAZAMS"}
             value={
               !isAdvertiser
-                ? content?.total_audience_growth?.value
-                  ? `+ ${formatNumber(content?.total_audience_growth?.value)}`
-                  : "0"
+                ? formattedAudienceGrowth
                 : content?.kpis?.shazams_count
             }
             extraClass="h-[220px]"
-            percentageChange={content?.total_audience_growth?.percentage}
-            percentageColor={
-              content?.total_audience_growth?.change === "increase"
-                ? "#11cc48"
-                : "#ff4d4f"
+            percentageChange={
+              !isAdvertiser
+                ? audienceGrowthPercentage
+                : content?.total_audience_growth?.percentage
             }
-            increaseType={content?.total_audience_growth?.change}
+            percentageColor={
+              (soundchartsAudienceGrowth ?? 0) >= 0 ? "#11cc48" : "#ff4d4f"
+            }
+            increaseType={
+              (soundchartsAudienceGrowth ?? 0) >= 0 ? "increase" : "decrease"
+            }
             info={
               !isAdvertiser
-                ? "The total number of followers, subscribers, and audience members who engaged with your channels during this campaign."
+                ? "Net change in the artist's followers and subscribers across tracked platforms during this campaign, based on Soundcharts. People following on multiple platforms may be counted more than once."
                 : "The total number of Shazams during this campaign"
             }
           />

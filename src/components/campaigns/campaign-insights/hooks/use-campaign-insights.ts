@@ -16,6 +16,8 @@ import getDarkerColor from "@/lib/getDarkerColor";
 interface UseCampaignInsightsParams {
   content?: any;
   refreshContent?: () => void;
+  /** Non-streaming discovery figures displayed beside the DSP bars. */
+  discoveryData?: Record<string, number>;
   /**
    * Live figures from Soundcharts for the linked recording. Any section
    * present here replaces the hand-entered numbers from the Arroweye API;
@@ -81,6 +83,7 @@ const emptyCampaignInsightsData: CampaignInsightsData = {
 export function useCampaignInsights({
   content,
   refreshContent,
+  discoveryData,
   statsOverrides,
 }: UseCampaignInsightsParams) {
   const queryClient = useQueryClient();
@@ -353,7 +356,13 @@ export function useCampaignInsights({
     };
   };
 
-  const chartDataForBar = generateBarChartData(dspData);
+  const chartDataForBar = generateBarChartData({
+    ...dspData,
+    ...discoveryData,
+    // The headline remains a streaming total; discovery signals such as
+    // Shazams are deliberately not added to it.
+    total_count: Number(dspData.total_count ?? 0),
+  });
 
   const { toPDF, targetRef } = usePDF({ filename: "dashboard.pdf" });
 

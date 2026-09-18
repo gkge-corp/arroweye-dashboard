@@ -14,6 +14,7 @@ export interface SocialTractionRow {
   evolution: number | null;
   percentEvolution: number | null;
   updatedAt: string | null;
+  topMarket?: string | null;
 }
 
 interface SocialTractionCardProps {
@@ -21,6 +22,7 @@ interface SocialTractionCardProps {
   periodDays?: number;
   loading?: boolean;
   hasError?: boolean;
+  isLinked?: boolean;
   onRetry?: () => void;
   onLinkSong?: () => void;
 }
@@ -110,30 +112,27 @@ export function SocialTractionCard({
   periodDays = 30,
   loading = false,
   hasError = false,
+  isLinked = false,
   onRetry,
   onLinkSong,
 }: SocialTractionCardProps) {
   const columns = useMemo(() => getColumns(periodDays), [periodDays]);
-  const downloadableRows = rows.filter((row) => row.value !== null);
+  const visibleRows = rows.filter((row) => row.value !== null);
 
   const handleDownload = () => {
-    if (downloadableRows.length === 0) {
+    if (visibleRows.length === 0) {
       toast.error("No data to download");
       return;
     }
 
-    downloadCsv(
-      "social-traction.csv",
-      csvColumns(periodDays),
-      downloadableRows,
-    );
+    downloadCsv("social-traction.csv", csvColumns(periodDays), visibleRows);
   };
 
   const emptyAction = hasError
     ? onRetry
       ? { label: "Try again", onClick: onRetry }
       : undefined
-    : onLinkSong
+    : !isLinked && onLinkSong
       ? { label: "Link this song", onClick: onLinkSong }
       : undefined;
 
@@ -142,13 +141,15 @@ export function SocialTractionCard({
       title="Social Traction"
       label="social platform"
       columns={columns}
-      rows={rows}
+      rows={visibleRows}
       getRowKey={(row) => row.id}
       loading={loading}
       emptyMessage={
         hasError
           ? "Social data is temporarily unavailable"
-          : "Link this song to load social data"
+          : isLinked
+            ? "No social traction data is available for this song"
+            : "Link this song to load social data"
       }
       emptyAction={emptyAction}
       footer={
@@ -156,7 +157,7 @@ export function SocialTractionCard({
           type="button"
           className="p-2 font-SansFlex text-[16px] font-[500] w-full rounded-full text-white dark:text-zinc-950 text-center cursor-pointer hover:bg-orange-500 dark:hover:bg-orange-500 dark:hover:text-white bg-black dark:bg-zinc-100 inline-flex items-center gap-2 justify-center disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-black dark:disabled:hover:bg-zinc-100 active:scale-[0.97]"
           onClick={handleDownload}
-          disabled={downloadableRows.length === 0 || loading}
+          disabled={visibleRows.length === 0 || loading}
         >
           <p>Download Data</p>
         </button>
