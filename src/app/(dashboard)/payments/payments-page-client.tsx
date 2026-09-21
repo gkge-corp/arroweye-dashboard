@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Manage from "./component/Manage";
+import CreateInvoiceSection from "@/components/invoices/create-invoice-section";
 import InvoicesTab from "./component/InvoicesTab";
 import Insight from "./component/Insight";
 
@@ -15,7 +15,7 @@ export default function PaymentsPageClient() {
           {activeTab === "Manage" && (
             <div className="">
               {" "}
-              <Manage />
+              <CreateInvoiceSection />
               <InvoicesTab />
             </div>
           )}

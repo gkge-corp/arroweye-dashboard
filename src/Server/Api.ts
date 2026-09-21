@@ -4,7 +4,7 @@ import axios, {
   InternalAxiosRequestConfig,
   AxiosHeaders,
 } from "axios";
-import { Id as ToastId } from "react-toastify";
+import type { ToastId } from "@/types/toast";
 import { handleApiError, redirectToLogin } from "../lib/utils";
 import {
   getAuthSession,
@@ -178,7 +178,7 @@ const apiRequest = async <T>({
           autoClose: 3000,
         });
       }
-    } else {
+    } else if (!silent) {
       handleApiError(error, `Request failed. Please try again.`);
     }
 

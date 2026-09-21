@@ -3,6 +3,7 @@
 import { useState } from "react";
 import InvoicesTab from "@/components/campaigns/InvoicesTab";
 import Insight from "@/components/campaigns/Insight";
+import CreateInvoiceSection from "@/components/invoices/create-invoice-section";
 
 export default function CampaignsPageClient() {
   const [activeTab, setActiveTab] = useState("manage");
@@ -15,7 +16,7 @@ export default function CampaignsPageClient() {
         <div>
           {activeTab === "manage" && (
             <div className="">
-              {/* <Manage /> */}
+              <CreateInvoiceSection className="lg:px-5" />
 
               {/* render the invoices for campaigns created */}
               <InvoicesTab />

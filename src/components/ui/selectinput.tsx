@@ -9,6 +9,7 @@ import { GoArrowDown } from "react-icons/go";
 interface DropdownInputProps {
   className?: string;
   label?: string;
+  labelClassName?: string;
   options: { value: string | number; label: string }[];
   error?: string;
   info?: string;
@@ -23,6 +24,7 @@ interface DropdownInputProps {
 const SelectInput: React.FC<DropdownInputProps> = ({
   className,
   label,
+  labelClassName,
   options,
   error,
   info,
@@ -93,12 +95,20 @@ const SelectInput: React.FC<DropdownInputProps> = ({
       setIsOpen(false);
     };
 
+    // The menu is portaled to <body>, which Radix marks as an outside layer
+    // while a modal Dialog is open. Without this the dialog treats a menu
+    // click as an outside interaction and closes itself.
+    const menuNode = menuRef.current;
+    const stopPointerDown = (event: PointerEvent) => event.stopPropagation();
+
     updateDropdownPosition();
+    menuNode?.addEventListener("pointerdown", stopPointerDown);
     document.addEventListener("mousedown", handleOutsideClick);
     window.addEventListener("resize", updateDropdownPosition);
     window.addEventListener("scroll", updateDropdownPosition, true);
 
     return () => {
+      menuNode?.removeEventListener("pointerdown", stopPointerDown);
       document.removeEventListener("mousedown", handleOutsideClick);
       window.removeEventListener("resize", updateDropdownPosition);
       window.removeEventListener("scroll", updateDropdownPosition, true);
@@ -109,7 +119,12 @@ const SelectInput: React.FC<DropdownInputProps> = ({
     <div className="flex flex-col space-y-2 font-SansFlex">
       <div className="flex items-center space-x-2">
         {label && (
-          <label className="tracking-[.1rem] text-[12px] font-[400] text-[#212529] leading-[18px]">
+          <label
+            className={cn(
+              "tracking-[.1rem] text-[12px] font-[400] text-[#212529] leading-[18px]",
+              labelClassName,
+            )}
+          >
             {label}
           </label>
         )}
@@ -161,16 +176,15 @@ const SelectInput: React.FC<DropdownInputProps> = ({
             <div
               ref={menuRef}
               style={dropdownStyle}
-              className="fixed z-[9999] bg-white shadow-lg rounded-[8px] dark:bg-gray-900 max-h-60 overflow-y-auto scrollbar-hide scrollbar-hide::-webkit-scrollbar"
+              className="fixed z-[9999] pointer-events-auto border border-border bg-popover text-popover-foreground shadow-md rounded-[8px] max-h-60 overflow-y-auto scrollbar-hide scrollbar-hide::-webkit-scrollbar"
             >
               {options.map((option) => (
                 <div
                   key={option.value}
                   onClick={() => handleSelect(option.value)}
                   className={cn(
-                    "px-[16px] py-2 text-[14px] font-SansFlex text-gray-900 cursor-pointer hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700",
-                    selectedValue === option.value &&
-                      "bg-gray-100 dark:bg-gray-700",
+                    "px-[16px] py-2 text-[14px] font-SansFlex cursor-pointer hover:bg-muted",
+                    selectedValue === option.value && "bg-muted",
                   )}
                 >
                   {option.label}
