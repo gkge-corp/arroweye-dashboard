@@ -1,19 +1,46 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import ls from "localstorage-slim";
+import { Minus, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SelectInput } from "@/components/ui/selectinput";
-import { Dialog } from "primereact/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   CreateInvoice,
   CreateService,
   getBusiness,
   getService,
 } from "@/services";
-import { IoIosAdd, IoMdAddCircleOutline } from "react-icons/io";
 import { ContentItem } from "@/types/contents";
 import type { Business } from "@/types/api";
 import { hasAccess, hasAccessExceptVendorManager } from "@/lib/utils";
+
+// The shared Input/SelectInput still carry legacy hard-coded colours, including
+// dark: variants. Those variants outrank an unprefixed utility regardless of
+// class order, so the dark: overrides below are required, not redundant.
+const CONTROL_CLASS =
+  "rounded-md border-border bg-background text-sm text-foreground shadow-none dark:border-border dark:bg-background dark:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none";
+const INPUT_CLASS = `h-10 px-3 placeholder:text-muted-foreground ${CONTROL_CLASS}`;
+const SELECT_CLASS = `h-10 pl-3 pr-10 ${CONTROL_CLASS}`;
+const LABEL_CLASS =
+  "text-[11px] font-medium uppercase tracking-[.1rem] text-muted-foreground";
+const ERROR_CLASS = "mt-1 text-xs text-destructive";
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  Dollars: "$",
+  Naira: "₦",
+  Ethereum: "Ξ",
+};
+
+const formatAmount = (currency: string | number | undefined, value: number) =>
+  `${CURRENCY_SYMBOLS[String(currency)] ?? "₦"}${value.toFixed(2)}`;
 interface Item {
   id: number;
   item: string;
@@ -51,7 +78,7 @@ interface ProjectFormData {
   services: { service_id: number; quantity: number; cost: number | string }[];
 }
 
-const Manage = () => {
+const CreateInvoiceForm = () => {
   const [selectedService, setSelectedService] = useState<number | string>();
   // const [selectedServiceCost, setSelectedServiceCost] = useState<
   //   number | string
@@ -382,27 +409,38 @@ const Manage = () => {
   const { subtotal, serviceCharge, tax, total } = calculateTotal(items);
 
   return (
-    <div className="my-[20px]">
+    <div className="my-5">
       {hasAccessExceptVendorManager(userLoggedInProfile, [""]) && (
-        <form onSubmit={handleProjectSubmit}>
-          <div className="space-y-[20px]">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 pr-10 items-start gap-[20px] relative">
+        <form
+          onSubmit={handleProjectSubmit}
+          className="rounded-xl border border-border bg-card p-5 sm:p-6"
+        >
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-sm font-medium text-foreground">
+                Create invoice
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Creating an invoice also creates the campaign it bills for.
+              </p>
+            </div>
+
+            <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {/* Project Title */}
               <div className="w-full">
                 <Input
                   label="PROJECT TITLE"
                   type="text"
                   name="project_title"
-                  placeholder=""
+                  placeholder="Song or album title"
                   info="This is the title of the campaign, preferably the project name such as the song or album title."
                   value={projectFormData.project_title}
                   onChange={handleInputChange}
-                  className="bg-background!"
+                  labelClassName={LABEL_CLASS}
+                  className={INPUT_CLASS}
                 />
                 {projectErrors.project_title && (
-                  <p className="text-red-500 text-xs">
-                    {projectErrors.project_title}
-                  </p>
+                  <p className={ERROR_CLASS}>{projectErrors.project_title}</p>
                 )}
               </div>
 
@@ -412,20 +450,20 @@ const Manage = () => {
                   label="P.O CODE"
                   type="text"
                   name="po_code"
-                  placeholder=""
-                  info="This is the purchase order code provided by the vendor. If none is provided, leave it blank."
+                  placeholder="9-digit code"
+                  info="A unique purchase order code for this invoice. Required, and no two invoices can share one."
                   value={projectFormData.po_code}
                   onChange={handleInputChange}
+                  labelClassName={LABEL_CLASS}
+                  className={INPUT_CLASS}
                 />
                 {projectErrors.po_code && (
-                  <p className="text-red-500 text-xs">
-                    {projectErrors.po_code}
-                  </p>
+                  <p className={ERROR_CLASS}>{projectErrors.po_code}</p>
                 )}
               </div>
 
-              {/* Currency with Add Button */}
-              <div className="w-full relative">
+              {/* Currency */}
+              <div className="w-full">
                 <SelectInput
                   icon={true}
                   label="CURRENCY"
@@ -434,19 +472,11 @@ const Manage = () => {
                   info="This is the currency in which the invoice is issued, and it will be the same amount reflected on the invoice."
                   value={projectFormData.currency}
                   onChange={handleCurrencyChange}
+                  labelClassName={LABEL_CLASS}
+                  className={SELECT_CLASS}
                 />
                 {projectErrors.currency && (
-                  <p className="text-red-500 text-xs">
-                    {projectErrors.currency}
-                  </p>
-                )}
-                {hasAccess(userLoggedInProfile, [""]) && (
-                  <div
-                    className="w-[40px] h-[40px] flex items-center justify-center rounded-full bg-black cursor-pointer absolute bottom-0 -right-14"
-                    onClick={addItemField}
-                  >
-                    <p className="text-white text-xl">+</p>
-                  </div>
+                  <p className={ERROR_CLASS}>{projectErrors.currency}</p>
                 )}
               </div>
 
@@ -459,11 +489,11 @@ const Manage = () => {
                   options={vendorOptions}
                   onChange={handleVendorChange}
                   value={projectFormData.vendor_id}
+                  labelClassName={LABEL_CLASS}
+                  className={SELECT_CLASS}
                 />
                 {projectErrors.vendor_id && (
-                  <p className="text-red-500 text-xs">
-                    {projectErrors.vendor_id}
-                  </p>
+                  <p className={ERROR_CLASS}>{projectErrors.vendor_id}</p>
                 )}
               </div>
 
@@ -476,11 +506,11 @@ const Manage = () => {
                   options={subVendorOptions}
                   onChange={handleSubVendorChange}
                   value={projectFormData.subvendor_id}
+                  labelClassName={LABEL_CLASS}
+                  className={SELECT_CLASS}
                 />
                 {projectErrors.subvendor_id && (
-                  <p className="text-red-500 text-xs">
-                    {projectErrors.subvendor_id}
-                  </p>
+                  <p className={ERROR_CLASS}>{projectErrors.subvendor_id}</p>
                 )}
               </div>
 
@@ -489,15 +519,15 @@ const Manage = () => {
                   label="ARTIST NAME"
                   type="text"
                   name="artist_name"
-                  placeholder=""
-                  info="Description for your new input field."
+                  placeholder="Performing artist"
+                  info="The artist this campaign is being run for."
                   value={projectFormData.artist_name || ""}
                   onChange={handleInputChange}
+                  labelClassName={LABEL_CLASS}
+                  className={INPUT_CLASS}
                 />
                 {projectErrors.artist_name && (
-                  <p className="text-red-500 text-xs">
-                    {projectErrors.artist_name}
-                  </p>
+                  <p className={ERROR_CLASS}>{projectErrors.artist_name}</p>
                 )}
               </div>
 
@@ -506,31 +536,52 @@ const Manage = () => {
                   label="DISCOUNT %"
                   type="number"
                   name="discount"
-                  placeholder=""
-                  info="This is an option discount percentage offered by Vendor."
+                  placeholder="0"
+                  info="This is an optional discount percentage offered by the Vendor."
                   value={projectFormData.discount || ""}
                   onChange={handleInputChange}
-                  className="bg-background!"
+                  labelClassName={LABEL_CLASS}
+                  className={INPUT_CLASS}
                 />
                 {projectErrors.discount && (
-                  <p className="text-red-500 text-xs">
-                    {projectErrors.discount}
-                  </p>
+                  <p className={ERROR_CLASS}>{projectErrors.discount}</p>
                 )}
               </div>
             </div>
 
-            <div className="mt-[20px] space-y-[20px]">
+            <div className="space-y-4 border-t border-border pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-medium text-foreground">
+                    Services
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Add at least one line item to enable saving.
+                  </p>
+                </div>
+                {hasAccess(userLoggedInProfile, [""]) && (
+                  <Button type="button" size="lg" onClick={addItemField}>
+                    <Plus />
+                    Add service
+                  </Button>
+                )}
+              </div>
+
               {items.map((item: any, index) => (
-                <div className="flex items-end gap-[20px]" key={item.id}>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 items-center gap-[20px]">
-                    <div className=" flex items-center col-span-2  w-full">
-                      <div className="   w-full ">
+                <div
+                  className="flex items-end gap-4 rounded-lg border border-border bg-background p-4"
+                  key={item.id}
+                >
+                  <div className="grid flex-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="w-full sm:col-span-2">
+                      <div className="w-full">
                         <SelectInput
                           icon={true}
                           name="service"
                           label="SERVICE"
                           options={customOptions}
+                          labelClassName={LABEL_CLASS}
+                          className={SELECT_CLASS}
                           value={item.service_id || ""}
                           onChange={(value: string | number) => {
                             const selectedValue = Number(value);
@@ -572,19 +623,21 @@ const Manage = () => {
                         />
 
                         {projectErrors.services[index]?.service_id && (
-                          <p className="text-red-500 text-xs">
+                          <p className={ERROR_CLASS}>
                             {projectErrors.services[index].service_id}
                           </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="max-w-[350px] w-full ">
+                    <div className="w-full">
                       <Input
                         type="number"
                         name="cost"
                         placeholder="Cost"
-                        label=" COST"
+                        label="COST"
+                        labelClassName={LABEL_CLASS}
+                        className={`${INPUT_CLASS} cursor-not-allowed text-muted-foreground`}
                         value={item.cost || ""}
                         readOnly
                         onChange={(e) => {
@@ -606,18 +659,18 @@ const Manage = () => {
                         }}
                       />
                       {projectErrors.cost && (
-                        <p className="text-red-500 text-xs">
-                          {projectErrors.cost}
-                        </p>
+                        <p className={ERROR_CLASS}>{projectErrors.cost}</p>
                       )}
                     </div>
 
-                    <div className="max-w-[350px] w-full">
+                    <div className="w-full">
                       <Input
                         type="number"
                         name="quantity"
                         label="QUANTITY"
                         placeholder="Quantity"
+                        labelClassName={LABEL_CLASS}
+                        className={INPUT_CLASS}
                         value={item.quantity}
                         onChange={(e) => {
                           const updatedQuantity = Number(e.target.value);
@@ -641,149 +694,118 @@ const Manage = () => {
                         }}
                       />
                       {projectErrors.services[index]?.quantity && (
-                        <p className="text-red-500 text-xs">
+                        <p className={ERROR_CLASS}>
                           {projectErrors.services[index].quantity}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div
-                    className="w-[40px] h-[40px]  mb-[5px] flex items-center justify-center rounded-full bg-black cursor-pointer"
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-lg"
+                    aria-label="Remove service"
+                    className="mb-1 shrink-0 rounded-full"
                     onClick={() => removeItemField(item.id)}
                   >
-                    <p className="text-white text-xl">-</p>
-                  </div>
+                    <Minus />
+                  </Button>
                 </div>
               ))}
             </div>
 
-            {items.length > 0 && (
-              <div className="flex items-center gap-[10px] my-[40px]">
-                <button
-                  type="submit"
-                  className="cursor-pointer rounded-full px-[16px] py-[10px] hover:bg-orange-500 bg-[#000000] text-white inline"
-                >
-                  Save
-                </button>
-              </div>
+            {selectedService && (
+              <dl className="space-y-2 rounded-lg border border-border bg-background p-4 text-sm">
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Subtotal</dt>
+                  <dd className="text-foreground">
+                    {formatAmount(selectedService, subtotal)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Service charge (5%)</dt>
+                  <dd className="text-foreground">
+                    {formatAmount(selectedService, serviceCharge)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Tax (7.5%)</dt>
+                  <dd className="text-foreground">
+                    {formatAmount(selectedService, tax)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-2">
+                  <dt className="font-medium text-foreground">Total</dt>
+                  <dd className="font-medium text-foreground">
+                    {formatAmount(selectedService, total)}
+                  </dd>
+                </div>
+              </dl>
             )}
 
-            <div className="mt-[20px] ">
-              {selectedService && (
-                <div>
-                  <p className="text-[16px] text-gray-700">
-                    Subtotal:{" "}
-                    {selectedService === "Dollars"
-                      ? `$${subtotal.toFixed(2)}`
-                      : selectedService === "Naira"
-                        ? `₦${subtotal.toFixed(2)}`
-                        : selectedService === "Ethereum"
-                          ? `Ξ${subtotal.toFixed(2)}`
-                          : `₦${subtotal.toFixed(2)}`}{" "}
-                  </p>
-                  <p className="text-[16px] text-gray-700">
-                    Service Charge (5%):{" "}
-                    {selectedService === "Dollars"
-                      ? `$${serviceCharge.toFixed(2)}`
-                      : selectedService === "Naira"
-                        ? `₦${serviceCharge.toFixed(2)}`
-                        : selectedService === "Ethereum"
-                          ? `Ξ${serviceCharge.toFixed(2)}`
-                          : `₦${serviceCharge.toFixed(2)}`}{" "}
-                  </p>
-                  <p className="text-[16px] text-gray-700">
-                    Tax (7.5%):{" "}
-                    {selectedService === "Dollars"
-                      ? `$${tax.toFixed(2)}`
-                      : selectedService === "Naira"
-                        ? `₦${tax.toFixed(2)}`
-                        : selectedService === "Ethereum"
-                          ? `Ξ${tax.toFixed(2)}`
-                          : `₦${tax.toFixed(2)}`}{" "}
-                  </p>
-                  <p className="text-[16px] text-gray-700 font-bold ">
-                    Total:{" "}
-                    {selectedService === "Dollars"
-                      ? `$${total.toFixed(2)}`
-                      : selectedService === "Naira"
-                        ? `₦${total.toFixed(2)}`
-                        : selectedService === "Ethereum"
-                          ? `Ξ${total.toFixed(2)}`
-                          : `₦${total.toFixed(2)}`}{" "}
-                  </p>
-                </div>
-              )}
-            </div>
+            {items.length > 0 && (
+              <div className="flex justify-end border-t border-border pt-6">
+                <Button type="submit" size="lg">
+                  Save invoice
+                </Button>
+              </div>
+            )}
           </div>
         </form>
       )}
 
-      <div
-        className={`custom-dialog-overlay ${
-          isAddNewService
-            ? "bg-black/30 backdrop-blur-md fixed inset-0 z-50"
-            : "hidden"
-        }`}
+      <Dialog
+        open={isAddNewService}
+        onOpenChange={(open) => {
+          if (!open) {
+            hideDialog();
+          }
+        }}
       >
-        <Dialog
-          header="Add Service"
-          visible={isAddNewService}
-          onHide={hideDialog}
-          breakpoints={{ "960px": "75vw", "640px": "100vw" }}
-          style={{ width: "35vw" }}
-          className="custom-dialog-overlay"
-        >
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div>
-                <Input
-                  type="text"
-                  name="name"
-                  placeholder="Name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-xs">{errors.name}</p>
-                )}
-              </div>
-              <div>
-                <Input
-                  type="text"
-                  name="cost"
-                  placeholder="Cost"
-                  value={formData.cost}
-                  onChange={handleInputChange}
-                />
-                {errors.cost && (
-                  <p className="text-red-500 text-xs">{errors.cost}</p>
-                )}
-              </div>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-medium text-foreground">
+              Add service
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              New services become selectable on every invoice.
+            </DialogDescription>
+          </DialogHeader>
 
-              <div className=" hidden">
-                <div className="flex items-center gap-[5px] cursor-pointer">
-                  <IoMdAddCircleOutline size={20} />
-                  <p>Add Contact</p>
-                </div>
-              </div>
-              <div className="w-full">
-                <div className="flex justify-end space-x-2">
-                  <button
-                    type="submit"
-                    className="bg-[#000] hover:bg-orange-500 w-full p-[12px] h-full rounded-full flex items-center justify-center space-x-2"
-                  >
-                    <IoIosAdd className="text-white" />
-                    <span className="text-white">Add Service</span>
-                  </button>
-                </div>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Input
+                type="text"
+                name="name"
+                placeholder="Name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className={INPUT_CLASS}
+              />
+              {errors.name && <p className={ERROR_CLASS}>{errors.name}</p>}
             </div>
+            <div>
+              <Input
+                type="text"
+                name="cost"
+                placeholder="Cost"
+                value={formData.cost}
+                onChange={handleInputChange}
+                className={INPUT_CLASS}
+              />
+              {errors.cost && <p className={ERROR_CLASS}>{errors.cost}</p>}
+            </div>
+
+            <Button type="submit" size="lg" className="w-full">
+              <Plus />
+              Add service
+            </Button>
           </form>
-        </Dialog>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-export default Manage;
+export default CreateInvoiceForm;

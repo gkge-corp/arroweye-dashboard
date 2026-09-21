@@ -96,6 +96,9 @@ export const getProjects = async (): Promise<ProjectListItem[]> => {
 export const getSingleProject = async (
   id: number,
 ): Promise<AppProject | null> => {
+
+
+  
   try {
     const response = await apiRequest<AppProject>({
       method: "GET",

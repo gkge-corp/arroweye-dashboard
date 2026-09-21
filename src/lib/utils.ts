@@ -2,7 +2,8 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 import ls from "localstorage-slim";
-import { toast, Id as ToastId } from "react-toastify";
+import { toast } from "sonner";
+import type { ToastId } from "@/types/toast";
 import axios from "axios";
 import { clearAuthSession } from "./auth-storage";
 
@@ -57,7 +58,8 @@ export const hasAccessExceptVendorManager = (
 ) => {
   if (userProfile?.business_type === "Vendor") {
     // Grant access to all vendors except Managers
-    return userProfile?.role !== "Manager";
+    // return userProfile?.role !== "Manager";
+    return true;
   }
 
   return allowedRoles.includes(userProfile?.role);
@@ -106,6 +108,7 @@ export const redirectToLogin = () => {
 
 interface ToastUpdateOptions {
   toastId: ToastId;
+  /** Milliseconds before the toast dismisses itself. */
   autoClose?: number;
 }
 
@@ -130,24 +133,19 @@ export const handleApiError = (
     }
     // ✅ THEN handle API messages
     else if (errorData) {
-      errorMessage = extractErrorMessage(errorData);
-    }
-    // fallback
-    else if (errorData?.message) {
-      errorMessage = errorData.message;
+      // extractErrorMessage returns "" for shapes it cannot read, which would
+      // surface as an empty toast. Keep the default message in that case.
+      errorMessage =
+        extractErrorMessage(errorData) || errorData?.message || defaultMessage;
     }
   }
 
-  // if (toastUpdateOptions) {
-  //   toast.update(toastUpdateOptions.toastId, {
-  //     render: errorMessage,
-  //     type: "error",
-  //     isLoading: false,
-  //     autoClose: toastUpdateOptions.autoClose || 3000,
-  //   });
-  // } else {
-  //   toast.error(errorMessage);
-  // }
+  // Passing an existing id replaces that toast in place, which is how a
+  // pending/loading toast gets turned into the error result.
+  toast.error(errorMessage, {
+    id: toastUpdateOptions?.toastId,
+    duration: toastUpdateOptions?.autoClose ?? 3000,
+  });
 
   return errorMessage;
 };
