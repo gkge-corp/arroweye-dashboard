@@ -25,6 +25,8 @@ interface UseCampaignInsightsParams {
    */
   statsOverrides?: {
     socialMedia?: Record<string, number>;
+    /** Activity by kind. Totals to socialMedia, so both charts reconcile. */
+    actions?: Record<string, number>;
     dsp?: Record<string, number>;
     /** Spins per country for the markets the user selected. */
     airplayByCountry?: Record<string, number>;
@@ -192,7 +194,7 @@ export function useCampaignInsights({
     socialMediaData: manualSocialMediaData = emptyInsightData,
     dspData: manualDspData = emptyInsightData,
     audienceData = emptyInsightData,
-    smactionData = emptyInsightData,
+    smactionData: manualSmactionData = emptyInsightData,
     dspPerformanceData: manualDspPerformanceData = emptyInsightData,
   } = insightsData;
 
@@ -207,6 +209,10 @@ export function useCampaignInsights({
     statsOverrides?.socialMedia,
     manualSocialMediaData,
   );
+  // ACTIONS has to follow SOCIAL MEDIA to the same source: mixing a live pie
+  // with a hand-entered doughnut would show a breakdown that does not add up
+  // to the total beside it.
+  const smactionData = preferLive(statsOverrides?.actions, manualSmactionData);
   const dspData = preferLive(statsOverrides?.dsp, manualDspData);
   const dspPerformanceData = preferLive(
     statsOverrides?.performance,

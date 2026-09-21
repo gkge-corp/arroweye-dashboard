@@ -22,7 +22,12 @@ export interface InsightSources {
   playlistPlatforms: string[];
   /** One call per platform. */
   reachPlatforms: string[];
-  /** Artist follower counts. One call each, plus one to resolve the artist. */
+  /**
+   * Retained so stored settings from before the SOCIAL MEDIA chart moved to
+   * song activity still parse. Artist follower counts are audience rather
+   * than activity and no longer feed any chart here.
+   * @deprecated
+   */
   artistSocialPlatforms: string[];
   /**
    * Which discovery and streaming sources the picker was offering when this
@@ -39,8 +44,6 @@ export const defaultInsightSources = (): InsightSources => ({
     (platform) => platform.code,
   ),
   reachPlatforms: REACH_PLATFORMS.map((platform) => platform.code),
-  // Off by default: these are artist figures, not song figures, and each is a
-  // billable call.
   artistSocialPlatforms: [],
   knownStreamingPlatforms: DISCOVERY_AND_STREAMING_PLATFORMS.map(
     (platform) => platform.code,
@@ -88,11 +91,7 @@ export const resolveStreamingSelection = (
 /** Cold-load calls made by the enabled sources; discovery reuses stats data. */
 export const countSourceCalls = (sources: InsightSources) =>
   sources.playlistPlatforms.filter((code) => PLAYLIST_PLATFORM_CODES.has(code))
-    .length +
-  sources.reachPlatforms.length +
-  (sources.artistSocialPlatforms.length
-    ? sources.artistSocialPlatforms.length + 1
-    : 0);
+    .length + sources.reachPlatforms.length;
 
 const storageKey = (campaignId: string | number) =>
   `insight-sources:${campaignId}`;

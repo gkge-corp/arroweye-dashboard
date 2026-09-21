@@ -5,7 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 export type InsightStats = Record<string, number>;
 
 export interface SoundchartsInsightStats {
+  /** Song activity per platform. Never artist follower counts. */
   socialMedia?: InsightStats;
+  /** The same activity regrouped by kind, so it totals to socialMedia. */
+  actions?: InsightStats;
   dsp?: InsightStats;
   /** Radio spins over the window; null when Soundcharts could not be read. */
   radioSpins?: number | null;
@@ -32,7 +35,6 @@ interface InsightStatsOptions {
   radio: boolean;
   social: boolean;
   reachPlatforms: string[];
-  artistPlatforms?: string[];
   countries?: string[] | null;
 }
 
@@ -46,9 +48,6 @@ const fetchInsightStats = async (
   query.set("reachPlatforms", options.reachPlatforms.join(","));
   if (options.countries) {
     query.set("countries", options.countries.join(","));
-  }
-  if (options.artistPlatforms?.length) {
-    query.set("artistPlatforms", options.artistPlatforms.join(","));
   }
 
   const response = await fetch(`/api/music-analytics/insight-stats?${query}`);
@@ -70,7 +69,6 @@ export function useCampaignInsightStats(
   const radio = options?.radio ?? true;
   const social = options?.social ?? true;
   const reachPlatforms = options?.reachPlatforms ?? [];
-  const artistPlatforms = options?.artistPlatforms ?? [];
   const countries = options?.countries ?? null;
   const nothingEnabled = !radio && !social && reachPlatforms.length === 0;
 
@@ -81,7 +79,6 @@ export function useCampaignInsightStats(
       radio,
       social,
       reachPlatforms,
-      artistPlatforms,
       countries,
     ],
     queryFn: () =>
@@ -89,7 +86,6 @@ export function useCampaignInsightStats(
         radio,
         social,
         reachPlatforms,
-        artistPlatforms,
         countries,
       }),
     // Waiting for the stored settings avoids fetching disabled sources once
