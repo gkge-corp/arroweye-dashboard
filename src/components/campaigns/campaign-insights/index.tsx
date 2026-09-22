@@ -163,7 +163,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       radio: !airplayDisabled || knownMarkets.length === 0,
       social: true,
       reachPlatforms: sources.reachPlatforms,
-      artistPlatforms: sources.artistSocialPlatforms,
       countries: selectedMarkets,
       ready: sourcesLoaded && marketsLoaded,
     },

@@ -376,7 +376,11 @@ const CreateInvoiceForm = () => {
     }
   };
 
-  const calculateTotal = (items: Item[]) => {
+  // Mirrors CreateInvoiceSerializer.calculate_total on the backend: both charges
+  // are taken off the pre-discount subtotal, the discount is applied last to the
+  // grand total, and every stored column is an IntegerField, so the server
+  // truncates each figure on save. Truncating here keeps the preview honest.
+  const calculateTotal = (items: Item[], discount: number) => {
     const subtotal = items.reduce(
       (sum, item) =>
         sum +
@@ -385,13 +389,20 @@ const CreateInvoiceForm = () => {
       0,
     );
 
-    const serviceCharge = subtotal * 0.15;
+    const serviceCharge = subtotal * 0.05;
 
     const tax = subtotal * 0.075;
 
-    const total = subtotal + serviceCharge + tax;
+    const discountFactor = Math.max(0, Math.min(discount, 100)) / 100;
+    const grossTotal = subtotal + serviceCharge + tax;
+    const total = discount > 0 ? grossTotal * (1 - discountFactor) : grossTotal;
 
-    return { subtotal, serviceCharge, tax, total };
+    return {
+      subtotal: Math.trunc(subtotal),
+      serviceCharge: Math.trunc(serviceCharge),
+      tax: Math.trunc(tax),
+      total: Math.trunc(total),
+    };
   };
 
   const hideDialog = () => {
@@ -406,7 +417,11 @@ const CreateInvoiceForm = () => {
     });
   };
 
-  const { subtotal, serviceCharge, tax, total } = calculateTotal(items);
+  const discountPercent = Number(projectFormData.discount) || 0;
+  const { subtotal, serviceCharge, tax, total } = calculateTotal(
+    items,
+    discountPercent,
+  );
 
   return (
     <div className="my-5">
@@ -735,6 +750,20 @@ const CreateInvoiceForm = () => {
                     {formatAmount(selectedService, tax)}
                   </dd>
                 </div>
+                {discountPercent > 0 && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">
+                      Discount ({Math.max(0, Math.min(discountPercent, 100))}%)
+                    </dt>
+                    <dd className="text-foreground">
+                      −
+                      {formatAmount(
+                        selectedService,
+                        subtotal + serviceCharge + tax - total,
+                      )}
+                    </dd>
+                  </div>
+                )}
                 <div className="flex items-center justify-between border-t border-border pt-2">
                   <dt className="font-medium text-foreground">Total</dt>
                   <dd className="font-medium text-foreground">

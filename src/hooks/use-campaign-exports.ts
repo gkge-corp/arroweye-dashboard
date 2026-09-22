@@ -1,6 +1,72 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
+
+interface InsightMetric {
+  id: number;
+  name: string;
+}
+
+interface InsightDataPoint {
+  metric: number;
+  week_1?: number | null;
+  week_2?: number | null;
+  week_3?: number | null;
+  week_4?: number | null;
+}
+
+interface InsightGroup {
+  platform?: { name?: string; metrics?: InsightMetric[] } | null;
+  data?: InsightDataPoint[] | null;
+}
+
+interface InsightRow {
+  source: string;
+  platform: string;
+  metric: string;
+  week: number;
+  value: number;
+}
+
+const WEEK_KEYS = ["week_1", "week_2", "week_3", "week_4"] as const;
+
+// DSP, airplay and social all share one shape: a platform carrying its own
+// metrics list, plus rows keyed by metric id with a value per week. Flatten
+// each into one row per metric per week so nothing stays nested.
+const toInsightRows = (
+  source: string,
+  groups: InsightGroup[] | undefined,
+): InsightRow[] =>
+  (groups ?? []).flatMap((group) => {
+    const platform = group.platform?.name ?? "";
+    const metricNames = new Map(
+      (group.platform?.metrics ?? []).map((metric) => [metric.id, metric.name]),
+    );
+
+    return (group.data ?? []).flatMap((point) =>
+      WEEK_KEYS.flatMap((key, index) => {
+        const value = point[key];
+
+        if (value === undefined || value === null) return [];
+
+        return [
+          {
+            source,
+            platform,
+            metric: metricNames.get(point.metric) ?? String(point.metric),
+            week: index + 1,
+            value,
+          },
+        ];
+      }),
+    );
+  });
+
+const escapeCsv = (value: string | number) => {
+  const text = String(value ?? "");
+
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
 
 export function useCampaignExports(content: any) {
   const handleDownloadPDF = () => {
@@ -37,20 +103,16 @@ export function useCampaignExports(content: any) {
         }
 
         pdf.save("dashboard.pdf");
-        toast.update(downloadToast, {
-          render: "PDF Downloaded",
-          type: "success",
-          isLoading: false,
-          autoClose: 3000,
+        toast.success("PDF Downloaded", {
+          id: downloadToast,
+          duration: 3000,
         });
       })
       .catch((error) => {
         console.error("Error generating PDF:", error);
-        toast.update(downloadToast, {
-          render: "Failed to download PDF",
-          type: "error",
-          isLoading: false,
-          autoClose: 3000,
+        toast.error("Failed to download PDF", {
+          id: downloadToast,
+          duration: 3000,
         });
       })
       .finally(() => {
@@ -64,39 +126,57 @@ export function useCampaignExports(content: any) {
       return;
     }
 
-    const headers = [
-      "Code",
-      "Description",
-      "Title",
-      "Total Audience Growth",
-      "Total Investment",
-      "Total Revenue Min",
-      "Total Revenue Max",
+    const rows = [
+      ...toInsightRows(
+        "DSP",
+        content.project_dsp?.map((group: any) => ({
+          platform: group.dsp,
+          data: group.dsp_data,
+        })),
+      ),
+      ...toInsightRows(
+        "Airplay",
+        content.project_airplay?.map((group: any) => ({
+          platform: group.airplay,
+          data: group.airplay_data,
+        })),
+      ),
+      ...toInsightRows(
+        "Social",
+        content.project_sm?.map((group: any) => ({
+          platform: group.sm,
+          data: group.sm_data,
+        })),
+      ),
     ];
 
-    const row = [
-      content.code ?? "",
-      content.description ? content.description.replace(/,/g, ";") : "",
-      content.title ? content.title.replace(/,/g, ";") : "",
-      content.total_audience_growth?.value ?? 0,
-      content.total_investment ?? 0,
-      content.total_revenue?.mininum ?? 0,
-      content.total_revenue?.maximum ?? 0,
-    ].join(",");
+    if (rows.length === 0) {
+      toast.error("No insight data available to export");
+      return;
+    }
 
-    const csvContent = [headers.join(","), row].join("\n");
+    const headers = ["Source", "Platform", "Metric", "Week", "Value"];
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) =>
+        [row.source, row.platform, row.metric, row.week, row.value]
+          .map(escapeCsv)
+          .join(","),
+      ),
+    ].join("\n");
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
 
     link.setAttribute("href", url);
-    link.setAttribute("download", "project_data.csv");
+    link.setAttribute("download", `${content.code ?? "campaign"}-insights.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast.success("CSV exported successfully");
+    toast.success(`Exported ${rows.length} rows`);
   };
 
   return {

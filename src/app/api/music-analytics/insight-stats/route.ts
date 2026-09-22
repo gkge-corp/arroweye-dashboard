@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { mapWithConcurrency, withRetry } from "@/lib/music-analytics/fan-out";
 import {
-  ARTIST_SOCIAL_PLATFORMS,
   REACH_PLATFORMS,
   parsePlatforms,
 } from "@/lib/music-analytics/platforms";
@@ -21,10 +20,10 @@ const RADIO_WINDOW_DAYS = 90;
 // Soundcharts reports reach per platform, so these are summed across them.
 const REACH_CONCURRENCY = 3;
 
-// Only the two charts that are broken down BY PLATFORM can be sourced from
-// Soundcharts. AIRPLAY, ACTIONS and PERFORMANCE are broken down by channel or
-// by action type (Impressions, Saves, Likes, Reshares...), which Soundcharts
-// does not report, so those keep the figures ops enter by hand.
+// SOCIAL MEDIA and ACTIONS are two cuts of the same figures: the pie splits
+// song activity by platform, the doughnut splits the identical total by the
+// kind of activity, so the two charts always reconcile. AIRPLAY is broken down
+// by channel and PERFORMANCE by curation, which Soundcharts reports separately.
 //
 // This call shares its path with the Social Traction route, so a campaign that
 // has rendered that card pays nothing here.
@@ -79,6 +78,20 @@ const SOCIAL_PLATFORMS = new Set([
   "resident-advisor",
 ]);
 
+// Soundcharts reports one figure per platform, and that figure already IS an
+// action: a TikTok value counts videos cut to the sound, an Instagram value
+// counts reels. Naming the action each platform reports is what lets ACTIONS
+// regroup the pie by kind rather than by logo. Platforms whose figure has no
+// documented action fall into one bucket rather than being guessed at.
+const ACTION_LABELS: Record<string, string> = {
+  tiktok: "Video creations",
+  instagram: "Video creations",
+  genius: "Page views",
+};
+
+const toActionLabel = (platform: string) =>
+  ACTION_LABELS[platform] ?? "Other activity";
+
 const toLabel = (platform: string) =>
   PLATFORM_LABELS[platform] ??
   platform
@@ -89,11 +102,6 @@ const toLabel = (platform: string) =>
 interface BroadcastGroup {
   radio?: { countryCode?: string; countryName?: string };
   playCount?: number;
-}
-
-interface ArtistAudiencePlot {
-  date?: string;
-  followerCount?: number | null;
 }
 
 interface PlaylistReachPlot {
@@ -128,22 +136,47 @@ const withTotal = (entries: [string, number][]): InsightStats => {
   return stats;
 };
 
+// ACTIONS must sum to exactly what SOCIAL MEDIA shows, so it reads the same
+// filtered stats rather than re-fetching, and several platforms reporting the
+// same kind of action collapse into one slice.
+const groupByAction = (stats: StatPlot[]) => {
+  const totals = new Map<string, number>();
+
+  for (const stat of stats) {
+    if (!stat.platform || !SOCIAL_PLATFORMS.has(stat.platform)) continue;
+
+    const value = Math.max(0, Math.round(Number(stat.value ?? 0)));
+    if (value <= 0) continue;
+
+    const label = toActionLabel(stat.platform);
+    totals.set(label, (totals.get(label) ?? 0) + value);
+  }
+
+  return withTotal([...totals.entries()]);
+};
+
+// Soundcharts reports "x" and "twitter" as separate platforms that share one
+// label, so values are summed per label rather than collected into pairs: a
+// plain map would keep only the last of the two while total_count counted
+// both, leaving the slices adding up to less than the total beside them.
 const pickPlatforms = (
   stats: StatPlot[],
   wantSocial: boolean,
   read: (stat: StatPlot) => number,
-) =>
-  withTotal(
-    stats
-      .filter(
-        (stat) =>
-          stat.platform && SOCIAL_PLATFORMS.has(stat.platform) === wantSocial,
-      )
-      .map((stat) => [
-        toLabel(stat.platform!),
-        Math.max(0, Math.round(read(stat))),
-      ]),
-  );
+) => {
+  const totals = new Map<string, number>();
+
+  for (const stat of stats) {
+    if (!stat.platform) continue;
+    if (SOCIAL_PLATFORMS.has(stat.platform) !== wantSocial) continue;
+
+    const label = toLabel(stat.platform);
+    const value = Math.max(0, Math.round(read(stat)));
+    totals.set(label, (totals.get(label) ?? 0) + value);
+  }
+
+  return withTotal([...totals.entries()]);
+};
 
 export async function GET(request: NextRequest) {
   const uuid = request.nextUrl.searchParams.get("uuid")?.trim();
@@ -166,13 +199,6 @@ export async function GET(request: NextRequest) {
           .filter(Boolean),
       )
     : null;
-  // Absent means none: artist figures are opt-in, so a missing parameter must
-  // never fall through to "all platforms".
-  const artistParam = request.nextUrl.searchParams.get("artistPlatforms");
-  const artistPlatforms = artistParam
-    ? parsePlatforms(artistParam, ARTIST_SOCIAL_PLATFORMS)
-    : [];
-
   const reachPlatforms = parsePlatforms(
     request.nextUrl.searchParams.get("reachPlatforms"),
     request.nextUrl.searchParams.has("reachPlatforms") &&
@@ -299,59 +325,6 @@ export async function GET(request: NextRequest) {
     // in either named bucket, so the remainder is surfaced instead of dropped.
     const otherReach = Math.max(0, totalReach - editorialReach - userReach);
 
-    // Facebook and Twitter only exist per artist, so the song's lead credit is
-    // resolved once and reused for every selected platform.
-    const artistFollowers: Record<string, number> = {};
-
-    if (artistPlatforms.length > 0) {
-      try {
-        const songPayload = await withRetry(() =>
-          soundchartsRequest<{
-            object?: { artists?: { uuid?: string; name?: string }[] };
-          }>(`/api/v2/song/${uuid}`),
-        );
-        const artistUuid = songPayload.object?.artists?.[0]?.uuid;
-
-        if (artistUuid) {
-          const artistResults = await mapWithConcurrency(
-            artistPlatforms,
-            REACH_CONCURRENCY,
-            async (platform) => {
-              try {
-                const payload = await withRetry(() =>
-                  soundchartsRequest<{ items?: ArtistAudiencePlot[] }>(
-                    `/api/v2/artist/${artistUuid}/audience/${platform.code}?limit=1&sort=desc`,
-                  ),
-                );
-                const latest = (payload.items ?? []).at(-1);
-                return {
-                  platform,
-                  followers: Number(latest?.followerCount ?? 0),
-                };
-              } catch (error) {
-                if (error instanceof SoundchartsError && error.status === 404) {
-                  return { platform, followers: 0 };
-                }
-                console.error(
-                  `Soundcharts artist audience failed for ${platform.code}:`,
-                  error,
-                );
-                return { platform, followers: 0 };
-              }
-            },
-          );
-
-          for (const { platform, followers } of artistResults) {
-            if (followers > 0) {
-              artistFollowers[`${platform.label} followers`] = followers;
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Soundcharts artist lookup failed:", error);
-      }
-    }
-
     // Every streaming platform this song has audience for, switched off ones
     // included, so the picker can still list what it is hiding.
     const availableStreamingPlatforms = audience
@@ -381,17 +354,8 @@ export async function GET(request: NextRequest) {
       radioWindowDays: RADIO_WINDOW_DAYS,
       platformsWithoutReach,
       stats: {
-        socialMedia: withTotal([
-          ...Object.entries(songSocial).filter(
-            ([key]) => key !== "total_count",
-          ),
-          // A platform the song itself reports is already on the chart, so its
-          // artist follower count would sit beside it as a second, much larger
-          // bar for the same logo ("Instagram" next to "Instagram followers").
-          ...Object.entries(artistFollowers).filter(
-            ([label]) => !songSocial[label.replace(/ followers$/, "")],
-          ),
-        ]),
+        socialMedia: songSocial,
+        actions: groupByAction(audience),
         // Left unfiltered: which platforms the viewer wants shown is applied
         // on the client, so toggling one costs no further Soundcharts calls.
         dsp: pickPlatforms(audience, false, (s) => Number(s.value ?? 0)),

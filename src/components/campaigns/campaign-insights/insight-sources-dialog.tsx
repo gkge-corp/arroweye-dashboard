@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  ARTIST_SOCIAL_PLATFORMS,
   PLAYLIST_PLATFORMS,
   REACH_PLATFORMS,
   type AnalyticsPlatform,
@@ -208,20 +207,21 @@ export function InsightSourcesDialog({
           {isSocial ? (
             <div className="space-y-3">
               <p className="font-SansFlex text-[12px] text-muted-foreground">
-                TikTok, Instagram and Genius come from the song itself and are
-                always included. Facebook and Twitter have no song-level data,
-                so these add the artist&apos;s follower counts
+                SOCIAL MEDIA counts the activity this song drove on each
+                platform &mdash; videos cut to the sound on TikTok, reels on
+                Instagram, page views on Genius &mdash; so the platform that
+                drove the most activity takes the largest slice.
               </p>
-              <PlatformPicker
-                platforms={ARTIST_SOCIAL_PLATFORMS}
-                selected={draft.artistSocialPlatforms}
-                onChange={(codes) =>
-                  setDraft((current) => ({
-                    ...current,
-                    artistSocialPlatforms: codes,
-                  }))
-                }
-              />
+              <p className="font-SansFlex text-[12px] text-muted-foreground">
+                ACTIONS splits that same total by the kind of activity rather
+                than by platform, so the two charts always add up to the same
+                number. Both are pulled automatically and need no setup.
+              </p>
+              <p className="font-SansFlex text-[12px] text-muted-foreground">
+                Artist follower counts are audience rather than activity, so
+                they are kept out of these charts and reported under audience
+                growth instead.
+              </p>
             </div>
           ) : isAirplay ? (
             markets.length === 0 ? (
@@ -277,33 +277,30 @@ export function InsightSourcesDialog({
         </div>
 
         <div className="flex gap-2 border-t pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 flex-1 rounded-full"
-            onClick={() => {
-              if (isAirplay) setMarketDraft([...markets]);
-              else if (isSocial)
-                setDraft((current) => ({
-                  ...current,
-                  artistSocialPlatforms: [],
-                }));
-              else
-                setDraft((current) => ({
-                  ...current,
-                  playlistPlatforms: streamingOptions.map((p) => p.code),
-                  reachPlatforms: REACH_PLATFORMS.map((p) => p.code),
-                }));
-            }}
-          >
-            Reset
-          </Button>
+          {!isSocial && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 flex-1 rounded-full"
+              onClick={() => {
+                if (isAirplay) setMarketDraft([...markets]);
+                else
+                  setDraft((current) => ({
+                    ...current,
+                    playlistPlatforms: streamingOptions.map((p) => p.code),
+                    reachPlatforms: REACH_PLATFORMS.map((p) => p.code),
+                  }));
+              }}
+            >
+              Reset
+            </Button>
+          )}
           <Button
             type="button"
             className="h-11 flex-1 rounded-full bg-black text-white hover:bg-orange-500 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-orange-500 dark:hover:text-white"
-            onClick={apply}
+            onClick={isSocial ? () => onOpenChange(false) : apply}
           >
-            Apply
+            {isSocial ? "Close" : "Apply"}
           </Button>
         </div>
       </DialogContent>
