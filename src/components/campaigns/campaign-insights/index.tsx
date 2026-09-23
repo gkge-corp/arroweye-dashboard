@@ -38,7 +38,7 @@ import {
   useInsightSources,
 } from "@/hooks/use-insight-sources";
 import { TopRadioCard } from "./top-radio-card";
-import { SocialTractionCard } from "./social-traction-card";
+import { TopCreatorsCard } from "./top-creators-card";
 import type { CampaignReportMetrics } from "@/types/campaign-report";
 import { PLAYLIST_PLATFORMS } from "@/lib/music-analytics/platforms";
 
@@ -180,13 +180,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       ready: sourcesLoaded && marketsLoaded,
     },
   );
-  const {
-    socialTraction,
-    socialTractionPeriodDays,
-    isSocialTractionLoading,
-    hasSocialTractionError,
-    retrySocialTraction,
-  } = useCampaignSocialTraction(songIsrc);
+  const { socialTraction, socialTractionPeriodDays, isSocialTractionLoading } =
+    useCampaignSocialTraction(songIsrc);
   const { topCreators, isTopCreatorsLoading } =
     useCampaignTopCreators(songIsrc);
   const shazamRow = socialTraction.find((item) => item.id === "shazam");
@@ -195,11 +190,13 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     content?.shazams_count ??
     content?.campaign?.kpis?.shazams_count;
   const parsedShazamFallback = Number(rawShazamFallback);
+  // STREAMING counts Shazams gained during the campaign, so the campaign
+  // figure wins over the all-time count in the traction data.
   const shazamValue =
-    typeof shazamRow?.value === "number"
-      ? shazamRow.value
-      : typeof insightStats?.dsp?.Shazam === "number"
-        ? insightStats.dsp.Shazam
+    typeof insightStats?.dsp?.Shazam === "number"
+      ? insightStats.dsp.Shazam
+      : typeof shazamRow?.value === "number"
+        ? shazamRow.value
         : rawShazamFallback !== null &&
             rawShazamFallback !== undefined &&
             rawShazamFallback !== "" &&
@@ -680,15 +677,10 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               />
             </div>
 
-            <SocialTractionCard
-              rows={socialTraction}
-              periodDays={socialTractionPeriodDays}
-              loading={isSocialTractionLoading}
-              hasError={hasSocialTractionError}
-              isLinked={Boolean(songIsrc)}
-              onRetry={retrySocialTraction}
+            <TopCreatorsCard
               creators={topCreators}
-              creatorsLoading={isTopCreatorsLoading}
+              loading={isTopCreatorsLoading}
+              isLinked={Boolean(songIsrc)}
               summaries={[
                 { title: "Social Media", data: socialMediaData },
                 { title: "Actions", data: smactionData },
@@ -753,7 +745,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 isLoading={isDspDataLoading}
                 setFilters={setDspFilters}
                 selectOptionsBottom={selectOptions}
-                info="Streams and views are shown by DSP, with Shazam recognitions included as a separate discovery signal."
+                info="Streams and views gained during this campaign, shown by DSP, with Shazam recognitions included as a separate discovery signal."
               />
             </div>
 

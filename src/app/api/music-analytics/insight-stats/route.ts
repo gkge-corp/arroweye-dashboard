@@ -168,35 +168,57 @@ const readGrowth = (history: HistoryPoint[], field: string) => {
   return values.length < 2 ? 0 : Math.max(0, values.at(-1)! - values[0]);
 };
 
-const readCampaignActions = async (
+type Histories = Map<string, HistoryPoint[]>;
+
+/**
+ * Daily history over the campaign for every source ACTIONS and STREAMING
+ * read, in one call. Points are sorted oldest first per source.
+ */
+const readCampaignHistory = async (
   isrc: string,
   startDate: string,
   endDate: string,
-) => {
+): Promise<Histories> => {
   const payload = await withRetry(() =>
     songstatsRequest<{
       stats?: { source?: string; data?: { history?: HistoryPoint[] } }[];
     }>("/tracks/historic_stats", {
       isrc: normalizeIsrc(isrc),
-      source: Object.keys(ACTION_FIELDS),
+      source: [
+        ...new Set([
+          ...Object.keys(ACTION_FIELDS),
+          ...DSP_METRICS.map((metric) => metric.source),
+        ]),
+      ],
       start_date: startDate,
       end_date: endDate,
     }),
   );
 
+  return new Map(
+    (payload.stats ?? []).map((entry) => [
+      entry.source ?? "",
+      [...(entry.data?.history ?? [])].sort((a, b) =>
+        String(a.date).localeCompare(String(b.date)),
+      ),
+    ]),
+  );
+};
+
+const summarizeActions = (histories: Histories) => {
   const entries: [string, number][] = [];
-  for (const entry of payload.stats ?? []) {
-    const history = [...(entry.data?.history ?? [])].sort((a, b) =>
-      String(a.date).localeCompare(String(b.date)),
-    );
-    for (const [action, field] of Object.entries(
-      ACTION_FIELDS[entry.source ?? ""] ?? {},
-    )) {
+  for (const [source, fields] of Object.entries(ACTION_FIELDS)) {
+    const history = histories.get(source) ?? [];
+    for (const [action, field] of Object.entries(fields)) {
       entries.push([action, readGrowth(history, field)]);
     }
   }
   return withTotal(entries);
 };
+
+/** Plays each platform gained between the campaign's first and last day. */
+const readCampaignPlays = (histories: Histories, metric: DspMetric) =>
+  readGrowth(histories.get(metric.source) ?? [], metric.field);
 
 /**
  * Spins per country over the window, so the markets picker can filter without
@@ -240,8 +262,9 @@ export async function GET(request: NextRequest) {
   const requestedEnd = asDate(request.nextUrl.searchParams.get("endDate"));
   const today = daysAgo(0);
   const endDate = !requestedEnd || requestedEnd > today ? today : requestedEnd;
-  // Before the campaign starts there is no window to measure actions over.
-  const wantActions = wantSocial && Boolean(startDate && startDate <= endDate);
+  // Before the campaign starts there is no window to measure ACTIONS or
+  // campaign STREAMING over; STREAMING then shows all-time totals.
+  const wantHistory = wantSocial && Boolean(startDate && startDate <= endDate);
   const countryParam = request.nextUrl.searchParams.get("countries");
   const selectedCountries = countryParam
     ? new Set(
@@ -268,7 +291,7 @@ export async function GET(request: NextRequest) {
   ];
 
   try {
-    const [statsResult, radioResult, actionsResult] = await Promise.allSettled([
+    const [statsResult, radioResult, historyResult] = await Promise.allSettled([
       statSources.length > 0
         ? fetchTrackStats(isrc, statSources, {
             with_playlists: reachSources.length > 0,
@@ -277,8 +300,8 @@ export async function GET(request: NextRequest) {
           })
         : Promise.resolve(new Map<string, SourceData>()),
       wantRadio ? readAirplay(isrc) : Promise.resolve(null),
-      wantActions
-        ? readCampaignActions(isrc, startDate!, endDate)
+      wantHistory
+        ? readCampaignHistory(isrc, startDate!, endDate)
         : Promise.resolve(undefined),
     ]);
 
@@ -296,8 +319,8 @@ export async function GET(request: NextRequest) {
     if (radioResult.status === "rejected") {
       console.error("Songstats radio spins failed:", radioResult.reason);
     }
-    if (actionsResult.status === "rejected") {
-      console.error("Songstats campaign actions failed:", actionsResult.reason);
+    if (historyResult.status === "rejected") {
+      console.error("Songstats campaign history failed:", historyResult.reason);
     }
 
     const stats =
@@ -328,6 +351,9 @@ export async function GET(request: NextRequest) {
         label: metric.label,
       }));
 
+    const histories =
+      historyResult.status === "fulfilled" ? historyResult.value : undefined;
+
     const { performance, platformsWithoutReach } = splitReach(
       stats,
       reachSources,
@@ -340,14 +366,18 @@ export async function GET(request: NextRequest) {
       stats: {
         // SOCIAL MEDIA is the artist's follower growth over the campaign,
         // which the client already holds from the audience growth route.
-        actions:
-          actionsResult.status === "fulfilled"
-            ? actionsResult.value
-            : undefined,
-        // Left unfiltered: which platforms the viewer wants shown is applied
-        // on the client, so toggling one costs no further calls.
+        actions: histories ? summarizeActions(histories) : undefined,
+        // Plays gained during the campaign; all-time totals only when there
+        // is no campaign window yet. Left unfiltered: which platforms the
+        // viewer wants shown is applied on the client, so toggling one costs
+        // no further calls.
         dsp: withTotal(
-          dspMetrics.map((metric) => [metric.label, readMetric(stats, metric)]),
+          dspMetrics.map((metric) => [
+            metric.label,
+            histories
+              ? readCampaignPlays(histories, metric)
+              : readMetric(stats, metric),
+          ]),
         ),
         radioSpins,
         airplayByCountry,

@@ -2,7 +2,16 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import type { SocialTractionRow } from "../social-traction-card";
+export interface SocialTractionRow {
+  id: string;
+  platform: string;
+  metric: string;
+  value: number | null;
+  evolution: number | null;
+  percentEvolution: number | null;
+  updatedAt: string | null;
+  topMarket?: string | null;
+}
 
 interface SocialTractionResponse {
   items?: SocialTractionRow[];

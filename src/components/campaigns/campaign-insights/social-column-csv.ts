@@ -1,12 +1,6 @@
-import {
-  buildCsv,
-  buildCsvSections,
-  type CsvColumn,
-  type CsvSection,
-} from "@/lib/csv";
+import { buildCsv, buildCsvSections, type CsvSection } from "@/lib/csv";
 
-import type { SocialTractionRow } from "./social-traction-card";
-import { creatorCsvColumns, type CreatorRow } from "./top-creators-list";
+import { creatorCsvColumns, type CreatorRow } from "./top-creators-card";
 
 /** A chart's label -> value map, as the insight charts hold it. */
 export interface ColumnSummary {
@@ -35,26 +29,19 @@ const summarySection = ({ title, data = {} }: ColumnSummary) => {
 };
 
 /**
- * Everything the social column shows (the charts above the card, the
- * platform table and top creators) as sections of one CSV. Empty parts are
+ * Everything the social column shows (the charts above the card and top
+ * creators) as sections of one CSV. Empty parts are
  * left out; null means there is nothing to export at all.
  */
 export const buildSocialColumnCsv = ({
   summaries,
-  traction,
-  tractionColumns,
   creators,
 }: {
   summaries: ColumnSummary[];
-  traction: SocialTractionRow[];
-  tractionColumns: CsvColumn<SocialTractionRow>[];
   creators: CreatorRow[];
 }) => {
   const sections: CsvSection[] = [
     ...summaries.map(summarySection),
-    traction.length > 0
-      ? { title: "Social Traction", csv: buildCsv(tractionColumns, traction) }
-      : null,
     creators.length > 0
       ? { title: "Top Creators", csv: buildCsv(creatorCsvColumns, creators) }
       : null,
