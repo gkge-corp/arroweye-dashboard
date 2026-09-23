@@ -1,31 +1,9 @@
 import "server-only";
 
-import { SoundchartsError } from "./soundcharts-client";
-
-export const mapWithConcurrency = async <Item, Result>(
-  items: readonly Item[],
-  limit: number,
-  task: (item: Item) => Promise<Result>,
-) => {
-  const results: Result[] = new Array(items.length);
-  let cursor = 0;
-
-  const workers = Array.from(
-    { length: Math.min(limit, items.length) },
-    async () => {
-      while (cursor < items.length) {
-        const index = cursor++;
-        results[index] = await task(items[index]);
-      }
-    },
-  );
-
-  await Promise.all(workers);
-  return results;
-};
+import { SongstatsError } from "./songstats-client";
 
 /**
- * Soundcharts drops connections when many platforms are requested at once, so
+ * Songstats rate-limits (429) and can drop connections under load, so
  * transport failures, throttling and upstream errors are retried. A 404 or
  * other 4xx never changes, and each retry costs quota, so the budget is small.
  */
@@ -39,7 +17,7 @@ export const withRetry = async <T>(
       return await task();
     } catch (error) {
       const isRetryable =
-        !(error instanceof SoundchartsError) ||
+        !(error instanceof SongstatsError) ||
         error.status === 429 ||
         error.status >= 500;
 

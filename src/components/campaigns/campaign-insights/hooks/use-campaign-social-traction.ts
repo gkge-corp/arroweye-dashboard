@@ -11,10 +11,10 @@ interface SocialTractionResponse {
 }
 
 const fetchSocialTraction = async (
-  uuid: string,
+  isrc: string,
 ): Promise<SocialTractionResponse> => {
   const response = await fetch(
-    `/api/music-analytics/social-traction?uuid=${encodeURIComponent(uuid)}`,
+    `/api/music-analytics/social-traction?isrc=${encodeURIComponent(isrc)}`,
   );
   const payload = (await response
     .json()
@@ -28,13 +28,13 @@ const fetchSocialTraction = async (
 };
 
 export function useCampaignSocialTraction(
-  uuid?: string,
+  isrc?: string,
   options?: { enabled?: boolean },
 ) {
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["campaign-social-traction", uuid],
-    queryFn: () => fetchSocialTraction(uuid!),
-    enabled: Boolean(uuid) && (options?.enabled ?? true),
+    queryKey: ["campaign-social-traction", isrc],
+    queryFn: () => fetchSocialTraction(isrc!),
+    enabled: Boolean(isrc) && (options?.enabled ?? true),
     staleTime: 5 * 60_000,
   });
 

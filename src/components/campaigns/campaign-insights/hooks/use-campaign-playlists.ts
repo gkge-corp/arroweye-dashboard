@@ -17,11 +17,11 @@ interface PlaylistPage {
 }
 
 const fetchPlaylists = async (
-  uuid: string,
+  isrc: string,
   cursor: PlaylistCursor,
 ): Promise<PlaylistPage> => {
   const query = new URLSearchParams({
-    uuid,
+    isrc,
     offset: String(cursor.offset),
   });
   if (cursor.platforms?.length) {
@@ -55,7 +55,7 @@ const fetchPlaylists = async (
 };
 
 export function useCampaignPlaylists(
-  uuid?: string,
+  isrc?: string,
   options?: { platforms?: string[]; ready?: boolean },
 ) {
   const platforms = options?.platforms ?? [];
@@ -68,16 +68,16 @@ export function useCampaignPlaylists(
     refetch,
     isError,
   } = useInfiniteQuery({
-    queryKey: ["campaign-playlists", uuid, platforms],
-    queryFn: ({ pageParam }) => fetchPlaylists(uuid!, pageParam),
+    queryKey: ["campaign-playlists", isrc, platforms],
+    queryFn: ({ pageParam }) => fetchPlaylists(isrc!, pageParam),
     initialPageParam: { offset: 0, platforms } as PlaylistCursor,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled:
-      Boolean(uuid) && (options?.ready ?? true) && platforms.length > 0,
+      Boolean(isrc) && (options?.ready ?? true) && platforms.length > 0,
     staleTime: 5 * 60_000,
   });
 
-  // Soundcharts can repeat a placement across pages, so key on the row id.
+  // A placement can repeat across pages, so key on the row id.
   const playlists = useMemo(() => {
     const seen = new Set<string>();
     return (data?.pages ?? []).flatMap((page) =>

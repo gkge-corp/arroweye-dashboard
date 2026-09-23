@@ -1,42 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { withRetry } from "@/lib/music-analytics/fan-out";
 import {
-  SoundchartsError,
-  soundchartsRequest,
-} from "@/lib/music-analytics/soundcharts-client";
+  normalizeIsrc,
+  songstatsRequest,
+} from "@/lib/music-analytics/songstats-client";
+import { songstatsErrorResponse } from "@/lib/music-analytics/songstats-track-stats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface SoundchartsSong {
-  uuid?: string;
-  name?: string;
-  creditName?: string;
-  isrc?: string | { value?: string };
-  imageUrl?: string;
-  releaseDate?: string;
+interface SongstatsTrack {
+  songstats_track_id?: string;
+  title?: string;
+  avatar?: string;
+  release_date?: string;
   artists?: { name?: string }[];
+  links?: { source?: string; isrc?: string }[];
 }
 
-// The search endpoint omits the ISRC; the by-isrc lookup returns it as an
-// object rather than a string.
-const readIsrc = (isrc: SoundchartsSong["isrc"]) =>
-  typeof isrc === "string" ? isrc : (isrc?.value ?? "");
+/**
+ * Search results carry no ISRC; `tracks/info` lists one per platform link.
+ * A remix or extended edit can sit under another ISRC, so Spotify's wins.
+ */
+const readIsrc = (track: SongstatsTrack) => {
+  const links = (track.links ?? []).filter((link) => link.isrc);
+  return (
+    links.find((link) => link.source === "spotify")?.isrc ??
+    links[0]?.isrc ??
+    ""
+  );
+};
 
-const normalizeSong = (song: SoundchartsSong) => ({
-  uuid: song.uuid ?? "",
-  isrc: readIsrc(song.isrc),
-  title: song.name ?? "",
-  artist: song.creditName ?? song.artists?.[0]?.name ?? "",
-  artwork: song.imageUrl ?? "",
-  releaseDate: song.releaseDate ?? "",
+const normalizeSong = (track: SongstatsTrack, isrc = readIsrc(track)) => ({
+  uuid: track.songstats_track_id ?? "",
+  isrc,
+  title: track.title ?? "",
+  artist: (track.artists ?? [])
+    .map((artist) => artist.name)
+    .filter(Boolean)
+    .join(", "),
+  artwork: track.avatar ?? "",
+  releaseDate: track.release_date ?? "",
 });
+
+const fetchTrackInfo = (params: {
+  isrc?: string;
+  songstats_track_id?: string;
+}) =>
+  withRetry(() =>
+    songstatsRequest<{ track_info?: SongstatsTrack }>("/tracks/info", params),
+  );
 
 export async function GET(request: NextRequest) {
   const term = request.nextUrl.searchParams.get("term")?.trim();
   const isrc = request.nextUrl.searchParams.get("isrc")?.trim();
+  const id = request.nextUrl.searchParams.get("id")?.trim();
 
-  if (!term && !isrc) {
+  if (!term && !isrc && !id) {
     return NextResponse.json(
       { error: "Provide a search term or an ISRC.", code: "MISSING_QUERY" },
       { status: 400 },
@@ -44,33 +65,33 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const path = isrc
-      ? `/api/v2.25/song/by-isrc/${encodeURIComponent(isrc.replace(/-/g, "").toUpperCase())}`
-      : `/api/v2/song/search/${encodeURIComponent(term!)}?offset=0&limit=10`;
-
-    const payload = await soundchartsRequest<{
-      items?: SoundchartsSong[];
-      object?: SoundchartsSong;
-    }>(path);
-
-    const items = payload.object ? [payload.object] : (payload.items ?? []);
-
-    return NextResponse.json({
-      items: items.map(normalizeSong).filter((song) => song.uuid),
-    });
-  } catch (error) {
-    console.error("Soundcharts song search failed:", error);
-
-    if (error instanceof SoundchartsError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status },
+    if (isrc || id) {
+      const payload = await fetchTrackInfo(
+        isrc ? { isrc: normalizeIsrc(isrc) } : { songstats_track_id: id },
       );
+      const track = payload.track_info;
+      // An ISRC lookup is answered for that exact ISRC, whatever the links say.
+      const items = track
+        ? [normalizeSong(track, isrc ? normalizeIsrc(isrc) : undefined)]
+        : [];
+      return NextResponse.json({ items: items.filter((song) => song.uuid) });
     }
 
-    return NextResponse.json(
-      { error: "Could not reach the analytics provider.", code: "UNKNOWN" },
-      { status: 502 },
+    const payload = await withRetry(() =>
+      songstatsRequest<{ results?: SongstatsTrack[] }>("/tracks/search", {
+        q: term,
+        limit: 10,
+        offset: 0,
+      }),
     );
+
+    return NextResponse.json({
+      items: (payload.results ?? [])
+        .map((track) => normalizeSong(track))
+        .filter((song) => song.uuid),
+    });
+  } catch (error) {
+    console.error("Songstats song search failed:", error);
+    return songstatsErrorResponse(error);
   }
 }

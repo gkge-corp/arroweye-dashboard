@@ -34,9 +34,9 @@ interface InsightSourcesDialogProps {
   markets: string[];
   /**
    * Streaming platforms offered for this song: the ones playlists can be
-   * pulled from, plus any extra platform Soundcharts reports audience for
-   * (Anghami, JioSaavn and friends have no playlist endpoint but still draw a
-   * bar on the STREAMING chart).
+   * pulled from, plus any extra platform Songstats reports plays for
+   * (SoundCloud has no playlist list but still draws a bar on the STREAMING
+   * chart).
    */
   streamingPlatforms?: AnalyticsPlatform[];
   selectedMarkets: string[];
@@ -226,7 +226,7 @@ export function InsightSourcesDialog({
           ) : isAirplay ? (
             markets.length === 0 ? (
               <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                No countries streamed yet for this song.
+                No radio spins by country yet for this song.
               </p>
             ) : (
               <>

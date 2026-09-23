@@ -18,13 +18,23 @@ export const buildCsv = <Row>(columns: CsvColumn<Row>[], rows: Row[]) =>
     ),
   ].join("\r\n");
 
-export const downloadCsv = <Row>(
-  filename: string,
-  columns: CsvColumn<Row>[],
-  rows: Row[],
-) => {
+export interface CsvSection {
+  title: string;
+  csv: string;
+}
+
+/**
+ * Several tables in one file: each under its own title line, separated by a
+ * blank row, so a whole insight column exports as a single download.
+ */
+export const buildCsvSections = (sections: CsvSection[]) =>
+  sections
+    .map((section) => `${escapeCell(section.title)}\r\n${section.csv}`)
+    .join("\r\n\r\n");
+
+export const saveCsv = (filename: string, csv: string) => {
   // The BOM keeps Excel from mangling non-ASCII station and playlist names.
-  const blob = new Blob(["﻿", buildCsv(columns, rows)], {
+  const blob = new Blob(["﻿", csv], {
     type: "text/csv;charset=utf-8;",
   });
   const url = URL.createObjectURL(blob);
@@ -37,3 +47,9 @@ export const downloadCsv = <Row>(
   document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
 };
+
+export const downloadCsv = <Row>(
+  filename: string,
+  columns: CsvColumn<Row>[],
+  rows: Row[],
+) => saveCsv(filename, buildCsv(columns, rows));

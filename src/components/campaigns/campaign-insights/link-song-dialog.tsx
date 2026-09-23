@@ -44,6 +44,25 @@ const searchSongs = async (params: { term?: string; isrc?: string }) => {
   return payload.items ?? [];
 };
 
+// Search results carry no ISRC, and the insight cards look songs up by it, so
+// the picked recording's ISRC is fetched before linking.
+const resolveIsrc = async (song: SongCandidate) => {
+  if (song.isrc) return song.isrc;
+
+  const query = new URLSearchParams({ id: song.uuid });
+  const response = await fetch(`/api/music-analytics/song-search?${query}`);
+  const payload = (await response.json().catch(() => ({}))) as {
+    items?: SongCandidate[];
+    error?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Could not read this recording's ISRC.");
+  }
+
+  return payload.items?.[0]?.isrc || undefined;
+};
+
 export function LinkSongDialog({
   open,
   songTitle,
@@ -82,15 +101,25 @@ export function LinkSongDialog({
     }
   };
 
-  const handleLink = (song: SongCandidate) => {
-    onLink({
-      uuid: song.uuid,
-      isrc: song.isrc,
-      title: song.title,
-      artist: song.artist,
-      artwork: song.artwork,
-    });
-    onOpenChange(false);
+  const handleLink = async (song: SongCandidate) => {
+    setIsSearching(true);
+    try {
+      onLink({
+        uuid: song.uuid,
+        isrc: await resolveIsrc(song),
+        title: song.title,
+        artist: song.artist,
+        artwork: song.artwork,
+      });
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Linking the song failed:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Could not link this song.",
+      );
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
@@ -186,7 +215,8 @@ export function LinkSongDialog({
                 key={candidate.uuid}
                 type="button"
                 className="flex w-full items-center gap-3 rounded-xl border border-zinc-200 p-3 text-left transition-colors hover:border-zinc-900 dark:border-zinc-700 dark:hover:border-zinc-300"
-                onClick={() => handleLink(candidate)}
+                disabled={isSearching}
+                onClick={() => void handleLink(candidate)}
               >
                 {candidate.artwork ? (
                   // eslint-disable-next-line @next/next/no-img-element

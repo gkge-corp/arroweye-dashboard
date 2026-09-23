@@ -1,28 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { withRetry } from "@/lib/music-analytics/fan-out";
+import { readCountryName } from "@/lib/music-analytics/country-names";
 import {
-  SoundchartsError,
-  soundchartsRequest,
-} from "@/lib/music-analytics/soundcharts-client";
+  RADIO_PAGE_SIZE,
+  countPlaysInWindow,
+  fetchRadioStations,
+  toEpochSeconds,
+  type RadioStation,
+} from "@/lib/music-analytics/songstats-radio";
+import { songstatsErrorResponse } from "@/lib/music-analytics/songstats-track-stats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Soundcharts caps limit at 100 and bills per call.
-const PAGE_SIZE = 100;
 const DEFAULT_WINDOW_DAYS = 90;
-
-interface BroadcastGroup {
-  radio?: {
-    slug?: string;
-    name?: string;
-    countryCode?: string;
-    countryName?: string;
-    cityName?: string;
-  };
-  playCount?: number;
-}
 
 const asDate = (value: string | null) =>
   value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
@@ -34,7 +25,7 @@ const daysAgo = (days: number) => {
 };
 
 export async function GET(request: NextRequest) {
-  const uuid = request.nextUrl.searchParams.get("uuid")?.trim();
+  const isrc = request.nextUrl.searchParams.get("isrc")?.trim();
   const offset = Number(request.nextUrl.searchParams.get("offset") ?? 0);
   const startDate =
     asDate(request.nextUrl.searchParams.get("startDate")) ??
@@ -52,56 +43,54 @@ export async function GET(request: NextRequest) {
       )
     : null;
 
-  if (!uuid) {
+  if (!isrc) {
     return NextResponse.json(
-      { error: "Provide a song uuid.", code: "MISSING_UUID" },
+      { error: "Provide the song's ISRC.", code: "MISSING_ISRC" },
       { status: 400 },
     );
   }
 
   try {
     const page = Number.isFinite(offset) && offset > 0 ? offset : 0;
-    const payload = await withRetry(() =>
-      soundchartsRequest<{ items?: BroadcastGroup[] }>(
-        `/api/v2/song/${uuid}/broadcast-groups?startDate=${startDate}&endDate=${endDate}&offset=${page}&limit=${PAGE_SIZE}`,
-      ),
-    );
+    const sourceItems = await fetchRadioStations(isrc, page);
+    const from = toEpochSeconds(startDate);
+    const to = toEpochSeconds(endDate, true);
 
-    const sourceItems = payload.items ?? [];
+    const isSelected = (station: RadioStation) =>
+      !selectedCountries ||
+      selectedCountries.has(readCountryName(station.country_code)) ||
+      selectedCountries.has(station.country_code ?? "");
+
     const items = sourceItems
-      .filter((item) => {
-        if (!selectedCountries) return true;
-        const country = item.radio?.countryName ?? item.radio?.countryCode;
-        return Boolean(country && selectedCountries.has(country));
-      })
-      .map((item) => ({
-        id:
-          item.radio?.slug ?? `${item.radio?.name}-${item.radio?.countryCode}`,
-        name: item.radio?.name ?? "Unknown station",
-        country: item.radio?.countryName ?? item.radio?.countryCode ?? "",
-        city: item.radio?.cityName ?? "",
-        plays: Number(item.playCount ?? 0),
+      .filter(isSelected)
+      .map((station) => ({
+        id: String(
+          station.radio_station_id ?? `${station.name}-${station.country_code}`,
+        ),
+        name: station.name ?? "Unknown station",
+        country: readCountryName(station.country_code),
+        city: station.city_name ?? "",
+        plays: countPlaysInWindow(station.radio_plays, from, to),
       }))
+      .filter((station) => station.plays > 0)
       .sort((a, b) => b.plays - a.plays);
+
+    // Pages run newest-played first, so once a station's last spin predates
+    // the window every later page is outside it too.
+    const lastStation = sourceItems[sourceItems.length - 1];
+    const reachedOlderPlays =
+      Math.max(0, ...(lastStation?.radio_plays ?? [])) < from;
 
     return NextResponse.json({
       items,
-      nextOffset: sourceItems.length === PAGE_SIZE ? page + PAGE_SIZE : null,
+      nextOffset:
+        sourceItems.length === RADIO_PAGE_SIZE && !reachedOlderPlays
+          ? page + RADIO_PAGE_SIZE
+          : null,
       window: { startDate, endDate },
     });
   } catch (error) {
-    console.error("Soundcharts top radio failed:", error);
-
-    if (error instanceof SoundchartsError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status },
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Could not reach the analytics provider.", code: "UNKNOWN" },
-      { status: 502 },
-    );
+    console.error("Songstats top radio failed:", error);
+    return songstatsErrorResponse(error);
   }
 }
