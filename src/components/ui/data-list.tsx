@@ -50,6 +50,8 @@ interface DataListProps<Row> {
   onLoadMore?: () => void;
   /** Prepends a "#" column numbering the rows from 1. */
   showRank?: boolean;
+  /** Extra content under the list, above the footer. */
+  children?: React.ReactNode;
 }
 
 const gridTemplate = <Row,>(columns: DataListColumn<Row>[]) => ({
@@ -72,6 +74,7 @@ export function DataList<Row>({
   isLoadingMore = false,
   onLoadMore,
   showRank = false,
+  children,
 }: DataListProps<Row>) {
   const hasRows = rows.length > 0;
 
@@ -159,6 +162,8 @@ export function DataList<Row>({
           )}
         </div>
       )}
+
+      {children}
 
       {footer && <div className="mt-auto">{footer}</div>}
     </div>

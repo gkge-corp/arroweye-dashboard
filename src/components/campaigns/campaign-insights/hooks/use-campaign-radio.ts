@@ -11,11 +11,11 @@ interface RadioPage {
 }
 
 const fetchTopRadio = async (
-  uuid: string,
+  isrc: string,
   offset: number,
   countries: string[] | null,
 ): Promise<RadioPage> => {
-  const query = new URLSearchParams({ uuid, offset: String(offset) });
+  const query = new URLSearchParams({ isrc, offset: String(offset) });
   if (countries) query.set("countries", countries.join(","));
   const response = await fetch(`/api/music-analytics/top-radio?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
@@ -32,7 +32,7 @@ const fetchTopRadio = async (
 };
 
 export function useCampaignRadio(
-  uuid?: string,
+  isrc?: string,
   options?: { enabled?: boolean; countries?: string[] | null },
 ) {
   const countries = options?.countries ?? null;
@@ -44,11 +44,11 @@ export function useCampaignRadio(
     fetchNextPage,
     isError,
   } = useInfiniteQuery({
-    queryKey: ["campaign-top-radio", uuid, countries],
-    queryFn: ({ pageParam }) => fetchTopRadio(uuid!, pageParam, countries),
+    queryKey: ["campaign-top-radio", isrc, countries],
+    queryFn: ({ pageParam }) => fetchTopRadio(isrc!, pageParam, countries),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextOffset,
-    enabled: Boolean(uuid) && (options?.enabled ?? true),
+    enabled: Boolean(isrc) && (options?.enabled ?? true),
     staleTime: 5 * 60_000,
   });
 

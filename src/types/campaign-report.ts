@@ -17,7 +17,7 @@ export interface CampaignReportAudienceGrowth {
 }
 
 /**
- * The resolved values shown on the campaign insights page. Soundcharts has
+ * The resolved values shown on the campaign insights page. Songstats has
  * already overridden the eligible sections and the remaining sections have
  * fallen back to the Arroweye API before this snapshot is created.
  */

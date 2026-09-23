@@ -4,7 +4,10 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { DataList, type DataListColumn } from "@/components/ui/data-list";
-import { downloadCsv, type CsvColumn } from "@/lib/csv";
+import { saveCsv, type CsvColumn } from "@/lib/csv";
+
+import { buildSocialColumnCsv, type ColumnSummary } from "./social-column-csv";
+import { TopCreatorsList, type CreatorRow } from "./top-creators-list";
 
 export interface SocialTractionRow {
   id: string;
@@ -25,6 +28,10 @@ interface SocialTractionCardProps {
   isLinked?: boolean;
   onRetry?: () => void;
   onLinkSong?: () => void;
+  creators?: CreatorRow[];
+  creatorsLoading?: boolean;
+  /** Charts above the card in the same column, included in its download. */
+  summaries?: ColumnSummary[];
 }
 
 const compactNumber = new Intl.NumberFormat("en", {
@@ -115,18 +122,32 @@ export function SocialTractionCard({
   isLinked = false,
   onRetry,
   onLinkSong,
+  creators = [],
+  creatorsLoading = false,
+  summaries = [],
 }: SocialTractionCardProps) {
   const columns = useMemo(() => getColumns(periodDays), [periodDays]);
   const visibleRows = rows.filter((row) => row.value !== null);
 
+  const columnCsv = buildSocialColumnCsv({
+    summaries,
+    traction: visibleRows,
+    tractionColumns: csvColumns(periodDays),
+    creators,
+  });
+
   const handleDownload = () => {
-    if (visibleRows.length === 0) {
+    if (!columnCsv) {
       toast.error("No data to download");
       return;
     }
 
-    downloadCsv("social-traction.csv", csvColumns(periodDays), visibleRows);
+    saveCsv("social-media.csv", columnCsv);
   };
+
+  // Hidden rather than shown empty: most songs have no creators until they
+  // take off on social, and an empty second list adds noise.
+  const showCreators = isLinked && (creatorsLoading || creators.length > 0);
 
   const emptyAction = hasError
     ? onRetry
@@ -157,12 +178,16 @@ export function SocialTractionCard({
           type="button"
           className="p-2 font-SansFlex text-[16px] font-[500] w-full rounded-full text-white dark:text-zinc-950 text-center cursor-pointer hover:bg-orange-500 dark:hover:bg-orange-500 dark:hover:text-white bg-black dark:bg-zinc-100 inline-flex items-center gap-2 justify-center disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-black dark:disabled:hover:bg-zinc-100 active:scale-[0.97]"
           onClick={handleDownload}
-          disabled={visibleRows.length === 0 || loading}
+          disabled={!columnCsv || loading}
         >
           <p>Download Data</p>
         </button>
       }
-    />
+    >
+      {showCreators && (
+        <TopCreatorsList creators={creators} loading={creatorsLoading} />
+      )}
+    </DataList>
   );
 }
 

@@ -13,14 +13,11 @@ const DISCOVERY_AND_STREAMING_PLATFORMS = [
   ...PLAYLIST_PLATFORMS,
   ...DISCOVERY_PLATFORMS,
 ];
-const PLAYLIST_PLATFORM_CODES = new Set(
-  PLAYLIST_PLATFORMS.map((platform) => platform.code),
-);
 
 export interface InsightSources {
-  /** Selected discovery/DSP rows; only playlist-capable DSPs cost a call. */
+  /** Selected discovery/DSP rows. */
   playlistPlatforms: string[];
-  /** One call per platform. */
+  /** Platforms summed into the PERFORMANCE playlist reach split. */
   reachPlatforms: string[];
   /**
    * Retained so stored settings from before the SOCIAL MEDIA chart moved to
@@ -31,8 +28,8 @@ export interface InsightSources {
   artistSocialPlatforms: string[];
   /**
    * Which discovery and streaming sources the picker was offering when this
-   * was saved. Soundcharts reports audience for platforms with no playlist
-   * endpoint (Anghami, JioSaavn), and that set varies per song, so a platform
+   * was saved. Songstats reports plays for platforms with no playlist list
+   * (SoundCloud), and that set varies per song, so a platform
    * missing from playlistPlatforms is only "switched off" if it was on offer
    * at the time. Anything newer is unseen, not declined.
    */
@@ -52,8 +49,8 @@ export const defaultInsightSources = (): InsightSources => ({
 
 /**
  * Everything the Discovery & streaming picker should list for this song:
- * discovery signals, playlist platforms, and any extra platform Soundcharts
- * reports audience for.
+ * discovery signals, playlist platforms, and any extra platform Songstats
+ * reports plays for.
  */
 export const mergeStreamingPlatforms = (
   available: AnalyticsPlatform[] | undefined,
@@ -87,11 +84,6 @@ export const resolveStreamingSelection = (
 
   return [...selected];
 };
-
-/** Cold-load calls made by the enabled sources; discovery reuses stats data. */
-export const countSourceCalls = (sources: InsightSources) =>
-  sources.playlistPlatforms.filter((code) => PLAYLIST_PLATFORM_CODES.has(code))
-    .length + sources.reachPlatforms.length;
 
 const storageKey = (campaignId: string | number) =>
   `insight-sources:${campaignId}`;

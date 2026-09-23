@@ -19,13 +19,14 @@ interface UseCampaignInsightsParams {
   /** Non-streaming discovery figures displayed beside the DSP bars. */
   discoveryData?: Record<string, number>;
   /**
-   * Live figures from Soundcharts for the linked recording. Any section
+   * Live figures from Songstats for the linked recording. Any section
    * present here replaces the hand-entered numbers from the Arroweye API;
-   * sections Soundcharts cannot supply fall through to the manual data.
+   * sections Songstats cannot supply fall through to the manual data.
    */
   statsOverrides?: {
+    /** Artist follower growth per network over the campaign. */
     socialMedia?: Record<string, number>;
-    /** Activity by kind. Totals to socialMedia, so both charts reconcile. */
+    /** Views, likes, comments and shares gained over the campaign. */
     actions?: Record<string, number>;
     dsp?: Record<string, number>;
     /** Spins per country for the markets the user selected. */
@@ -199,7 +200,7 @@ export function useCampaignInsights({
   } = insightsData;
 
   // An override only wins when it actually carries figures, so a song with no
-  // Soundcharts presence still shows whatever ops entered by hand.
+  // Songstats presence still shows whatever ops entered by hand.
   const preferLive = (
     live: Record<string, number> | undefined,
     manual: Record<string, number>,
@@ -209,9 +210,6 @@ export function useCampaignInsights({
     statsOverrides?.socialMedia,
     manualSocialMediaData,
   );
-  // ACTIONS has to follow SOCIAL MEDIA to the same source: mixing a live pie
-  // with a hand-entered doughnut would show a breakdown that does not add up
-  // to the total beside it.
   const smactionData = preferLive(statsOverrides?.actions, manualSmactionData);
   const dspData = preferLive(statsOverrides?.dsp, manualDspData);
   const dspPerformanceData = preferLive(
@@ -219,7 +217,7 @@ export function useCampaignInsights({
     manualDspPerformanceData,
   );
 
-  // AIRPLAY breaks down by country when Soundcharts has radio data for the
+  // AIRPLAY breaks down by country when Songstats has radio data for the
   // linked song. An explicit empty map means the user cleared every country.
   const airPlayData = statsOverrides?.airplayByCountry ?? manualAirPlayData;
 

@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { mapWithConcurrency, withRetry } from "@/lib/music-analytics/fan-out";
-import { ARTIST_SOCIAL_PLATFORMS } from "@/lib/music-analytics/platforms";
+import { withRetry } from "@/lib/music-analytics/fan-out";
 import {
-  SoundchartsError,
-  soundchartsRequest,
-} from "@/lib/music-analytics/soundcharts-client";
+  ARTIST_SOCIAL_PLATFORMS,
+  toSongstatsSource,
+} from "@/lib/music-analytics/platforms";
+import {
+  normalizeIsrc,
+  songstatsRequest,
+} from "@/lib/music-analytics/songstats-client";
+import { songstatsErrorResponse } from "@/lib/music-analytics/songstats-track-stats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CONCURRENCY = 3;
-
-interface ArtistStat {
-  platform?: string;
-  value?: number | null;
-  evolution?: number | null;
-}
-
-interface AudiencePoint {
-  date?: string;
-  followerCount?: number | null;
-}
+type HistoryPoint = Record<string, unknown> & { date?: string };
 
 interface PlatformGrowth {
   platform: string;
@@ -42,9 +35,6 @@ const parseDate = (value: string | null) => {
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
-
-const normalizePlatform = (platform: string) =>
-  platform === "x" ? "twitter" : platform;
 
 const buildResult = (
   entries: PlatformGrowth[],
@@ -83,83 +73,73 @@ const buildResult = (
   };
 };
 
+// YouTube counts subscribers; every other network counts followers.
+const readFollowers = (source: string, point: HistoryPoint | undefined) => {
+  const raw =
+    point?.[source === "youtube" ? "subscribers_total" : "followers_total"];
+  if (raw === null || raw === undefined) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+};
+
+/**
+ * One call returns daily follower history for every network, so growth is
+ * the gap between the first and last point inside the campaign window.
+ */
 const getHistoricalGrowth = async (
-  artistUuid: string,
+  artistId: string,
   startDate: string,
   endDate: string,
 ) => {
-  const results = await mapWithConcurrency(
-    ARTIST_SOCIAL_PLATFORMS,
-    CONCURRENCY,
-    async (platform): Promise<PlatformGrowth | null> => {
-      const basePath = `/api/v2/artist/${artistUuid}/audience/${platform.code}?startDate=${startDate}&endDate=${endDate}&limit=1`;
-
-      try {
-        const [firstPayload, lastPayload] = await Promise.all([
-          withRetry(() =>
-            soundchartsRequest<{ items?: AudiencePoint[] }>(
-              `${basePath}&sort=asc`,
-            ),
-          ),
-          withRetry(() =>
-            soundchartsRequest<{ items?: AudiencePoint[] }>(
-              `${basePath}&sort=desc`,
-            ),
-          ),
-        ]);
-        const rawStartValue = firstPayload.items?.[0]?.followerCount;
-        const rawEndValue = lastPayload.items?.[0]?.followerCount;
-        const startValue = Number(rawStartValue);
-        const endValue = Number(rawEndValue);
-
-        if (
-          rawStartValue === null ||
-          rawStartValue === undefined ||
-          rawEndValue === null ||
-          rawEndValue === undefined ||
-          !Number.isFinite(startValue) ||
-          !Number.isFinite(endValue)
-        ) {
-          return null;
-        }
-
-        return {
-          platform: platform.label,
-          startValue,
-          endValue,
-          growth: endValue - startValue,
-        };
-      } catch (error) {
-        if (
-          !(
-            error instanceof SoundchartsError &&
-            [403, 404].includes(error.status)
-          )
-        ) {
-          console.error(
-            `Soundcharts campaign audience failed for ${platform.code}:`,
-            error,
-          );
-        }
-        return null;
-      }
-    },
+  const payload = await withRetry(() =>
+    songstatsRequest<{
+      stats?: { source?: string; data?: { history?: HistoryPoint[] } }[];
+    }>("/artists/historic_stats", {
+      songstats_artist_id: artistId,
+      source: ARTIST_SOCIAL_PLATFORMS.map((platform) =>
+        toSongstatsSource(platform.code),
+      ),
+      start_date: startDate,
+      end_date: endDate,
+    }),
+  );
+  const histories = new Map(
+    (payload.stats ?? []).map((entry) => [
+      entry.source,
+      entry.data?.history ?? [],
+    ]),
   );
 
-  return results.filter((entry): entry is PlatformGrowth => entry !== null);
+  return ARTIST_SOCIAL_PLATFORMS.flatMap((platform): PlatformGrowth[] => {
+    const source = toSongstatsSource(platform.code);
+    const points = (histories.get(source) ?? [])
+      .filter((point) => readFollowers(source, point) !== null)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const startValue = readFollowers(source, points[0]);
+    const endValue = readFollowers(source, points[points.length - 1]);
+
+    if (startValue === null || endValue === null) return [];
+    return [
+      {
+        platform: platform.label,
+        startValue,
+        endValue,
+        growth: endValue - startValue,
+      },
+    ];
+  });
 };
 
 export async function GET(request: NextRequest) {
-  const uuid = request.nextUrl.searchParams.get("uuid")?.trim();
   const isrc = request.nextUrl.searchParams.get("isrc")?.trim();
   const rawStartDate = request.nextUrl.searchParams.get("startDate");
   const rawEndDate = request.nextUrl.searchParams.get("endDate") ?? today();
   const start = parseDate(rawStartDate);
   const requestedEnd = parseDate(rawEndDate);
 
-  if (!uuid && !isrc) {
+  if (!isrc) {
     return NextResponse.json(
-      { error: "Provide a song uuid or ISRC.", code: "MISSING_SONG" },
+      { error: "Provide the song's ISRC.", code: "MISSING_ISRC" },
       { status: 400 },
     );
   }
@@ -183,116 +163,24 @@ export async function GET(request: NextRequest) {
   const endDate = end.toISOString().slice(0, 10);
 
   try {
-    let songUuid = uuid;
-
-    if (!songUuid && isrc) {
-      const songByIsrc = await withRetry(() =>
-        soundchartsRequest<{ object?: { uuid?: string } }>(
-          `/api/v2.25/song/by-isrc/${encodeURIComponent(isrc.replace(/-/g, "").toUpperCase())}`,
-        ),
-      );
-      songUuid = songByIsrc.object?.uuid;
-    }
-
-    if (!songUuid) {
-      return NextResponse.json(
-        { error: "Soundcharts could not resolve this song.", code: "NO_SONG" },
-        { status: 404 },
-      );
-    }
-
-    const songPayload = await withRetry(() =>
-      soundchartsRequest<{
-        object?: { artists?: { uuid?: string }[] };
-      }>(`/api/v2/song/${encodeURIComponent(songUuid)}`),
+    const trackPayload = await withRetry(() =>
+      songstatsRequest<{
+        track_info?: { artists?: { songstats_artist_id?: string }[] };
+      }>("/tracks/info", { isrc: normalizeIsrc(isrc) }),
     );
-    const artistUuid = songPayload.object?.artists?.[0]?.uuid;
+    const artistId = trackPayload.track_info?.artists?.[0]?.songstats_artist_id;
 
-    if (!artistUuid) {
+    if (!artistId) {
       return NextResponse.json(
         { error: "The linked song has no primary artist.", code: "NO_ARTIST" },
         { status: 404 },
       );
     }
 
-    let entries: PlatformGrowth[] = [];
-
-    // For an active campaign, one current-stats request gives the latest value
-    // and the exact evolution since the campaign start for every platform.
-    if (endDate === today()) {
-      const periodDays = Math.ceil(
-        (end.getTime() - start.getTime()) / 86_400_000,
-      );
-
-      if (periodDays >= 1) {
-        try {
-          const currentStats = await withRetry(() =>
-            soundchartsRequest<{ social?: ArtistStat[] }>(
-              `/api/v2/artist/${artistUuid}/current/stats?period=${periodDays}`,
-            ),
-          );
-          const platformMap = new Map(
-            ARTIST_SOCIAL_PLATFORMS.map((platform) => [
-              platform.code,
-              platform,
-            ]),
-          );
-
-          entries = (currentStats.social ?? []).flatMap((stat) => {
-            const platform = platformMap.get(
-              normalizePlatform(stat.platform ?? ""),
-            );
-            if (stat.value === null || stat.evolution === null) return [];
-            const endValue = Number(stat.value);
-            const growth = Number(stat.evolution);
-            if (
-              !platform ||
-              !Number.isFinite(endValue) ||
-              !Number.isFinite(growth)
-            ) {
-              return [];
-            }
-
-            return [
-              {
-                platform: platform.label,
-                startValue: Math.max(0, endValue - growth),
-                endValue: Math.max(0, endValue),
-                growth,
-              },
-            ];
-          });
-        } catch (error) {
-          if (
-            !(
-              error instanceof SoundchartsError &&
-              [403, 404].includes(error.status)
-            )
-          ) {
-            console.error("Soundcharts current audience growth failed:", error);
-          }
-        }
-      }
-    }
-
-    if (entries.length === 0) {
-      entries = await getHistoricalGrowth(artistUuid, startDate, endDate);
-    }
-
+    const entries = await getHistoricalGrowth(artistId, startDate, endDate);
     return NextResponse.json(buildResult(entries, startDate, endDate));
   } catch (error) {
-    console.error("Soundcharts campaign audience growth failed:", error);
-
-    if (error instanceof SoundchartsError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status },
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Could not reach the analytics provider.", code: "UNKNOWN" },
-      { status: 502 },
-    );
+    console.error("Songstats campaign audience growth failed:", error);
+    return songstatsErrorResponse(error);
   }
 }

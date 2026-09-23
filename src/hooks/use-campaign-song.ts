@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 export interface LinkedSong {
+  /**
+   * Provider id of the recording (a Songstats track id; links made before
+   * the switch hold another provider's id). Only marks the campaign as
+   * linked: data is read by ISRC.
+   */
   uuid: string;
   isrc?: string;
   title?: string;
@@ -11,7 +16,7 @@ export interface LinkedSong {
 }
 
 /**
- * Storage adapter for the campaign -> Soundcharts recording link.
+ * Storage adapter for the campaign -> recording link.
  *
  * This is browser-local, so a link made by one teammate is invisible to the
  * rest of the campaign. Swap these two functions for a PATCH against the

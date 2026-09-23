@@ -19,10 +19,14 @@ import {
 } from "./insight-sources-dialog";
 import { useCampaignInsights } from "./hooks/use-campaign-insights";
 import { useCampaignSong } from "@/hooks/use-campaign-song";
-import { useCampaignAudienceGrowth } from "@/hooks/use-campaign-audience-growth";
+import {
+  toSocialGrowthStats,
+  useCampaignAudienceGrowth,
+} from "@/hooks/use-campaign-audience-growth";
 import { useCampaignPlaylists } from "./hooks/use-campaign-playlists";
 import { useCampaignRadio } from "./hooks/use-campaign-radio";
 import { useCampaignSocialTraction } from "./hooks/use-campaign-social-traction";
+import { useCampaignTopCreators } from "./hooks/use-campaign-top-creators";
 import { useCampaignInsightStats } from "./hooks/use-campaign-insight-stats";
 import {
   deriveAirplayMarkets,
@@ -119,9 +123,16 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     content?.end_dte ?? content?.end_date ?? content?.campaign?.end_date,
   );
   const campaignIsrc = content?.song_isrc ?? content?.isrc ?? linkedSong?.isrc;
+  // Songstats looks recordings up by ISRC, so a campaign that already has one
+  // needs no manual link. A linked recording wins, since it was picked on
+  // purpose (a remix or edit can carry its own ISRC).
+  const songIsrc =
+    linkedSong?.isrc || content?.song_isrc || content?.isrc || undefined;
+  const openLinkSong = songIsrc
+    ? undefined
+    : () => onRequestEditModeChange?.(true);
   const { audienceGrowth, isAudienceGrowthLoading } = useCampaignAudienceGrowth(
     {
-      uuid: linkedSong?.uuid,
       isrc: campaignIsrc,
       startDate: campaignStartDate,
       endDate: campaignEndDate,
@@ -154,7 +165,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   };
 
   const { insightStats, isInsightStatsLoading } = useCampaignInsightStats(
-    linkedSong?.uuid,
+    songIsrc,
     {
       // Switching every market off skips the airplay call, but that call is the
       // only source of the country list. With nothing remembered yet the picker
@@ -164,6 +175,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       social: true,
       reachPlatforms: sources.reachPlatforms,
       countries: selectedMarkets,
+      startDate: campaignStartDate,
+      endDate: campaignEndDate,
       ready: sourcesLoaded && marketsLoaded,
     },
   );
@@ -173,7 +186,9 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     isSocialTractionLoading,
     hasSocialTractionError,
     retrySocialTraction,
-  } = useCampaignSocialTraction(linkedSong?.uuid);
+  } = useCampaignSocialTraction(songIsrc);
+  const { topCreators, isTopCreatorsLoading } =
+    useCampaignTopCreators(songIsrc);
   const shazamRow = socialTraction.find((item) => item.id === "shazam");
   const rawShazamFallback =
     content?.kpis?.shazams_count ??
@@ -192,10 +207,10 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
           ? parsedShazamFallback
           : null;
 
-  // Soundcharts reports audience for platforms with no playlist endpoint
-  // (Anghami, JioSaavn), so the STREAMING chart can show more than the
-  // playlist picker used to list. Hiding is applied here rather than in the
-  // route so toggling a platform costs no further Soundcharts calls.
+  // Songstats reports plays for platforms with no playlist list (SoundCloud),
+  // so the STREAMING chart can show more than the playlist picker lists.
+  // Hiding is applied here rather than in the route so toggling a platform
+  // costs no further calls.
   const streamingOptions = React.useMemo(
     () => mergeStreamingPlatforms(insightStats?.availableStreamingPlatforms),
     [insightStats?.availableStreamingPlatforms],
@@ -258,9 +273,15 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
 
   // The airplay call is skipped while every market is off, so the picker falls
   // back to the countries last seen — otherwise switching them all off would
-  // leave an empty list and no way to switch any back on.
+  // leave an empty list and no way to switch any back on. Otherwise only live
+  // markets are offered: a remembered country with no spins can never be
+  // applied, so ticking it would silently do nothing.
   const pickerMarkets =
-    availableMarkets.length > 0 ? availableMarkets : knownMarkets;
+    availableMarkets.length > 0
+      ? availableMarkets
+      : airplayDisabled
+        ? knownMarkets
+        : [];
 
   const {
     initialTab,
@@ -305,6 +326,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     discoveryData: discoveryChartData,
     statsOverrides: {
       ...insightStats,
+      socialMedia: toSocialGrowthStats(audienceGrowth),
       dsp: visibleDsp,
       airplayByCountry: airplayDisabled
         ? { total_count: 0 }
@@ -322,7 +344,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     hasMorePlaylists,
     loadMorePlaylists,
     retryPlaylists,
-  } = useCampaignPlaylists(linkedSong?.uuid, {
+  } = useCampaignPlaylists(songIsrc, {
     platforms: sources.playlistPlatforms.filter((code) =>
       playlistPlatformCodes.has(code),
     ),
@@ -334,7 +356,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     isLoadingMoreRadio,
     hasMoreRadio,
     loadMoreRadio,
-  } = useCampaignRadio(linkedSong?.uuid, {
+  } = useCampaignRadio(songIsrc, {
     enabled: marketsLoaded && !airplayDisabled,
     countries: selectedMarkets,
   });
@@ -379,7 +401,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       socialMedia: socialMediaData ?? {},
       actions: smactionData ?? {},
       performance: dspPerformanceData ?? {},
-      // Manual campaign data exposes DJ as an airplay channel. Soundcharts
+      // Manual campaign data exposes DJ as an airplay channel. Songstats
       // radio data has no equivalent DJ-spins figure, so it remains zero.
       spinCount: Number(airPlayData?.DJ ?? content?.spin_count ?? 0),
       topRadio: stations[0]?.name,
@@ -449,7 +471,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     isAirPlayDataLoading ||
     isAudienceGrowthLoading ||
     Boolean(
-      linkedSong?.uuid &&
+      songIsrc &&
       (isInsightStatsLoading || isRadioLoading || isSocialTractionLoading),
     );
   const insightGridClass = editMode
@@ -477,8 +499,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               </p>
               {linkedSong && insightStats && (
                 <p className="mt-1 font-SansFlex text-[12px] text-muted-foreground">
-                  Airplay, social media, streaming and performance update
-                  automatically. Audience and actions use entered data.
+                  Airplay, social media, actions, streaming and performance
+                  update automatically. Audience uses entered data.
                 </p>
               )}
             </div>
@@ -584,7 +606,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               hasMore={hasMoreRadio}
               isLoadingMore={isLoadingMoreRadio}
               onLoadMore={loadMoreRadio}
-              onLinkSong={() => onRequestEditModeChange?.(true)}
+              onLinkSong={openLinkSong}
               airplayDisabled={airplayDisabled}
               onChooseMarkets={() =>
                 editMode
@@ -663,8 +685,14 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               periodDays={socialTractionPeriodDays}
               loading={isSocialTractionLoading}
               hasError={hasSocialTractionError}
-              isLinked={Boolean(linkedSong?.uuid)}
+              isLinked={Boolean(songIsrc)}
               onRetry={retrySocialTraction}
+              creators={topCreators}
+              creatorsLoading={isTopCreatorsLoading}
+              summaries={[
+                { title: "Social Media", data: socialMediaData },
+                { title: "Actions", data: smactionData },
+              ]}
               onLinkSong={() => {
                 if (editMode) {
                   setLinkSongModal(true);
@@ -751,7 +779,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               hasMore={hasMorePlaylists}
               isLoadingMore={isLoadingMore}
               onLoadMore={loadMorePlaylists}
-              onLinkSong={() => onRequestEditModeChange?.(true)}
+              onLinkSong={openLinkSong}
             />
           </div>
         </div>

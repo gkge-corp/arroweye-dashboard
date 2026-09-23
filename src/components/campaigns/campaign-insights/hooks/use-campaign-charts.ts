@@ -17,10 +17,10 @@ interface ChartsPage {
 }
 
 const fetchCharts = async (
-  uuid: string,
+  isrc: string,
   cursor: ChartsCursor,
 ): Promise<ChartsPage> => {
-  const query = new URLSearchParams({ uuid, offset: String(cursor.offset) });
+  const query = new URLSearchParams({ isrc, offset: String(cursor.offset) });
   if (cursor.platforms?.length) {
     query.set("platforms", cursor.platforms.join(","));
   }
@@ -48,7 +48,7 @@ const fetchCharts = async (
   };
 };
 
-export function useCampaignCharts(uuid?: string) {
+export function useCampaignCharts(isrc?: string) {
   const {
     data,
     isFetching,
@@ -58,11 +58,11 @@ export function useCampaignCharts(uuid?: string) {
     refetch,
     isError,
   } = useInfiniteQuery({
-    queryKey: ["campaign-charts", uuid],
-    queryFn: ({ pageParam }) => fetchCharts(uuid!, pageParam),
+    queryKey: ["campaign-charts", isrc],
+    queryFn: ({ pageParam }) => fetchCharts(isrc!, pageParam),
     initialPageParam: { offset: 0, platforms: null } as ChartsCursor,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    enabled: Boolean(uuid),
+    enabled: Boolean(isrc),
     staleTime: 5 * 60_000,
   });
 

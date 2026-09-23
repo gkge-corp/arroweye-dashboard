@@ -19,15 +19,30 @@ export interface CampaignAudienceGrowth {
   }[];
 }
 
+/**
+ * SOCIAL MEDIA pie: follower growth per network over the campaign. A pie
+ * cannot show losses, so only networks that grew get a slice.
+ */
+export const toSocialGrowthStats = (
+  growth: CampaignAudienceGrowth | undefined,
+) => {
+  if (!growth?.available) return undefined;
+
+  const gains = growth.platforms.filter((entry) => entry.growth > 0);
+  const stats: Record<string, number> = Object.fromEntries(
+    gains.map((entry) => [entry.platform, entry.growth]),
+  );
+  stats.total_count = gains.reduce((sum, entry) => sum + entry.growth, 0);
+  return stats;
+};
+
 const fetchAudienceGrowth = async (
-  uuid: string | undefined,
-  isrc: string | undefined,
+  isrc: string,
   startDate: string,
   endDate?: string,
 ): Promise<CampaignAudienceGrowth> => {
   const query = new URLSearchParams({ startDate });
-  if (uuid) query.set("uuid", uuid);
-  if (isrc) query.set("isrc", isrc);
+  query.set("isrc", isrc);
   if (endDate) query.set("endDate", endDate);
 
   const response = await fetch(`/api/music-analytics/audience-growth?${query}`);
@@ -47,17 +62,16 @@ const fetchAudienceGrowth = async (
 };
 
 export function useCampaignAudienceGrowth(options: {
-  uuid?: string;
   isrc?: string;
   startDate?: string;
   endDate?: string;
   enabled?: boolean;
 }) {
-  const { uuid, isrc, startDate, endDate, enabled = true } = options;
+  const { isrc, startDate, endDate, enabled = true } = options;
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["campaign-audience-growth", uuid, isrc, startDate, endDate],
-    queryFn: () => fetchAudienceGrowth(uuid, isrc, startDate!, endDate),
-    enabled: Boolean((uuid || isrc) && startDate) && enabled,
+    queryKey: ["campaign-audience-growth", isrc, startDate, endDate],
+    queryFn: () => fetchAudienceGrowth(isrc!, startDate!, endDate),
+    enabled: Boolean(isrc && startDate) && enabled,
     staleTime: 5 * 60_000,
   });
 

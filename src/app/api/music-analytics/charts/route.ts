@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { mapWithConcurrency, withRetry } from "@/lib/music-analytics/fan-out";
+import { readCountryName } from "@/lib/music-analytics/country-names";
+import { toSongstatsSource } from "@/lib/music-analytics/platforms";
 import {
-  SoundchartsError,
-  soundchartsRequest,
-} from "@/lib/music-analytics/soundcharts-client";
+  fetchTrackStats,
+  readList,
+  songstatsErrorResponse,
+  type SourceData,
+} from "@/lib/music-analytics/songstats-track-stats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Chart platforms worth polling for this catalogue. The referential endpoint
-// lists 28, but the rest return nothing for Afrobeats releases and every
-// platform costs a call. "airplay" is excluded on purpose: those are per
-// station radio charts, which the Top Radio card already covers.
+// Chart platforms worth polling for this catalogue. Radio airplay is left to
+// the Top Radio card, and Beatport's DJ charts are curated lists, not ranks.
 const platforms = [
   { code: "spotify", label: "Spotify" },
   { code: "apple-music", label: "Apple Music" },
@@ -20,34 +21,56 @@ const platforms = [
   { code: "youtube", label: "YouTube" },
   { code: "deezer", label: "Deezer" },
   { code: "itunes", label: "iTunes" },
-  { code: "beatport", label: "Beatport" },
+  { code: "amazon", label: "Amazon" },
+  { code: "tidal", label: "Tidal" },
   { code: "tiktok", label: "TikTok" },
-  { code: "boomplay", label: "Boomplay" },
-  { code: "audiomack", label: "Audiomack" },
 ] as const;
 
+// Songstats caps expanded lists at 100 per source per call.
 const PAGE_SIZE = 100;
-const CONCURRENCY = 3;
 
-interface ChartRank {
-  chart?: {
-    name?: string;
-    slug?: string;
-    countryName?: string;
-    countryCode?: string;
-    cityName?: string;
-    webUrl?: string;
-  };
-  position?: number;
-  peakPosition?: number;
-  peakDate?: string;
-  entryDate?: string;
-  timeOnChart?: number;
-  timeOnChartUnit?: string;
+interface ChartEntry {
+  shazamid?: string;
+  applemusicid?: string;
+  deezerid?: string;
+  location_type?: string;
+  name?: string;
+  external_url?: string;
+  current_position?: number | null;
+  top_position?: number | null;
+  top_position_date?: string | null;
 }
 
+/**
+ * Apple Music, iTunes and Amazon keep single charts in `track_charts`; the
+ * rest use `charts`. Album charts are not the song's own placement.
+ */
+const readCharts = (data: SourceData | undefined) => [
+  ...readList<ChartEntry>(data, "charts"),
+  ...readList<ChartEntry>(data, "track_charts"),
+];
+
+/**
+ * Only Shazam tags a chart's location. Apple chart ids embed the country
+ * (`CHARTS-br-17`); elsewhere the country is only in the chart name.
+ */
+const readLocation = (entry: ChartEntry) => {
+  if (entry.location_type === "Country") {
+    return { country: entry.name ?? "", city: "" };
+  }
+  if (entry.location_type === "City") {
+    return { country: "", city: entry.name ?? "" };
+  }
+
+  const appleCountry = entry.applemusicid?.match(/^CHARTS-([a-z]{2})-/i)?.[1];
+  return {
+    country: appleCountry ? readCountryName(appleCountry) : "",
+    city: "",
+  };
+};
+
 export async function GET(request: NextRequest) {
-  const uuid = request.nextUrl.searchParams.get("uuid")?.trim();
+  const isrc = request.nextUrl.searchParams.get("isrc")?.trim();
   const offset = Number(request.nextUrl.searchParams.get("offset") ?? 0);
 
   const requested = request.nextUrl.searchParams.get("platforms")?.trim();
@@ -56,88 +79,58 @@ export async function GET(request: NextRequest) {
     ? platforms.filter((platform) => requestedCodes.has(platform.code))
     : platforms;
 
-  if (!uuid) {
+  if (!isrc) {
     return NextResponse.json(
-      { error: "Provide a song uuid.", code: "MISSING_UUID" },
+      { error: "Provide the song's ISRC.", code: "MISSING_ISRC" },
       { status: 400 },
     );
   }
 
   try {
     const page = Number.isFinite(offset) && offset > 0 ? offset : 0;
-    const failedPlatforms: string[] = [];
-
-    const results = await mapWithConcurrency(
-      targetPlatforms,
-      CONCURRENCY,
-      async (platform) => {
-        try {
-          const payload = await withRetry(() =>
-            soundchartsRequest<{ items?: ChartRank[] }>(
-              `/api/v2/song/${uuid}/charts/ranks/${platform.code}?currentOnly=1&offset=${page}&limit=${PAGE_SIZE}&sortBy=position&sortOrder=asc`,
-            ),
-          );
-
-          return (payload.items ?? [])
-            // Historical rows come back with position 0, meaning the song has
-            // dropped off that chart. Only live placements belong here.
-            .filter((entry) => Number(entry.position) > 0)
-            .map((entry) => ({
-              id: `${platform.code}-${entry.chart?.slug ?? entry.chart?.name}-${entry.position}`,
-              name: entry.chart?.name ?? "Untitled chart",
-              platform: platform.label,
-              country: entry.chart?.countryName ?? entry.chart?.countryCode ?? "",
-              city: entry.chart?.cityName ?? "",
-              position: Number(entry.position),
-              peakPosition: Number(entry.peakPosition ?? 0),
-              peakDate: entry.peakDate ?? "",
-              url: entry.chart?.webUrl ?? "",
-            }));
-        } catch (error) {
-          if (error instanceof SoundchartsError && error.status === 404) {
-            return [];
-          }
-
-          failedPlatforms.push(platform.label);
-          console.error(
-            `Soundcharts charts failed for ${platform.code}:`,
-            error,
-          );
-          return [];
-        }
-      },
+    const stats = await fetchTrackStats(
+      isrc,
+      targetPlatforms.map((platform) => toSongstatsSource(platform.code)),
+      { with_charts: true, only_current: true, offset: page, limit: PAGE_SIZE },
     );
 
-    const remainingPlatforms = targetPlatforms
-      .filter(
-        (platform, index) =>
-          results[index].length === PAGE_SIZE ||
-          failedPlatforms.includes(platform.label),
-      )
-      .map((platform) => platform.code);
+    const results = targetPlatforms.map((platform) => {
+      const entries = readCharts(stats.get(toSongstatsSource(platform.code)));
 
-    const items = results.flat().sort((a, b) => a.position - b.position);
+      return {
+        platform,
+        isFull: entries.length >= PAGE_SIZE,
+        items: entries
+          // `only_current` should already drop exits; guard in case a row
+          // slips through with no live position.
+          .filter((entry) => Number(entry.current_position) > 0)
+          .map((entry) => ({
+            id: `${platform.code}-${entry.shazamid ?? entry.applemusicid ?? entry.deezerid ?? entry.name}`,
+            name: entry.name ?? "Untitled chart",
+            platform: platform.label,
+            ...readLocation(entry),
+            position: Number(entry.current_position),
+            peakPosition: Number(entry.top_position ?? 0),
+            peakDate: entry.top_position_date ?? "",
+            url: entry.external_url ?? "",
+          })),
+      };
+    });
+
+    const remainingPlatforms = results
+      .filter((result) => result.isFull)
+      .map((result) => result.platform.code);
 
     return NextResponse.json({
-      items,
-      nextOffset:
-        remainingPlatforms.length > 0 ? (page || 0) + PAGE_SIZE : null,
+      items: results
+        .flatMap((result) => result.items)
+        .sort((a, b) => a.position - b.position),
+      nextOffset: remainingPlatforms.length > 0 ? page + PAGE_SIZE : null,
       nextPlatforms: remainingPlatforms,
-      failedPlatforms,
+      failedPlatforms: [],
     });
   } catch (error) {
-    console.error("Soundcharts charts failed:", error);
-
-    if (error instanceof SoundchartsError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status },
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Could not reach the analytics provider.", code: "UNKNOWN" },
-      { status: 502 },
-    );
+    console.error("Songstats charts failed:", error);
+    return songstatsErrorResponse(error);
   }
 }

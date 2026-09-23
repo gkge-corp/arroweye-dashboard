@@ -52,7 +52,6 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
     (content as any)?.song_isrc ?? (content as any)?.isrc ?? linkedSong?.isrc;
   const { audienceGrowth, isAudienceGrowthLoading } = useCampaignAudienceGrowth(
     {
-      uuid: linkedSong?.uuid,
       isrc: campaignIsrc,
       startDate: campaignStartDate,
       endDate: campaignEndDate,
@@ -138,7 +137,7 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
             }
             info={
               !isAdvertiser
-                ? "Net change in the artist's followers and subscribers across tracked platforms during this campaign, based on Soundcharts. People following on multiple platforms may be counted more than once."
+                ? "Net change in the artist's followers and subscribers across tracked platforms during this campaign"
                 : "The total number of Shazams during this campaign"
             }
           />

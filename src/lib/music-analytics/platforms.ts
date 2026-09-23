@@ -3,16 +3,13 @@ export interface AnalyticsPlatform {
   label: string;
 }
 
-/** Each of these costs one Soundcharts call per page of playlist placements. */
+/** Platforms Songstats lists individual playlist placements for. */
 export const PLAYLIST_PLATFORMS: AnalyticsPlatform[] = [
   { code: "spotify", label: "Spotify" },
   { code: "apple-music", label: "Apple Music" },
   { code: "deezer", label: "Deezer" },
   { code: "amazon", label: "Amazon" },
   { code: "youtube", label: "YouTube" },
-  { code: "audiomack", label: "Audiomack" },
-  { code: "boomplay", label: "Boomplay" },
-  { code: "soundcloud", label: "SoundCloud" },
   { code: "tidal", label: "Tidal" },
 ];
 
@@ -21,7 +18,7 @@ export const DISCOVERY_PLATFORMS: AnalyticsPlatform[] = [
   { code: "shazam", label: "Shazam" },
 ];
 
-/** Each of these costs one Soundcharts call for the playlist reach split. */
+/** Platforms read for the playlist reach split. */
 export const REACH_PLATFORMS: AnalyticsPlatform[] = [
   { code: "spotify", label: "Spotify" },
   { code: "apple-music", label: "Apple Music" },
@@ -53,3 +50,30 @@ export const ARTIST_SOCIAL_PLATFORMS: AnalyticsPlatform[] = [
   { code: "youtube", label: "YouTube" },
   { code: "tiktok", label: "TikTok" },
 ];
+
+/**
+ * App platform code -> Songstats `source`. Platforms Songstats does not cover
+ * (Audiomack, Boomplay) are absent, so callers skip them.
+ */
+const SONGSTATS_SOURCES: Record<string, string> = {
+  spotify: "spotify",
+  "apple-music": "apple_music",
+  amazon: "amazon",
+  deezer: "deezer",
+  youtube: "youtube",
+  tidal: "tidal",
+  soundcloud: "soundcloud",
+  shazam: "shazam",
+  itunes: "itunes",
+  tiktok: "tiktok",
+  instagram: "instagram",
+  facebook: "facebook",
+  twitter: "twitter",
+};
+
+export const toSongstatsSource = (code: string) => SONGSTATS_SOURCES[code];
+
+export const fromSongstatsSource = (source: string) =>
+  Object.keys(SONGSTATS_SOURCES).find(
+    (code) => SONGSTATS_SOURCES[code] === source,
+  ) ?? source;
