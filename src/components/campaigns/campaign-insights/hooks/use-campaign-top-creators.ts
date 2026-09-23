@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import type { CreatorRow } from "../top-creators-list";
+import type { CreatorRow } from "../top-creators-card";
 
 const fetchTopCreators = async (isrc: string): Promise<CreatorRow[]> => {
   const response = await fetch(

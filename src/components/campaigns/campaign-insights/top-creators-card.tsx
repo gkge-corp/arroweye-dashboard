@@ -1,9 +1,12 @@
 "use client";
 
 import React from "react";
+import { toast } from "sonner";
 
 import { DataList, type DataListColumn } from "@/components/ui/data-list";
-import type { CsvColumn } from "@/lib/csv";
+import { saveCsv, type CsvColumn } from "@/lib/csv";
+
+import { buildSocialColumnCsv, type ColumnSummary } from "./social-column-csv";
 
 export interface CreatorRow {
   id: string;
@@ -18,9 +21,13 @@ export interface CreatorRow {
   url: string;
 }
 
-interface TopCreatorsListProps {
+interface TopCreatorsCardProps {
   creators: CreatorRow[];
   loading?: boolean;
+  isLinked?: boolean;
+  onLinkSong?: () => void;
+  /** Charts above the card in the same column, included in its download. */
+  summaries?: ColumnSummary[];
 }
 
 const compactNumber = new Intl.NumberFormat("en", {
@@ -90,26 +97,56 @@ const columns: DataListColumn<CreatorRow>[] = [
 ];
 
 /**
- * Creators who drove the most views with the song. Rendered inside the Social
- * Traction card, under the platform table; the card's download exports it.
+ * Creators who drove the most views with the song. It closes the social
+ * column, so its download exports the whole column.
  */
-export function TopCreatorsList({
+export function TopCreatorsCard({
   creators,
   loading = false,
-}: TopCreatorsListProps) {
+  isLinked = false,
+  onLinkSong,
+  summaries = [],
+}: TopCreatorsCardProps) {
+  const columnCsv = buildSocialColumnCsv({ summaries, creators });
+
+  const handleDownload = () => {
+    if (!columnCsv) {
+      toast.error("No data to download");
+      return;
+    }
+
+    saveCsv("social-media.csv", columnCsv);
+  };
+
   return (
-    <div className="border-t pt-[20px]">
-      <DataList
-        title="Top Creators"
-        label="creator"
-        columns={columns}
-        rows={creators}
-        getRowKey={(row) => row.id}
-        showRank
-        loading={loading}
-      />
-    </div>
+    <DataList
+      title="Top Creators"
+      label="creator"
+      columns={columns}
+      rows={creators}
+      getRowKey={(row) => row.id}
+      showRank
+      loading={loading}
+      emptyMessage={
+        isLinked ? undefined : "Link this song to load creator data"
+      }
+      emptyAction={
+        !isLinked && onLinkSong
+          ? { label: "Link this song", onClick: onLinkSong }
+          : undefined
+      }
+      footer={
+        <button
+          type="button"
+          className="p-2 font-SansFlex text-[16px] font-[500] w-full rounded-full text-white dark:text-zinc-950 text-center cursor-pointer hover:bg-orange-500 dark:hover:bg-orange-500 dark:hover:text-white bg-black dark:bg-zinc-100 inline-flex items-center gap-2 justify-center disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-black dark:disabled:hover:bg-zinc-100 active:scale-[0.97]"
+          onClick={handleDownload}
+          disabled={!columnCsv || loading}
+        >
+          <p>Download Data</p>
+        </button>
+      }
+    />
   );
 }
 
-export default TopCreatorsList;
+export default TopCreatorsCard;
