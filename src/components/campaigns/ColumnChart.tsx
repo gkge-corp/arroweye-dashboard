@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/chart";
 import { ChartFilterSelect } from "./chart-filter-select";
 import { ChartInfoTooltip } from "./chart-info-tooltip";
-import { EmptyInsightChartCard } from "./EmptyInsightChartCard";
 import { InsightChartSkeleton } from "./InsightChartSkeleton";
 
 const CHART_FONT_FAMILY = "Google Sans Flex, sans-serif";
 
+const emptyChartColor = "#d4d4d8";
+const emptyChartFillColor = "color-mix(in srgb, #d4d4d8 28%, transparent)";
 type ChartFilterState = {
   weeks?: string;
   lifetime?: string;
@@ -62,6 +63,20 @@ const getDatasetColor = (colors: unknown, index: number, fallback: string) => {
 
   return typeof colors === "string" ? colors : fallback;
 };
+
+// Staggered heights so the empty state still reads as a bar chart.
+const emptyData: ChartDataItem[] = [3, 5, 2, 4, 3].map((value, index) => {
+  const segment = `segment-${index}`;
+  return {
+    segment,
+    name: " ".repeat(index + 1),
+    value,
+    fill: `var(--color-${segment})`,
+    stroke: `var(--color-${segment}-border)`,
+    color: emptyChartColor,
+    darkColor: "var(--muted)",
+  };
+});
 
 const getLightChartFillColor = (color: string) =>
   `color-mix(in srgb, ${color} 20%, transparent)`;
@@ -117,16 +132,23 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
   };
 
   const data = formatDataForRecharts();
+  const hasChartData = data.length > 0;
+  const displayData = hasChartData ? data : emptyData;
   const visibleData = useMemo(
-    () => data.filter((item) => !hiddenSegments.has(item.segment)),
-    [data, hiddenSegments],
+    () =>
+      hasChartData
+        ? data.filter((item) => !hiddenSegments.has(item.segment))
+        : emptyData,
+    [data, hasChartData, hiddenSegments],
   );
-  const chartConfig = data.reduce<ChartConfig>(
+  const chartConfig = displayData.reduce<ChartConfig>(
     (config, item) => ({
       ...config,
       [item.segment]: {
         theme: {
-          light: getLightChartFillColor(item.color),
+          light: hasChartData
+            ? getLightChartFillColor(item.color)
+            : emptyChartFillColor,
           dark: item.darkColor,
         },
       },
@@ -139,7 +161,6 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
     }),
     { value: { label: title, color: "var(--chart-1)" } },
   );
-  const hasChartData = data.length > 0;
 
   const weeksOptions = [
     { value: "", label: "Weeks" },
@@ -172,10 +193,6 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
         showFilter={Boolean(selectOptions)}
       />
     );
-  }
-
-  if (!hasChartData) {
-    return <EmptyInsightChartCard />;
   }
 
   const displayValue = Number(value) > 0 ? value : 0;
@@ -295,32 +312,35 @@ const ColumnChart = <TFilters extends ChartFilterState = ChartFilterState>({
               <YAxis
                 axisLine={false}
                 tickLine={false}
+                hide={!hasChartData}
                 tick={{
                   fontSize: 12,
                   fill: "var(--muted-foreground)",
                   fontFamily: CHART_FONT_FAMILY,
                 }}
               />
-              <ChartTooltip
-                cursor={false}
-                content={
-                  <ChartTooltipContent
-                    hideLabel
-                    formatter={(hoveredValue, _dataKey, item) => (
-                      <div className="flex min-w-28 items-center justify-between gap-5">
-                        <span className="text-muted-foreground">
-                          {item.payload?.name}
-                        </span>
-                        <span className="font-mono font-medium text-foreground tabular-nums">
-                          {typeof hoveredValue === "number"
-                            ? hoveredValue.toLocaleString()
-                            : String(hoveredValue)}
-                        </span>
-                      </div>
-                    )}
-                  />
-                }
-              />
+              {hasChartData && (
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      hideLabel
+                      formatter={(hoveredValue, _dataKey, item) => (
+                        <div className="flex min-w-28 items-center justify-between gap-5">
+                          <span className="text-muted-foreground">
+                            {item.payload?.name}
+                          </span>
+                          <span className="font-mono font-medium text-foreground tabular-nums">
+                            {typeof hoveredValue === "number"
+                              ? hoveredValue.toLocaleString()
+                              : String(hoveredValue)}
+                          </span>
+                        </div>
+                      )}
+                    />
+                  }
+                />
+              )}
               <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                 {visibleData.map((entry, index) => (
                   <Cell

@@ -27,12 +27,16 @@ const daysAgo = (days: number) => {
 export async function GET(request: NextRequest) {
   const isrc = request.nextUrl.searchParams.get("isrc")?.trim();
   const offset = Number(request.nextUrl.searchParams.get("offset") ?? 0);
+  const today = daysAgo(0);
+  const requestedStart = asDate(request.nextUrl.searchParams.get("startDate"));
+  const requestedEnd = asDate(request.nextUrl.searchParams.get("endDate"));
+  const endDate = !requestedEnd || requestedEnd > today ? today : requestedEnd;
+  // Same window insight stats counts over, so station spins add up to the
+  // AIRPLAY total: the campaign, or recent days before it starts.
   const startDate =
-    asDate(request.nextUrl.searchParams.get("startDate")) ??
-    daysAgo(DEFAULT_WINDOW_DAYS);
-  const endDate =
-    asDate(request.nextUrl.searchParams.get("endDate")) ??
-    new Date().toISOString().slice(0, 10);
+    requestedStart && requestedStart <= endDate
+      ? requestedStart
+      : daysAgo(DEFAULT_WINDOW_DAYS);
   const countryParam = request.nextUrl.searchParams.get("countries");
   const selectedCountries = countryParam
     ? new Set(

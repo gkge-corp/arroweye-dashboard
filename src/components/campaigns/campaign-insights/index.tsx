@@ -1,9 +1,6 @@
 "use client";
 import React from "react";
-import AddData from "../AddData";
 import AddMedia from "../AddMedia";
-import AddDataSocials from "../AddDataSocials";
-import AddDataDsp from "../AddDataDsp";
 import { Plus, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PieChart from "@/app/(dashboard)/payments/component/PieChart";
@@ -20,7 +17,7 @@ import {
 import { useCampaignInsights } from "./hooks/use-campaign-insights";
 import { useCampaignSong } from "@/hooks/use-campaign-song";
 import {
-  toSocialGrowthStats,
+  toSocialMediaStats,
   useCampaignAudienceGrowth,
 } from "@/hooks/use-campaign-audience-growth";
 import { useCampaignPlaylists } from "./hooks/use-campaign-playlists";
@@ -56,38 +53,6 @@ const toDateOnly = (value: unknown) => {
     ? undefined
     : date.toISOString().slice(0, 10);
 };
-
-const selectOptions = [
-  [
-    { value: "nigeria", label: "Nigeria" },
-    { value: "UK", label: "UK" },
-    { value: "ghana", label: "Ghana" },
-    { value: "kenya", label: "Kenya" },
-    { value: "ivoryCoast", label: "Ivory Coast" },
-  ],
-];
-const selectOptionsAudience = [
-  [
-    { value: "", label: "Channels" },
-    { value: "Radio", label: "Radio" },
-    { value: "DJ", label: "DJ" },
-    { value: "TV", label: "Local TV" },
-    { value: "Cable", label: "Cable" },
-  ],
-];
-
-const countryFlags = [
-  { flag: "🇺🇸", name: "United States" },
-  { flag: "🇬🇧", name: "United Kingdom" },
-  { flag: "🇨🇦", name: "Canada" },
-  { flag: "🇦🇺", name: "Australia" },
-  { flag: "🇮🇳", name: "India" },
-  { flag: "🇯🇵", name: "Japan" },
-  { flag: "🇮🇹", name: "Italy" },
-  { flag: "🇨🇳", name: "China" },
-  { flag: "🇫🇷", name: "France" },
-  { flag: "🇩🇪", name: "Germany" },
-];
 
 const editActionButtonClassName =
   "h-11 w-full justify-start rounded-[8px] border-zinc-300 !bg-white px-5 text-sm font-medium !text-zinc-950 shadow-none hover:!bg-zinc-100 hover:!text-zinc-950 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-violet-500/25";
@@ -139,6 +104,10 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     },
   );
   const hasIsrc = Boolean(songIsrc);
+  const socialMediaStats = React.useMemo(
+    () => toSocialMediaStats(audienceGrowth),
+    [audienceGrowth],
+  );
   const [sourcesModal, setSourcesModal] = React.useState(false);
   const [sourcesScope, setSourcesScope] =
     React.useState<InsightSourceScope>("airplay");
@@ -182,11 +151,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   const { topCreators, isTopCreatorsLoading } =
     useCampaignTopCreators(songIsrc);
   const shazamRow = socialTraction.find((item) => item.id === "shazam");
-  const rawShazamFallback =
-    content?.kpis?.shazams_count ??
-    content?.shazams_count ??
-    content?.campaign?.kpis?.shazams_count;
-  const parsedShazamFallback = Number(rawShazamFallback);
   // STREAMING counts Shazams gained during the campaign, so the campaign
   // figure wins over the all-time count in the traction data.
   const shazamValue =
@@ -194,12 +158,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       ? insightStats.dsp.Shazam
       : typeof shazamRow?.value === "number"
         ? shazamRow.value
-        : rawShazamFallback !== null &&
-            rawShazamFallback !== undefined &&
-            rawShazamFallback !== "" &&
-            Number.isFinite(parsedShazamFallback)
-          ? parsedShazamFallback
-          : null;
+        : null;
 
   // Songstats reports plays for platforms with no playlist list (SoundCloud),
   // so the STREAMING chart can show more than the playlist picker lists.
@@ -280,47 +239,28 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   const {
     initialTab,
     setInitialTab,
-    addDataModal,
-    setAddDataModal,
-    addDataModalSocial,
-    setAddDataModalSocial,
     addMediaModal,
     setAddMediaModal,
-    addDspModal,
-    setAddDspModal,
     airPlayData,
     socialMediaData,
     dspData,
     audienceData,
     smactionData,
     dspPerformanceData,
-    setSocialMediaPlatformFilters,
-    setSocialMediaActionsFilters,
-    setDspFilters,
-    setDspPerformanceFilters,
     chartDataForDoughnutAirplay,
     chartDataForDoughnutSMAction,
     chartDataForPie,
     pieChartDataAudience,
     pieChartDataDSPPerformance,
     chartDataForBar,
-    isAirPlayDataLoading,
-    isSocialMediaDataLoading,
-    isDspDataLoading,
-    isAudienceDataLoading,
-    isSmActionDataLoading,
-    isDspPerformanceDataLoading,
-    onAddSocialMediaDataSuccess,
-    onAddDataSuccess,
-    onAddDataDspSuccess,
+    discoveryAndStreamingTotal,
     targetRef,
   } = useCampaignInsights({
     content,
-    refreshContent,
     discoveryData: discoveryChartData,
-    statsOverrides: {
+    stats: {
       ...insightStats,
-      socialMedia: toSocialGrowthStats(audienceGrowth),
+      socialMedia: socialMediaStats?.stats,
       dsp: visibleDsp,
       airplayByCountry: airplayDisabled
         ? { total_count: 0 }
@@ -353,6 +293,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   } = useCampaignRadio(songIsrc, {
     enabled: marketsLoaded && !airplayDisabled,
     countries: selectedMarkets,
+    startDate: campaignStartDate,
+    endDate: campaignEndDate,
   });
   const songTitle =
     content?.title || content?.song_title || content?.campaign?.song_title;
@@ -395,9 +337,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       socialMedia: socialMediaData ?? {},
       actions: smactionData ?? {},
       performance: dspPerformanceData ?? {},
-      // Manual campaign data exposes DJ as an airplay channel. Songstats
-      // radio data has no equivalent DJ-spins figure, so it remains zero.
-      spinCount: Number(airPlayData?.DJ ?? content?.spin_count ?? 0),
+      spinCount: Number(content?.spin_count ?? 0),
       topRadio: stations[0]?.name,
       audienceGrowth:
         audienceGrowth?.available && audienceGrowth.totalGrowth !== null
@@ -449,9 +389,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     audienceGrowth,
     audienceData,
     content?.spin_count,
-    content?.kpis?.shazams_count,
-    content?.shazams_count,
-    content?.campaign?.kpis?.shazams_count,
     dspData,
     dspPerformanceData,
     smactionData,
@@ -462,7 +399,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     stations,
   ]);
   const reportLoading =
-    isAirPlayDataLoading ||
     isAudienceGrowthLoading ||
     Boolean(
       songIsrc &&
@@ -492,7 +428,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               {linkedIsrc && insightStats && (
                 <p className="mt-1 font-SansFlex text-[12px] text-muted-foreground">
                   Airplay, social media, actions, streaming and performance
-                  update automatically. Audience uses entered data.
+                  update automatically.
                 </p>
               )}
             </div>
@@ -527,15 +463,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                       type="button"
                       variant="outline"
                       className={editActionButtonClassName}
-                      onClick={() => setAddDataModal(true)}
-                    >
-                      <Plus className="size-4" />
-                      Add data
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={editActionButtonClassName}
                       onClick={() => {
                         setInitialTab("moments");
                         setAddMediaModal(true);
@@ -554,7 +481,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 title="AIRPLAY"
                 value={airPlayData?.total_count ?? 0}
                 chartData={chartDataForDoughnutAirplay}
-                isLoading={isAirPlayDataLoading}
+                isLoading={isInsightStatsLoading}
                 info="Estimated total number of airplay instances this campaign received across radio, television, and DJ/club activations."
                 emptyMessage={
                   airplayDisabled
@@ -585,7 +512,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 title="AUDIENCE"
                 value={audienceData?.total_count ?? 0}
                 chartData={pieChartDataAudience}
-                isLoading={isAudienceDataLoading}
                 info="Estimated total number of listeners and viewers reached on radio and television. This data is based on the audience size of the channels where your music was featured."
               />
             </div>
@@ -626,15 +552,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                       type="button"
                       variant="outline"
                       className={editActionButtonClassName}
-                      onClick={() => setAddDataModalSocial(true)}
-                    >
-                      <Plus className="size-4" />
-                      Add data
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={editActionButtonClassName}
                       onClick={() => {
                         setInitialTab("Recap");
                         setAddMediaModal(true);
@@ -652,11 +569,10 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               <PieChart
                 title="SOCIAL MEDIA"
                 value={socialMediaData?.total_count ?? 0}
+                segmentNotes={socialMediaStats?.notes}
                 chartData={chartDataForPie}
-                isLoading={isSocialMediaDataLoading}
-                setFilters={setSocialMediaPlatformFilters}
-                selectOptionsBottom={selectOptionsAudience}
-                info="Estimated total recorded actions and engagements across individual social media platforms."
+                isLoading={isAudienceGrowthLoading}
+                info="The artist's current followers on each social platform. Hover a platform to see its growth during this campaign."
               />
             </div>
 
@@ -665,10 +581,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 title="ACTIONS"
                 value={smactionData?.total_count ?? 0}
                 chartData={chartDataForDoughnutSMAction}
-                isLoading={isSmActionDataLoading}
-                setFilters={setSocialMediaActionsFilters}
-                selectOptionsBottom={selectOptionsAudience}
-                info="Estimated breakdown of engagement and interactions recorded across social media platforms."
+                isLoading={isInsightStatsLoading}
+                info="Current views, likes, comments and shares on videos using this song across TikTok, Instagram and YouTube."
               />
             </div>
 
@@ -709,15 +623,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                       type="button"
                       variant="outline"
                       className={editActionButtonClassName}
-                      onClick={() => setAddDspModal(true)}
-                    >
-                      <Plus className="size-4" />
-                      Add data
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={editActionButtonClassName}
                       onClick={() => {
                         setInitialTab("Dsp");
                         setAddMediaModal(true);
@@ -734,12 +639,9 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
             <div className="  border-b pb-[20px] ">
               <ColumnChart
                 title="DISCOVERY AND STREAMING"
-                value={dspData?.total_count ?? 0}
-                valueLabel="Streaming total"
+                value={discoveryAndStreamingTotal}
                 chartData={chartDataForBar}
-                isLoading={isDspDataLoading}
-                setFilters={setDspFilters}
-                selectOptionsBottom={selectOptions}
+                isLoading={isInsightStatsLoading}
                 info="Streams and views gained during this campaign, shown by DSP, with Shazam recognitions included as a separate discovery signal."
               />
             </div>
@@ -748,10 +650,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               <PieChart
                 title="PERFORMANCE "
                 value={dspPerformanceData?.total_count ?? 0}
-                selectOptionsBottom={selectOptions}
                 chartData={pieChartDataDSPPerformance}
-                isLoading={isDspPerformanceDataLoading}
-                setFilters={setDspPerformanceFilters}
+                isLoading={isInsightStatsLoading}
                 info="Playlist reach split by how each placement was curated: editorial playlists programmed by the platform, user-created playlists, and algorithmic or radio placements. These figures are estimates;"
               />
             </div>
@@ -771,18 +671,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
           </div>
         </div>
       </div>
-      <AddData
-        visible={addDataModal}
-        onHide={() => setAddDataModal(false)}
-        onAddDataSuccess={onAddDataSuccess}
-        existingAirPlayData={content?.project_airplay}
-      />
-      <AddDataSocials
-        visible={addDataModalSocial}
-        onHide={() => setAddDataModalSocial(false)}
-        onAddDataSuccess={onAddSocialMediaDataSuccess}
-        existingSocialMediaData={content?.project_sm}
-      />
       <AddMedia
         visible={addMediaModal}
         onHide={() => setAddMediaModal(false)}
@@ -809,13 +697,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
         artistName={content?.artist_name}
         onOpenChange={setLinkSongModal}
         onLink={linkSong}
-      />
-
-      <AddDataDsp
-        visible={addDspModal}
-        onHide={() => setAddDspModal(false)}
-        onAddDataSuccess={onAddDataDspSuccess}
-        existingDSPData={content?.project_dsp}
       />
 
       <BottomDock

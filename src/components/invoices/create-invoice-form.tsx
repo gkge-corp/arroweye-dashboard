@@ -39,6 +39,12 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   Ethereum: "Ξ",
 };
 
+// ISO 3901: country (2 letters), registrant (3 alphanumerics), year and
+// designation (7 digits). Hyphens are common on distributor sheets.
+const ISRC_PATTERN = /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/;
+const normalizeIsrc = (value: string) =>
+  value.replace(/[-\s]/g, "").toUpperCase();
+
 const formatAmount = (currency: string | number | undefined, value: number) =>
   `${CURRENCY_SYMBOLS[String(currency)] ?? "₦"}${value.toFixed(2)}`;
 interface Item {
@@ -60,6 +66,7 @@ type ProjectErrors = {
   vendor_id: string | null;
   subvendor_id: string | number | null;
   artist_name: string | null;
+  isrc: string;
   discount: string | null;
   po_code: string;
   currency: string;
@@ -72,6 +79,7 @@ interface ProjectFormData {
   vendor_id: string | number;
   subvendor_id: string | number;
   artist_name: string;
+  isrc: string;
   discount: number;
   po_code: string;
   currency: string | number;
@@ -252,6 +260,7 @@ const CreateInvoiceForm = () => {
     vendor_id: "",
     subvendor_id: "",
     artist_name: "",
+    isrc: "",
     discount: 0,
     po_code: "",
     currency: "",
@@ -269,6 +278,7 @@ const CreateInvoiceForm = () => {
     vendor_id: "",
     subvendor_id: "",
     artist_name: "",
+    isrc: "",
     discount: "",
     po_code: "",
     currency: "",
@@ -297,6 +307,7 @@ const CreateInvoiceForm = () => {
       vendor_id: null,
       subvendor_id: null,
       artist_name: "",
+      isrc: "",
       discount: "",
       po_code: "",
       currency: "",
@@ -319,6 +330,11 @@ const CreateInvoiceForm = () => {
     }
     if (!projectFormData.artist_name) {
       newErrors.artist_name = "Please enter an Artist Name.";
+    }
+    if (!projectFormData.isrc) {
+      newErrors.isrc = "Please enter an ISRC.";
+    } else if (!ISRC_PATTERN.test(normalizeIsrc(projectFormData.isrc))) {
+      newErrors.isrc = "Please enter a valid ISRC, e.g. USRC17607839.";
     }
     if (projectFormData.discount < 0 || projectFormData.discount > 100) {
       newErrors.discount = "Please enter a Discount value between 0 and 100%.";
@@ -361,6 +377,7 @@ const CreateInvoiceForm = () => {
         subvendor_id: projectFormData.subvendor_id
           ? parseInt(projectFormData.subvendor_id.toString())
           : null,
+        isrc: normalizeIsrc(projectFormData.isrc),
         // cost: customCost,
       };
 
@@ -543,6 +560,23 @@ const CreateInvoiceForm = () => {
                 />
                 {projectErrors.artist_name && (
                   <p className={ERROR_CLASS}>{projectErrors.artist_name}</p>
+                )}
+              </div>
+
+              <div className="w-full">
+                <Input
+                  label="ISRC"
+                  type="text"
+                  name="isrc"
+                  placeholder="USRC17607839"
+                  info="The song's ISRC. It links the campaign to its recording so insights load automatically."
+                  value={projectFormData.isrc}
+                  onChange={handleInputChange}
+                  labelClassName={LABEL_CLASS}
+                  className={`${INPUT_CLASS} uppercase`}
+                />
+                {projectErrors.isrc && (
+                  <p className={ERROR_CLASS}>{projectErrors.isrc}</p>
                 )}
               </div>
 

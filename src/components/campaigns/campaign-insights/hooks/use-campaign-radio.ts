@@ -10,13 +10,21 @@ interface RadioPage {
   nextOffset: number | null;
 }
 
+interface RadioWindow {
+  startDate?: string;
+  endDate?: string;
+}
+
 const fetchTopRadio = async (
   isrc: string,
   offset: number,
   countries: string[] | null,
+  window: RadioWindow,
 ): Promise<RadioPage> => {
   const query = new URLSearchParams({ isrc, offset: String(offset) });
   if (countries) query.set("countries", countries.join(","));
+  if (window.startDate) query.set("startDate", window.startDate);
+  if (window.endDate) query.set("endDate", window.endDate);
   const response = await fetch(`/api/music-analytics/top-radio?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: RadioRow[];
@@ -33,9 +41,11 @@ const fetchTopRadio = async (
 
 export function useCampaignRadio(
   isrc?: string,
-  options?: { enabled?: boolean; countries?: string[] | null },
+  options?: { enabled?: boolean; countries?: string[] | null } & RadioWindow,
 ) {
   const countries = options?.countries ?? null;
+  const startDate = options?.startDate;
+  const endDate = options?.endDate;
   const {
     data,
     isFetching,
@@ -44,8 +54,9 @@ export function useCampaignRadio(
     fetchNextPage,
     isError,
   } = useInfiniteQuery({
-    queryKey: ["campaign-top-radio", isrc, countries],
-    queryFn: ({ pageParam }) => fetchTopRadio(isrc!, pageParam, countries),
+    queryKey: ["campaign-top-radio", isrc, countries, startDate, endDate],
+    queryFn: ({ pageParam }) =>
+      fetchTopRadio(isrc!, pageParam, countries, { startDate, endDate }),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextOffset,
     enabled: Boolean(isrc) && (options?.enabled ?? true),

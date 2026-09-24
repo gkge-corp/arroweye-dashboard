@@ -171,7 +171,7 @@ const readGrowth = (history: HistoryPoint[], field: string) => {
 type Histories = Map<string, HistoryPoint[]>;
 
 /**
- * Daily history over the campaign for every source ACTIONS and STREAMING
+ * Daily history over the campaign for every source STREAMING
  * read, in one call. Points are sorted oldest first per source.
  */
 const readCampaignHistory = async (
@@ -184,12 +184,7 @@ const readCampaignHistory = async (
       stats?: { source?: string; data?: { history?: HistoryPoint[] } }[];
     }>("/tracks/historic_stats", {
       isrc: normalizeIsrc(isrc),
-      source: [
-        ...new Set([
-          ...Object.keys(ACTION_FIELDS),
-          ...DSP_METRICS.map((metric) => metric.source),
-        ]),
-      ],
+      source: DSP_METRICS.map((metric) => metric.source),
       start_date: startDate,
       end_date: endDate,
     }),
@@ -205,12 +200,12 @@ const readCampaignHistory = async (
   );
 };
 
-const summarizeActions = (histories: Histories) => {
+/** Current running totals per action, so ACTIONS renders from day one. */
+const summarizeActionTotals = (stats: Map<string, SourceData>) => {
   const entries: [string, number][] = [];
   for (const [source, fields] of Object.entries(ACTION_FIELDS)) {
-    const history = histories.get(source) ?? [];
     for (const [action, field] of Object.entries(fields)) {
-      entries.push([action, readGrowth(history, field)]);
+      entries.push([action, readNumber(stats.get(source), field)]);
     }
   }
   return withTotal(entries);
@@ -224,10 +219,13 @@ const readCampaignPlays = (histories: Histories, metric: DspMetric) =>
  * Spins per country over the window, so the markets picker can filter without
  * another call. Reads the same first page Top Radio does.
  */
-const readAirplay = async (isrc: string) => {
+const readAirplay = async (
+  isrc: string,
+  window: { startDate: string; endDate: string },
+) => {
   const stations = await fetchRadioStations(isrc);
-  const from = toEpochSeconds(daysAgo(RADIO_WINDOW_DAYS));
-  const to = toEpochSeconds(daysAgo(0), true);
+  const from = toEpochSeconds(window.startDate);
+  const to = toEpochSeconds(window.endDate, true);
 
   const byCountry: Record<string, number> = {};
   const countryCodes: Record<string, string> = {};
@@ -264,7 +262,13 @@ export async function GET(request: NextRequest) {
   const endDate = !requestedEnd || requestedEnd > today ? today : requestedEnd;
   // Before the campaign starts there is no window to measure ACTIONS or
   // campaign STREAMING over; STREAMING then shows all-time totals.
-  const wantHistory = wantSocial && Boolean(startDate && startDate <= endDate);
+  const hasCampaignWindow = Boolean(startDate && startDate <= endDate);
+  const wantHistory = wantSocial && hasCampaignWindow;
+  // Spins are counted over the campaign; before it starts there is no window,
+  // so the recent RADIO_WINDOW_DAYS stand in.
+  const radioWindow = hasCampaignWindow
+    ? { startDate: startDate!, endDate }
+    : { startDate: daysAgo(RADIO_WINDOW_DAYS), endDate: today };
   const countryParam = request.nextUrl.searchParams.get("countries");
   const selectedCountries = countryParam
     ? new Set(
@@ -285,7 +289,12 @@ export async function GET(request: NextRequest) {
   // Song metrics and playlist reach come from one call covering every source.
   const statSources = [
     ...new Set([
-      ...(wantSocial ? DSP_METRICS.map((metric) => metric.source) : []),
+      ...(wantSocial
+        ? [
+            ...DSP_METRICS.map((metric) => metric.source),
+            ...Object.keys(ACTION_FIELDS),
+          ]
+        : []),
       ...reachSources,
     ]),
   ];
@@ -299,7 +308,7 @@ export async function GET(request: NextRequest) {
             limit: 100,
           })
         : Promise.resolve(new Map<string, SourceData>()),
-      wantRadio ? readAirplay(isrc) : Promise.resolve(null),
+      wantRadio ? readAirplay(isrc, radioWindow) : Promise.resolve(null),
       wantHistory
         ? readCampaignHistory(isrc, startDate!, endDate)
         : Promise.resolve(undefined),
@@ -361,12 +370,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       periodDays: PERIOD_DAYS,
-      radioWindowDays: RADIO_WINDOW_DAYS,
+      radioWindow,
       platformsWithoutReach,
       stats: {
         // SOCIAL MEDIA is the artist's follower growth over the campaign,
         // which the client already holds from the audience growth route.
-        actions: histories ? summarizeActions(histories) : undefined,
+        actions: wantSocial ? summarizeActionTotals(stats) : undefined,
         // Plays gained during the campaign; all-time totals only when there
         // is no campaign window yet. Left unfiltered: which platforms the
         // viewer wants shown is applied on the client, so toggling one costs
