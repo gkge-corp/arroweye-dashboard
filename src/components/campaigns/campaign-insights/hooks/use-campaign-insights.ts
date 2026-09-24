@@ -1,29 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { ChartData } from "chart.js";
 import { usePDF } from "react-to-pdf";
-import {
-  getAirPlayStats,
-  getSocialMediaStats,
-  getDSPStats,
-  getAudienceStats,
-  geteSMActionStats,
-  geteDSPPerformanceStats,
-} from "@/services";
+import { CAMPAIGN_AUDIENCE } from "@/lib/campaign-audience";
 import getDarkerColor from "@/lib/getDarkerColor";
 
 interface UseCampaignInsightsParams {
   content?: any;
-  refreshContent?: () => void;
   /** Non-streaming discovery figures displayed beside the DSP bars. */
   discoveryData?: Record<string, number>;
   /**
-   * Live figures from Songstats for the linked recording. Any section
-   * present here replaces the hand-entered numbers from the Arroweye API;
-   * sections Songstats cannot supply fall through to the manual data.
+   * Live figures for the linked recording, the only source the charts read.
+   * Without an ISRC every section is absent and the charts render empty.
    */
-  statsOverrides?: {
+  stats?: {
     /** Artist follower growth per network over the campaign. */
     socialMedia?: Record<string, number>;
     /** Views, likes, comments and shares gained over the campaign. */
@@ -45,17 +34,6 @@ type DoughnutChartData = {
   }>;
 };
 
-type InsightStats = Record<string, number>;
-
-type CampaignInsightsData = {
-  airPlayData: InsightStats;
-  socialMediaData: InsightStats;
-  dspData: InsightStats;
-  audienceData: InsightStats;
-  smactionData: InsightStats;
-  dspPerformanceData: InsightStats;
-};
-
 const campaignChartPalette = [
   "#ff5c7a",
   "#38a8ff",
@@ -74,27 +52,14 @@ const getCampaignChartColors = (count: number) =>
   );
 
 const emptyInsightData: Record<string, number> = {};
-const emptyCampaignInsightsData: CampaignInsightsData = {
-  airPlayData: emptyInsightData,
-  socialMediaData: emptyInsightData,
-  dspData: emptyInsightData,
-  audienceData: emptyInsightData,
-  smactionData: emptyInsightData,
-  dspPerformanceData: emptyInsightData,
-};
 
 export function useCampaignInsights({
   content,
-  refreshContent,
   discoveryData,
-  statsOverrides,
+  stats,
 }: UseCampaignInsightsParams) {
-  const queryClient = useQueryClient();
   const [initialTab, setInitialTab] = useState<any>("moments");
-  const [addDataModal, setAddDataModal] = useState(false);
-  const [addDataModalSocial, setAddDataModalSocial] = useState(false);
   const [addMediaModal, setAddMediaModal] = useState(false);
-  const [addDspModal, setAddDspModal] = useState(false);
   const [momentMediaData, setMomentMediaData] = useState<any>([]);
   const [momentReportUrls, setMomentReportUrls] = useState<any>([]);
   const [giftingsReportUrls, setGiftingsReportUrls] = useState<any>([]);
@@ -103,123 +68,13 @@ export function useCampaignInsights({
 
   const media = content?.media || [];
   const mediaLoading = !content;
-  const { id } = useParams<{ id: string }>();
-  const campaignId = Number(id);
-  const hasCampaignId = Boolean(id) && Number.isFinite(campaignId);
 
-  const [airplayChannelsFilters, setairplayChannelsFilters] = useState({
-    country: "",
-    weeks: "",
-    lifetime: "",
-  });
-
-  const [airplayAudienceFilters, setairplayAudienceFilters] = useState({
-    channels: "",
-    weeks: "",
-    lifetime: "",
-  });
-
-  const [socialMediaPlatformFilters, setSocialMediaPlatformFilters] = useState({
-    weeks: "",
-    lifetime: "",
-  });
-
-  const [socialMediaActionsFilters, setSocialMediaActionsFilters] = useState({
-    weeks: "",
-    lifetime: "",
-  });
-
-  const [dspFilters, setDspFilters] = useState({
-    weeks: "",
-    lifetime: "",
-  });
-
-  const [dspPerformanceFilters, setDspPerformanceFilters] = useState({
-    weeks: "",
-    lifetime: "",
-  });
-
-  const {
-    data: insightsData = emptyCampaignInsightsData,
-    isLoading: isInsightsDataLoading,
-  } = useQuery<CampaignInsightsData>({
-    queryKey: [
-      "campaign-insights",
-      campaignId,
-      {
-        airplayChannelsFilters,
-        airplayAudienceFilters,
-        socialMediaPlatformFilters,
-        socialMediaActionsFilters,
-        dspFilters,
-        dspPerformanceFilters,
-      },
-    ],
-    queryFn: async () => {
-      const [
-        airPlayData,
-        socialMediaData,
-        dspData,
-        audienceData,
-        smactionData,
-        dspPerformanceData,
-      ] = await Promise.all([
-        getAirPlayStats({ id: campaignId, ...airplayChannelsFilters }),
-        getSocialMediaStats({ id: campaignId, ...socialMediaPlatformFilters }),
-        getDSPStats({ id: campaignId, ...dspFilters }),
-        getAudienceStats({ id: campaignId, ...airplayAudienceFilters }),
-        geteSMActionStats({
-          id: campaignId,
-          ...socialMediaActionsFilters,
-        }),
-        geteDSPPerformanceStats({
-          id: campaignId,
-          ...dspPerformanceFilters,
-        }),
-      ]);
-
-      return {
-        airPlayData: airPlayData ?? {},
-        socialMediaData: socialMediaData ?? {},
-        dspData: dspData ?? {},
-        audienceData: audienceData ?? {},
-        smactionData: smactionData ?? {},
-        dspPerformanceData: dspPerformanceData ?? {},
-      };
-    },
-    enabled: hasCampaignId,
-  });
-
-  const {
-    airPlayData: manualAirPlayData = emptyInsightData,
-    socialMediaData: manualSocialMediaData = emptyInsightData,
-    dspData: manualDspData = emptyInsightData,
-    audienceData = emptyInsightData,
-    smactionData: manualSmactionData = emptyInsightData,
-    dspPerformanceData: manualDspPerformanceData = emptyInsightData,
-  } = insightsData;
-
-  // An override only wins when it actually carries figures, so a song with no
-  // Songstats presence still shows whatever ops entered by hand.
-  const preferLive = (
-    live: Record<string, number> | undefined,
-    manual: Record<string, number>,
-  ) => (live && Number(live.total_count) > 0 ? live : manual);
-
-  const socialMediaData = preferLive(
-    statsOverrides?.socialMedia,
-    manualSocialMediaData,
-  );
-  const smactionData = preferLive(statsOverrides?.actions, manualSmactionData);
-  const dspData = preferLive(statsOverrides?.dsp, manualDspData);
-  const dspPerformanceData = preferLive(
-    statsOverrides?.performance,
-    manualDspPerformanceData,
-  );
-
-  // AIRPLAY breaks down by country when Songstats has radio data for the
-  // linked song. An explicit empty map means the user cleared every country.
-  const airPlayData = statsOverrides?.airplayByCountry ?? manualAirPlayData;
+  const airPlayData = stats?.airplayByCountry ?? emptyInsightData;
+  const socialMediaData = stats?.socialMedia ?? emptyInsightData;
+  const smactionData = stats?.actions ?? emptyInsightData;
+  const dspData = stats?.dsp ?? emptyInsightData;
+  const dspPerformanceData = stats?.performance ?? emptyInsightData;
+  const audienceData = CAMPAIGN_AUDIENCE;
 
   const generateDoughnutChartData = (
     data: Record<string, number>,
@@ -360,12 +215,15 @@ export function useCampaignInsights({
     };
   };
 
+  // The headline sums every bar shown, discovery signals such as Shazam
+  // included, so it never reads 0 above a populated chart.
+  const discoveryAndStreamingTotal =
+    Number(dspData.total_count ?? 0) +
+    Object.values(discoveryData ?? {}).reduce((sum, v) => sum + v, 0);
   const chartDataForBar = generateBarChartData({
     ...dspData,
     ...discoveryData,
-    // The headline remains a streaming total; discovery signals such as
-    // Shazams are deliberately not added to it.
-    total_count: Number(dspData.total_count ?? 0),
+    total_count: discoveryAndStreamingTotal,
   });
 
   const { toPDF, targetRef } = usePDF({ filename: "dashboard.pdf" });
@@ -391,38 +249,11 @@ export function useCampaignInsights({
     setDspMediaData(dspfileUrls);
   }, [media]);
 
-  const invalidateCampaignInsights = () => {
-    queryClient.invalidateQueries({
-      queryKey: ["campaign-insights", campaignId],
-    });
-  };
-
-  const onAddSocialMediaDataSuccess = () => {
-    invalidateCampaignInsights();
-    refreshContent?.();
-  };
-
-  const onAddDataSuccess = () => {
-    invalidateCampaignInsights();
-    refreshContent?.();
-  };
-
-  const onAddDataDspSuccess = () => {
-    invalidateCampaignInsights();
-    refreshContent?.();
-  };
-
   return {
     initialTab,
     setInitialTab,
-    addDataModal,
-    setAddDataModal,
-    addDataModalSocial,
-    setAddDataModalSocial,
     addMediaModal,
     setAddMediaModal,
-    addDspModal,
-    setAddDspModal,
     airPlayData,
     socialMediaData,
     dspData,
@@ -435,33 +266,13 @@ export function useCampaignInsights({
     recapMediaData,
     dspMediaData,
     mediaLoading,
-    airplayChannelsFilters,
-    setairplayChannelsFilters,
-    airplayAudienceFilters,
-    setairplayAudienceFilters,
-    socialMediaPlatformFilters,
-    setSocialMediaPlatformFilters,
-    socialMediaActionsFilters,
-    setSocialMediaActionsFilters,
-    dspFilters,
-    setDspFilters,
-    dspPerformanceFilters,
-    setDspPerformanceFilters,
     chartDataForDoughnutAirplay,
     chartDataForDoughnutSMAction,
     chartDataForPie,
     pieChartDataAudience,
     pieChartDataDSPPerformance,
     chartDataForBar,
-    isAirPlayDataLoading: isInsightsDataLoading,
-    isSocialMediaDataLoading: isInsightsDataLoading,
-    isDspDataLoading: isInsightsDataLoading,
-    isAudienceDataLoading: isInsightsDataLoading,
-    isSmActionDataLoading: isInsightsDataLoading,
-    isDspPerformanceDataLoading: isInsightsDataLoading,
-    onAddSocialMediaDataSuccess,
-    onAddDataSuccess,
-    onAddDataDspSuccess,
+    discoveryAndStreamingTotal,
     toPDF,
     targetRef,
   };

@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 export type InsightStats = Record<string, number>;
 
 export interface SongInsightStats {
-  /** Views, likes, comments and shares gained over the campaign window. */
+  /** Current views, likes, comments and shares on the song. */
   actions?: InsightStats;
   dsp?: InsightStats;
   /** Radio spins over the window; null when radio data could not be read. */
@@ -24,7 +24,7 @@ export interface SongInsightStats {
 interface InsightStatsResponse {
   stats?: SongInsightStats;
   periodDays?: number;
-  radioWindowDays?: number;
+  radioWindow?: { startDate: string; endDate: string };
   platformsWithoutReach?: string[];
   error?: string;
 }
@@ -106,7 +106,7 @@ export function useCampaignInsightStats(
   return {
     insightStats: data?.stats,
     insightStatsPeriodDays: data?.periodDays ?? 30,
-    radioWindowDays: data?.radioWindowDays ?? 90,
+    radioWindow: data?.radioWindow,
     platformsWithoutReach: data?.platformsWithoutReach ?? [],
     isInsightStatsLoading: isFetching,
     hasInsightStatsError: isError,
