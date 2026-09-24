@@ -20,7 +20,9 @@ export type Event = components["schemas"]["Event"];
 export type Project = components["schemas"]["Project"];
 export type ProjectListItem = components["schemas"]["ProjectList"];
 export type RescheduleEventInput = components["schemas"]["RescheduleEvent"];
-export type UpdateProjectInput = components["schemas"]["PatchedProject"];
+export type UpdateProjectInput = components["schemas"]["PatchedProject"] & {
+  isrc?: string | null;
+};
 
 export type CampaignPage =
   operations["api_v1_campaigns_list"]["responses"][200]["content"]["application/json"];
@@ -84,6 +86,8 @@ export type AppUser = Omit<DocumentedLeanUser, "user_profile"> & {
 
 export type AppProject = Omit<Project, "watchers"> & {
   watchers: AppUser[];
+  /** Returned and accepted at runtime but missing from the documented schema. */
+  isrc?: string | null;
 };
 
 type DocumentedDropZone = components["schemas"]["DropZone"];

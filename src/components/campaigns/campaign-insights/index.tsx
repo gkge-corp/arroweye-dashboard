@@ -112,7 +112,11 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   onRequestEditModeChange,
 }) => {
   const [linkSongModal, setLinkSongModal] = React.useState(false);
-  const { linkedSong, linkSong } = useCampaignSong(content?.id);
+  const { songIsrc: linkedIsrc, linkSong } = useCampaignSong({
+    campaignId: content?.id,
+    isrc: content?.isrc,
+    onSaved: refreshContent,
+  });
   const campaignStartDate = toDateOnly(
     content?.start_dte ??
       content?.start_date ??
@@ -122,26 +126,19 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   const campaignEndDate = toDateOnly(
     content?.end_dte ?? content?.end_date ?? content?.campaign?.end_date,
   );
-  const campaignIsrc = content?.song_isrc ?? content?.isrc ?? linkedSong?.isrc;
-  // Songstats looks recordings up by ISRC, so a campaign that already has one
-  // needs no manual link. A linked recording wins, since it was picked on
-  // purpose (a remix or edit can carry its own ISRC).
-  const songIsrc =
-    linkedSong?.isrc || content?.song_isrc || content?.isrc || undefined;
+  const songIsrc = linkedIsrc || content?.song_isrc || undefined;
   const openLinkSong = songIsrc
     ? undefined
     : () => onRequestEditModeChange?.(true);
   const { audienceGrowth, isAudienceGrowthLoading } = useCampaignAudienceGrowth(
     {
-      isrc: campaignIsrc,
+      isrc: songIsrc,
       startDate: campaignStartDate,
       endDate: campaignEndDate,
       enabled: isAdvertiser === false,
     },
   );
-  const hasIsrc = [content?.song_isrc, content?.isrc, linkedSong?.isrc].some(
-    (value) => typeof value === "string" && value.trim().length > 0,
-  );
+  const hasIsrc = Boolean(songIsrc);
   const [sourcesModal, setSourcesModal] = React.useState(false);
   const [sourcesScope, setSourcesScope] =
     React.useState<InsightSourceScope>("airplay");
@@ -488,13 +485,11 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 Linked song
               </p>
               <p className="mt-1 font-SansFlex text-[14px] text-muted-foreground">
-                {linkedSong
-                  ? [linkedSong.title, linkedSong.artist]
-                      .filter(Boolean)
-                      .join(" · ")
+                {linkedIsrc
+                  ? `ISRC ${linkedIsrc}`
                   : "Match this campaign to a recording to pull playlist placements."}
               </p>
-              {linkedSong && insightStats && (
+              {linkedIsrc && insightStats && (
                 <p className="mt-1 font-SansFlex text-[12px] text-muted-foreground">
                   Airplay, social media, actions, streaming and performance
                   update automatically. Audience uses entered data.
@@ -507,7 +502,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               className="h-11 rounded-[8px] border-zinc-300 !bg-white px-5 text-sm font-medium !text-zinc-950 shadow-none hover:!bg-zinc-100 hover:!text-zinc-950 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-violet-500/25 dark:border-zinc-700 dark:!bg-zinc-900 dark:!text-zinc-100 dark:hover:!bg-zinc-800 dark:hover:!text-zinc-100"
               onClick={() => setLinkSongModal(true)}
             >
-              {linkedSong ? "Change song" : "Link song"}
+              {linkedIsrc ? "Change song" : "Link song"}
             </Button>
           </div>
         )}

@@ -139,6 +139,17 @@ export const archiveProject = async (
   return response;
 };
 
+export const updateProjectIsrc = (
+  id: number | string,
+  isrc: string | null,
+): Promise<AppProject> =>
+  apiRequest<AppProject>({
+    method: "PATCH",
+    url: `/api/v1/projects/${id}/`,
+    data: { isrc } satisfies UpdateProjectInput,
+    requireToken: true,
+  });
+
 export const shareProject = async (
   id: number,
   payload: unknown,
