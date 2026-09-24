@@ -3,7 +3,6 @@
 import React from "react";
 import InsightCard from "./InsightCard";
 import { ContentItem } from "@/types/contents";
-import { useCampaignSong } from "@/hooks/use-campaign-song";
 import { useCampaignAudienceGrowth } from "@/hooks/use-campaign-audience-growth";
 
 interface ProjectSingleInsightProps {
@@ -15,8 +14,6 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
   isAdvertiser,
   content,
 }) => {
-  const { linkedSong } = useCampaignSong(content?.id);
-
   function formatNumber(num: any) {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
@@ -49,7 +46,7 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
       (content as any)?.campaign?.end_date,
   );
   const campaignIsrc =
-    (content as any)?.song_isrc ?? (content as any)?.isrc ?? linkedSong?.isrc;
+    (content as any)?.isrc || (content as any)?.song_isrc || undefined;
   const { audienceGrowth, isAudienceGrowthLoading } = useCampaignAudienceGrowth(
     {
       isrc: campaignIsrc,

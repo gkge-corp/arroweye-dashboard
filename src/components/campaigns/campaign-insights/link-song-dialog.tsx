@@ -23,7 +23,7 @@ interface LinkSongDialogProps {
   songTitle?: string;
   artistName?: string;
   onOpenChange: (open: boolean) => void;
-  onLink: (song: LinkedSong) => void;
+  onLink: (song: LinkedSong) => Promise<void>;
 }
 
 const searchSongs = async (params: { term?: string; isrc?: string }) => {
@@ -104,7 +104,7 @@ export function LinkSongDialog({
   const handleLink = async (song: SongCandidate) => {
     setIsSearching(true);
     try {
-      onLink({
+      await onLink({
         uuid: song.uuid,
         isrc: await resolveIsrc(song),
         title: song.title,

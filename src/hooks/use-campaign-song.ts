@@ -1,13 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+
+import { updateProjectIsrc } from "@/services";
 
 export interface LinkedSong {
-  /**
-   * Provider id of the recording (a Songstats track id; links made before
-   * the switch hold another provider's id). Only marks the campaign as
-   * linked: data is read by ISRC.
-   */
+  /** Provider id of the recording. Only used to key search results. */
   uuid: string;
   isrc?: string;
   title?: string;
@@ -15,67 +13,40 @@ export interface LinkedSong {
   artwork?: string;
 }
 
-/**
- * Storage adapter for the campaign -> recording link.
- *
- * This is browser-local, so a link made by one teammate is invisible to the
- * rest of the campaign. Swap these two functions for a PATCH against the
- * Project `isrc` field once the serializer exposes it; nothing else in the
- * feature reads storage directly.
- */
-const storageKey = (campaignId: string | number) => `campaign-song:${campaignId}`;
+interface UseCampaignSongOptions {
+  campaignId?: string | number;
+  isrc?: string | null;
+  onSaved?: () => void | Promise<void>;
+}
 
-const readLinkedSong = (campaignId: string | number): LinkedSong | null => {
-  if (typeof window === "undefined") return null;
+const cleanIsrc = (value?: string | null) => value?.trim().toUpperCase() || undefined;
 
-  try {
-    const raw = window.localStorage.getItem(storageKey(campaignId));
-    return raw ? (JSON.parse(raw) as LinkedSong) : null;
-  } catch (error) {
-    console.error("Failed to read the linked song:", error);
-    return null;
-  }
-};
-
-const writeLinkedSong = (
-  campaignId: string | number,
-  song: LinkedSong | null,
-) => {
-  if (typeof window === "undefined") return;
-
-  try {
-    if (song) {
-      window.localStorage.setItem(storageKey(campaignId), JSON.stringify(song));
-    } else {
-      window.localStorage.removeItem(storageKey(campaignId));
-    }
-  } catch (error) {
-    console.error("Failed to persist the linked song:", error);
-  }
-};
-
-export function useCampaignSong(campaignId?: string | number) {
-  const [linkedSong, setLinkedSong] = useState<LinkedSong | null>(null);
-
-  useEffect(() => {
-    if (campaignId === undefined) return;
-    setLinkedSong(readLinkedSong(campaignId));
-  }, [campaignId]);
+export function useCampaignSong({
+  campaignId,
+  isrc,
+  onSaved,
+}: UseCampaignSongOptions) {
+  const [isSaving, setIsSaving] = useState(false);
 
   const linkSong = useCallback(
-    (song: LinkedSong) => {
+    async (song: LinkedSong) => {
       if (campaignId === undefined) return;
-      writeLinkedSong(campaignId, song);
-      setLinkedSong(song);
+
+      const nextIsrc = cleanIsrc(song.isrc);
+      if (!nextIsrc) {
+        throw new Error("This recording has no ISRC to link.");
+      }
+
+      setIsSaving(true);
+      try {
+        await updateProjectIsrc(campaignId, nextIsrc);
+        await onSaved?.();
+      } finally {
+        setIsSaving(false);
+      }
     },
-    [campaignId],
+    [campaignId, onSaved],
   );
 
-  const unlinkSong = useCallback(() => {
-    if (campaignId === undefined) return;
-    writeLinkedSong(campaignId, null);
-    setLinkedSong(null);
-  }, [campaignId]);
-
-  return { linkedSong, linkSong, unlinkSong };
+  return { songIsrc: cleanIsrc(isrc), linkSong, isSaving };
 }
