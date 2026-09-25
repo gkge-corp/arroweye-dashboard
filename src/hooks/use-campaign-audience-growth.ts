@@ -19,43 +19,6 @@ export interface CampaignAudienceGrowth {
   }[];
 }
 
-export interface SocialMediaStats {
-  /** Followers per network on the last day, plus their `total_count`. */
-  stats: Record<string, number>;
-  /** Tooltip line per network with its campaign growth. */
-  notes: Record<string, string>;
-}
-
-const formatGrowth = (value: number) =>
-  `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toLocaleString()} this campaign`;
-
-/**
- * SOCIAL MEDIA pie: current followers per network, so the chart renders from
- * the first day; campaign growth shows in each slice's tooltip. A count
- * identical at both ends of the window is stale data, not zero growth, so it
- * gets no growth line.
- */
-export const toSocialMediaStats = (
-  growth: CampaignAudienceGrowth | undefined,
-): SocialMediaStats | undefined => {
-  if (!growth?.available) return undefined;
-
-  const stats: Record<string, number> = {};
-  const notes: Record<string, string> = {};
-
-  for (const entry of growth.platforms) {
-    if (entry.endValue <= 0) continue;
-    stats[entry.platform] = entry.endValue;
-
-    if (entry.startValue !== entry.endValue) {
-      notes[entry.platform] = formatGrowth(entry.growth);
-    }
-  }
-
-  stats.total_count = Object.values(stats).reduce((sum, v) => sum + v, 0);
-  return { stats, notes };
-};
-
 const fetchAudienceGrowth = async (
   isrc: string,
   startDate: string,

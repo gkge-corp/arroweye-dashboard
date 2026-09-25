@@ -65,6 +65,12 @@ const ACTION_FIELDS: Record<string, Record<string, string>> = {
   },
 };
 
+const ACTION_SOURCE_LABELS: Record<string, string> = {
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  youtube: "YouTube",
+};
+
 type HistoryPoint = Record<string, unknown> & { date?: string };
 
 interface PlaylistEntry {
@@ -210,6 +216,18 @@ const summarizeActionTotals = (stats: Map<string, SourceData>) => {
   }
   return withTotal(entries);
 };
+
+/** Every action on each platform added up, so SOCIAL MEDIA splits by platform. */
+const summarizePlatformTotals = (stats: Map<string, SourceData>) =>
+  withTotal(
+    Object.entries(ACTION_FIELDS).map(([source, fields]) => [
+      ACTION_SOURCE_LABELS[source] ?? source,
+      Object.values(fields).reduce(
+        (sum, field) => sum + readNumber(stats.get(source), field),
+        0,
+      ),
+    ]),
+  );
 
 /** Plays each platform gained between the campaign's first and last day. */
 const readCampaignPlays = (histories: Histories, metric: DspMetric) =>
@@ -373,8 +391,9 @@ export async function GET(request: NextRequest) {
       radioWindow,
       platformsWithoutReach,
       stats: {
-        // SOCIAL MEDIA is the artist's follower growth over the campaign,
-        // which the client already holds from the audience growth route.
+        // SOCIAL MEDIA and ACTIONS read the same totals: summed per platform
+        // for one, per kind of action for the other.
+        socialMedia: wantSocial ? summarizePlatformTotals(stats) : undefined,
         actions: wantSocial ? summarizeActionTotals(stats) : undefined,
         // Plays gained during the campaign; all-time totals only when there
         // is no campaign window yet. Left unfiltered: which platforms the
