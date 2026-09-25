@@ -16,10 +16,7 @@ import {
 } from "./insight-sources-dialog";
 import { useCampaignInsights } from "./hooks/use-campaign-insights";
 import { useCampaignSong } from "@/hooks/use-campaign-song";
-import {
-  toSocialMediaStats,
-  useCampaignAudienceGrowth,
-} from "@/hooks/use-campaign-audience-growth";
+import { useCampaignAudienceGrowth } from "@/hooks/use-campaign-audience-growth";
 import { useCampaignPlaylists } from "./hooks/use-campaign-playlists";
 import { useCampaignRadio } from "./hooks/use-campaign-radio";
 import { useCampaignSocialTraction } from "./hooks/use-campaign-social-traction";
@@ -104,10 +101,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     },
   );
   const hasIsrc = Boolean(songIsrc);
-  const socialMediaStats = React.useMemo(
-    () => toSocialMediaStats(audienceGrowth),
-    [audienceGrowth],
-  );
   const [sourcesModal, setSourcesModal] = React.useState(false);
   const [sourcesScope, setSourcesScope] =
     React.useState<InsightSourceScope>("airplay");
@@ -260,7 +253,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     discoveryData: discoveryChartData,
     stats: {
       ...insightStats,
-      socialMedia: socialMediaStats?.stats,
       dsp: visibleDsp,
       airplayByCountry: airplayDisabled
         ? { total_count: 0 }
@@ -569,10 +561,9 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               <PieChart
                 title="SOCIAL MEDIA"
                 value={socialMediaData?.total_count ?? 0}
-                segmentNotes={socialMediaStats?.notes}
                 chartData={chartDataForPie}
-                isLoading={isAudienceGrowthLoading}
-                info="The artist's current followers on each social platform. Hover a platform to see its growth during this campaign."
+                isLoading={isInsightStatsLoading}
+                info="Views, likes, comments and shares on videos using this song, added up per platform."
               />
             </div>
 

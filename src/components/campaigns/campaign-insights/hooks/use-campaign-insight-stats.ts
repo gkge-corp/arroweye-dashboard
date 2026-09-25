@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 export type InsightStats = Record<string, number>;
 
 export interface SongInsightStats {
+  /** Views, likes, comments and shares added up per platform. */
+  socialMedia?: InsightStats;
   /** Current views, likes, comments and shares on the song. */
   actions?: InsightStats;
   dsp?: InsightStats;
