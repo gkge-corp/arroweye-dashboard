@@ -9,9 +9,11 @@ import type { CampaignAiInsights } from "@/lib/email/campaign-report/types";
 import { asNumber, asString, total } from "@/lib/email/campaign-report/utils";
 import { sendZeptoMail } from "@/lib/email/zeptomail";
 import type {
+  CampaignReportCreator,
   CampaignReportHighlight,
   CampaignReportHighlightId,
   CampaignReportMetrics,
+  CampaignReportPlaylist,
   CampaignReportStats,
   SendCampaignReportInput,
   SendCampaignReportResult,
@@ -22,6 +24,8 @@ type UnknownRecord = Record<string, unknown>;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_STAT_ENTRIES = 50;
 const MAX_METRIC_VALUE = Number.MAX_SAFE_INTEGER;
+const MAX_REPORT_CREATORS = 5;
+const MAX_REPORT_PLAYLISTS = 6;
 const HIGHLIGHT_IDS = new Set<CampaignReportHighlightId>([
   "videoCreations",
   "shazam",
@@ -45,6 +49,38 @@ const sanitizeStats = (value: unknown): CampaignReportStats => {
       }),
   );
 };
+
+const sanitizeText = (value: unknown, maxLength: number) =>
+  typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+
+const sanitizeCount = (value: unknown) => {
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? Math.min(MAX_METRIC_VALUE, Math.max(0, number))
+    : 0;
+};
+
+const sanitizeCreators = (value: unknown): CampaignReportCreator[] =>
+  (Array.isArray(value) ? value : [])
+    .slice(0, MAX_REPORT_CREATORS)
+    .map((creator) => ({
+      handle: sanitizeText(creator?.handle, 100),
+      platform: sanitizeText(creator?.platform, 50),
+      followers: sanitizeCount(creator?.followers),
+      views: sanitizeCount(creator?.views),
+      url: sanitizeText(creator?.url, 500) || undefined,
+    }))
+    .filter((creator) => creator.handle);
+
+const sanitizePlaylists = (value: unknown): CampaignReportPlaylist[] =>
+  (Array.isArray(value) ? value : [])
+    .slice(0, MAX_REPORT_PLAYLISTS)
+    .map((playlist) => ({
+      name: sanitizeText(playlist?.name, 120),
+      platform: sanitizeText(playlist?.platform, 50),
+      url: sanitizeText(playlist?.url, 500) || undefined,
+    }))
+    .filter((playlist) => playlist.name);
 
 const sanitizeMetrics = (
   metrics: CampaignReportMetrics,
@@ -94,6 +130,7 @@ const sanitizeMetrics = (
     socialMedia: sanitizeStats(metrics?.socialMedia),
     actions: sanitizeStats(metrics?.actions),
     performance: sanitizeStats(metrics?.performance),
+    performanceReach: sanitizeStats(metrics?.performanceReach),
     spinCount: Math.min(
       MAX_METRIC_VALUE,
       Math.max(0, Number(metrics?.spinCount) || 0),
@@ -119,6 +156,8 @@ const sanitizeMetrics = (
       };
     })(),
     highlights,
+    topCreators: sanitizeCreators(metrics?.topCreators),
+    playlists: sanitizePlaylists(metrics?.playlists),
   };
 };
 
