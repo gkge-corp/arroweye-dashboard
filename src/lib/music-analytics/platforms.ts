@@ -52,6 +52,17 @@ export const ARTIST_SOCIAL_PLATFORMS: AnalyticsPlatform[] = [
 ];
 
 /**
+ * Every network whose artist follower count feeds audience growth. Apple
+ * Music, Amazon and Tidal publish no follower counts, so they cannot join.
+ */
+export const ARTIST_FOLLOWER_PLATFORMS: AnalyticsPlatform[] = [
+  ...ARTIST_SOCIAL_PLATFORMS,
+  { code: "spotify", label: "Spotify" },
+  { code: "deezer", label: "Deezer" },
+  { code: "soundcloud", label: "SoundCloud" },
+];
+
+/**
  * App platform code -> Songstats `source`. Platforms Songstats does not cover
  * (Audiomack, Boomplay) are absent, so callers skip them.
  */

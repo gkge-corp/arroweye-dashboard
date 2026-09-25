@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { withRetry } from "@/lib/music-analytics/fan-out";
 import {
-  ARTIST_SOCIAL_PLATFORMS,
+  ARTIST_FOLLOWER_PLATFORMS,
   toSongstatsSource,
 } from "@/lib/music-analytics/platforms";
 import {
@@ -73,7 +73,8 @@ const buildResult = (
   };
 };
 
-// YouTube counts subscribers; every other network counts followers.
+// YouTube counts subscribers; every other network, DSPs included, counts
+// followers. A network without the field is skipped rather than read as 0.
 const readFollowers = (source: string, point: HistoryPoint | undefined) => {
   const raw =
     point?.[source === "youtube" ? "subscribers_total" : "followers_total"];
@@ -96,7 +97,7 @@ const getHistoricalGrowth = async (
       stats?: { source?: string; data?: { history?: HistoryPoint[] } }[];
     }>("/artists/historic_stats", {
       songstats_artist_id: artistId,
-      source: ARTIST_SOCIAL_PLATFORMS.map((platform) =>
+      source: ARTIST_FOLLOWER_PLATFORMS.map((platform) =>
         toSongstatsSource(platform.code),
       ),
       start_date: startDate,
@@ -110,7 +111,7 @@ const getHistoricalGrowth = async (
     ]),
   );
 
-  return ARTIST_SOCIAL_PLATFORMS.flatMap((platform): PlatformGrowth[] => {
+  return ARTIST_FOLLOWER_PLATFORMS.flatMap((platform): PlatformGrowth[] => {
     const source = toSongstatsSource(platform.code);
     const points = (histories.get(source) ?? [])
       .filter((point) => readFollowers(source, point) !== null)
