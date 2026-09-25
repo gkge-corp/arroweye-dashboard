@@ -7,6 +7,10 @@ import {
   renderPublications,
 } from "./campaign-report/activity-sections";
 import {
+  renderSectionDivider,
+  renderTopCreators,
+} from "./campaign-report/creator-sections";
+import {
   getAiSummary,
   renderAiRecommendations,
 } from "./campaign-report/ai-sections";
@@ -15,6 +19,10 @@ import {
   renderCampaignTrend,
   renderDjInsights,
 } from "./campaign-report/metrics-sections";
+import {
+  renderPlaylistAdditions,
+  renderPlaylistBreakdown,
+} from "./campaign-report/playlist-sections";
 import type {
   CampaignReportTemplateInput,
   MetricCard,
@@ -146,7 +154,13 @@ export function renderCampaignReportEmail({
     ...highlightCards.filter((card) => card.label === "Shazams"),
   ];
 
-  const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Campaign Performance Report | Arroweye Pro</title></head><body style="background-color:#f9f9f9;font-family:Avenir,Arial,sans-serif;margin:0;padding:0;-webkit-font-smoothing:antialiased;color:#333;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Performance report for ${escapeHtml(projectName)}</div><div style="max-width:640px;margin:28px auto;padding:5px 1px 1px;background-color:#ff7400;background-image:linear-gradient(to right,#ff006d,#ff7f00,#ffff00,#00ff00,#147aff);text-align:left;"><div style="padding:20px 20px 40px;background-color:#fff;"><div style="text-align:left;margin-top:20px;margin-bottom:30px;"><img src="https://res.cloudinary.com/dyueswnzk/image/upload/v1759783466/studio_2_hajzkn.png" alt="Arroweye" width="120"></div><div style="font-size:22px;line-height:1.15;font-weight:900;color:#222;">Performance Report</div><div style="background-color:#f7f7f7;padding:12px 14px;border-radius:7px;margin-top:16px;"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;font-size:14px;">${detailRow("Project name", projectName)}${detailRow("Label", subvendor.organization_name)}${detailRow("Artist", artist)}${detailRow("DRI", account)}${detailRow("Start date", formatDate(project.created || project.start_date, "", "long"))}${detailRow("End date", formatDate(project.end_dte || project.end_date, "", "long"))}${detailRow("Last updated", formatDateTime(project.modified || generatedAt))}</table></div>${renderCampaignTrend({ airplay: airplayCount, spins: spinCount, social: socialCount, streaming: streamCount }, aiSummary)}${renderCampaignSnapshot(metricCards)}${renderDjInsights(project, spinCount)}${renderMilestones(project, projectLink)}${renderPublications(firstPopulatedArray(project.media, project.publications), projectLink)}${renderEvents(firstPopulatedArray(project.project_event, project.events), projectLink)}${renderDrops(firstPopulatedArray(project.dropzone, project.drops), projectLink)}${renderAiRecommendations(project, projectLink, aiInsights)}<div style="text-align:center;margin-top:35px;"><a href="${projectLink}" style="display:inline-block;font-size:14px;font-weight:900;color:#fff;background-color:#ff7400;padding:11px 26px;text-decoration:none;border-radius:25px;line-height:20px;">View Dashboard</a></div><div style="height:15px;"></div></div></div></body></html>`;
+  const playlistSections = [
+    renderTopCreators(metrics.topCreators, projectLink),
+    renderPlaylistAdditions(metrics.playlists, projectLink),
+    renderPlaylistBreakdown(metrics.performance, metrics.performanceReach),
+  ].join("");
+
+  const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Campaign Performance Report | Arroweye Pro</title></head><body style="background-color:#f9f9f9;font-family:Avenir,Arial,sans-serif;margin:0;padding:0;-webkit-font-smoothing:antialiased;color:#333;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Performance report for ${escapeHtml(projectName)}</div><div style="max-width:640px;margin:28px auto;padding:5px 1px 1px;background-color:#ff7400;background-image:linear-gradient(to right,#ff006d,#ff7f00,#ffff00,#00ff00,#147aff);text-align:left;"><div style="padding:20px 20px 40px;background-color:#fff;"><div style="text-align:left;margin-top:20px;margin-bottom:30px;"><img src="https://res.cloudinary.com/dyueswnzk/image/upload/v1759783466/studio_2_hajzkn.png" alt="Arroweye" width="120"></div><div style="font-size:22px;line-height:1.15;font-weight:900;color:#222;">Performance Report</div><div style="background-color:#f7f7f7;padding:12px 14px;border-radius:7px;margin-top:16px;"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;font-size:14px;">${detailRow("Project name", projectName)}${detailRow("Label", subvendor.organization_name)}${detailRow("Artist", artist)}${detailRow("DRI", account)}${detailRow("Start date", formatDate(project.created || project.start_date, "", "long"))}${detailRow("End date", formatDate(project.end_dte || project.end_date, "", "long"))}${detailRow("Last updated", formatDateTime(project.modified || generatedAt))}</table></div>${renderCampaignTrend({ airplay: airplayCount, spins: spinCount, social: socialCount, streaming: streamCount }, aiSummary)}${renderCampaignSnapshot(metricCards)}${playlistSections ? `${renderSectionDivider()}${playlistSections}` : ""}${renderDjInsights(project, spinCount)}${renderMilestones(project, projectLink)}${renderPublications(firstPopulatedArray(project.media, project.publications), projectLink)}${renderEvents(firstPopulatedArray(project.project_event, project.events), projectLink)}${renderDrops(firstPopulatedArray(project.dropzone, project.drops), projectLink)}${renderAiRecommendations(project, projectLink, aiInsights)}<div style="text-align:center;margin-top:35px;"><a href="${projectLink}" style="display:inline-block;font-size:14px;font-weight:900;color:#fff;background-color:#ff7400;padding:11px 26px;text-decoration:none;border-radius:25px;line-height:20px;">View Dashboard</a></div><div style="height:15px;"></div></div></div></body></html>`;
 
   const text = [
     `${projectName} | Marketing Report`,

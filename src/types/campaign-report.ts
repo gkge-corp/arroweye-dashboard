@@ -11,6 +11,20 @@ export interface CampaignReportHighlight {
   topMarket?: string;
 }
 
+export interface CampaignReportCreator {
+  handle: string;
+  platform: string;
+  followers: number;
+  views: number;
+  url?: string;
+}
+
+export interface CampaignReportPlaylist {
+  name: string;
+  platform: string;
+  url?: string;
+}
+
 export interface CampaignReportAudienceGrowth {
   totalGrowth: number;
   topPlatform?: string;
@@ -28,10 +42,14 @@ export interface CampaignReportMetrics {
   socialMedia: CampaignReportStats;
   actions: CampaignReportStats;
   performance: CampaignReportStats;
+  /** Follower reach of current playlist placements, per platform. */
+  performanceReach: CampaignReportStats;
   spinCount: number;
   topRadio?: string;
   audienceGrowth?: CampaignReportAudienceGrowth;
   highlights: CampaignReportHighlight[];
+  topCreators: CampaignReportCreator[];
+  playlists: CampaignReportPlaylist[];
 }
 
 export interface SendCampaignReportInput {

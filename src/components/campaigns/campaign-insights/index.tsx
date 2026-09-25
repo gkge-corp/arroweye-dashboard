@@ -336,11 +336,16 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
 
     return {
       airplay: airPlayData ?? {},
-      streaming: dspData ?? {},
+      streaming: {
+        ...dspData,
+        ...discoveryChartData,
+        total_count: discoveryAndStreamingTotal,
+      },
       audience: audienceData ?? {},
       socialMedia: socialMediaData ?? {},
       actions: smactionData ?? {},
       performance: dspPerformanceData ?? {},
+      performanceReach: insightStats?.performanceReach ?? {},
       spinCount: Number(content?.spin_count ?? 0),
       topRadio: stations[0]?.name,
       audienceGrowth:
@@ -387,26 +392,47 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
             ]
           : []),
       ],
+      topCreators: topCreators.map((creator) => ({
+        handle: creator.handle || creator.name,
+        platform: creator.platform,
+        followers: creator.followers,
+        views: creator.views,
+        url: creator.url,
+      })),
+      playlists: playlists.map((playlist) => ({
+        name: playlist.name,
+        platform: playlist.platform,
+        url: playlist.url,
+      })),
     };
   }, [
     airPlayData,
     audienceGrowth,
     audienceData,
     content?.spin_count,
+    discoveryAndStreamingTotal,
+    discoveryChartData,
     dspData,
     dspPerformanceData,
+    insightStats?.performanceReach,
+    playlists,
     smactionData,
     socialMediaData,
     socialTraction,
     socialTractionPeriodDays,
     shazamValue,
     stations,
+    topCreators,
   ]);
   const reportLoading =
     isAudienceGrowthLoading ||
     Boolean(
       songIsrc &&
-      (isInsightStatsLoading || isRadioLoading || isSocialTractionLoading),
+      (isInsightStatsLoading ||
+        isRadioLoading ||
+        isSocialTractionLoading ||
+        isTopCreatorsLoading ||
+        isPlaylistsLoading),
     );
   const insightGridClass = editMode
     ? "grid grid-cols-1 gap-x-[10px] gap-y-[20px] w-full md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto]"

@@ -112,5 +112,8 @@ export const detailRow = (label: string, value: unknown) => {
 export const sectionHeading = (icon: string, title: string, iconSize = 35) =>
   `<div style="font-size:18px;font-weight:900;color:#222;line-height:${iconSize}px;"><img style="width:${iconSize}px;height:${iconSize}px;object-fit:contain;vertical-align:middle;" src="${icon}" alt=""> ${escapeHtml(title)}</div>`;
 
+export const sectionLabel = (title: string, description: string) =>
+  `<div style="font-size:11px;letter-spacing:1.2px;font-weight:900;text-transform:uppercase;color:#777;margin-bottom:4px;">${escapeHtml(title)}</div><div style="font-size:12px;color:#888;line-height:1.45;margin-bottom:12px;">${escapeHtml(description)}</div>`;
+
 export const viewAll = (projectLink: string) =>
   `<div style="text-align:right;margin-top:20px;"><a href="${projectLink}" style="display:inline-block;font-size:14px;font-weight:700;color:#147aff;border:1px solid #147aff;padding:8px 20px;text-decoration:none;border-radius:20px;">View all</a></div>`;
