@@ -143,9 +143,21 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     useCampaignSocialTraction(songIsrc);
   const { topCreators, isTopCreatorsLoading } =
     useCampaignTopCreators(songIsrc);
+  const playlistReachNotes = React.useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(insightStats?.performanceReach ?? {}).map(
+          ([platform, reach]) => [
+            platform,
+            `${reach.toLocaleString()} playlist followers`,
+          ],
+        ),
+      ),
+    [insightStats?.performanceReach],
+  );
   const shazamRow = socialTraction.find((item) => item.id === "shazam");
-  // STREAMING counts Shazams gained during the campaign, so the campaign
-  // figure wins over the all-time count in the traction data.
+  // Both are all-time counts; the traction data only fills in when insight
+  // stats could not read Shazam.
   const shazamValue =
     typeof insightStats?.dsp?.Shazam === "number"
       ? insightStats.dsp.Shazam
@@ -633,17 +645,18 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 value={discoveryAndStreamingTotal}
                 chartData={chartDataForBar}
                 isLoading={isInsightStatsLoading}
-                info="Streams and views gained during this campaign, shown by DSP, with Shazam recognitions included as a separate discovery signal."
+                info="All-time streams and views of this song, shown by DSP, with Shazam recognitions included as a separate discovery signal."
               />
             </div>
 
             <div className="border-b pb-[20px]">
               <PieChart
-                title="PERFORMANCE "
+                title="PLAYLIST BREAKDOWN"
                 value={dspPerformanceData?.total_count ?? 0}
                 chartData={pieChartDataDSPPerformance}
                 isLoading={isInsightStatsLoading}
-                info="Playlist reach split by how each placement was curated: editorial playlists programmed by the platform, user-created playlists, and algorithmic or radio placements. These figures are estimates;"
+                segmentNotes={playlistReachNotes}
+                info="Playlists the song is currently on, by platform. Hover a platform to see the combined followers of those playlists."
               />
             </div>
 

@@ -19,15 +19,16 @@ export interface SongInsightStats {
   airplayCountryCodes?: Record<string, string>;
   /** Streaming platforms this song has data for, switched off ones included. */
   availableStreamingPlatforms?: { code: string; label: string }[];
-  /** Playlist reach split by how the placement was curated. */
+  /** Current playlist placements per platform. */
   performance?: InsightStats;
+  /** Follower reach of those placements, per platform, where reported. */
+  performanceReach?: InsightStats;
 }
 
 interface InsightStatsResponse {
   stats?: SongInsightStats;
   periodDays?: number;
   radioWindow?: { startDate: string; endDate: string };
-  platformsWithoutReach?: string[];
   error?: string;
 }
 
@@ -109,7 +110,6 @@ export function useCampaignInsightStats(
     insightStats: data?.stats,
     insightStatsPeriodDays: data?.periodDays ?? 30,
     radioWindow: data?.radioWindow,
-    platformsWithoutReach: data?.platformsWithoutReach ?? [],
     isInsightStatsLoading: isFetching,
     hasInsightStatsError: isError,
   };
