@@ -63,6 +63,7 @@ export function renderCampaignReportEmail({
   const socialCount = total(metrics.socialMedia);
   const spinCount = asNumber(project.spin_count || metrics.spinCount);
   const topStreaming = topEntry(metrics.streaming);
+  const topSocial = topEntry(metrics.socialMedia);
   const audienceGrowth = metrics.audienceGrowth;
   const audienceGrowthValue = audienceGrowth?.totalGrowth;
   const hasAudienceGrowth = Number.isFinite(audienceGrowthValue);
@@ -81,36 +82,30 @@ export function renderCampaignReportEmail({
         ? undefined
         : audienceGrowth?.topPlatform,
   };
-  const highlightCards: MetricCard[] = metrics.highlights.map((highlight) => {
-    if (highlight.id === "videoCreations") {
+  // SOCIAL MEDIA already covers YouTube views alongside TikTok and Instagram,
+  // so a YouTube-only card would contradict its top platform.
+  const highlightCards: MetricCard[] = metrics.highlights
+    .filter((highlight) => highlight.id !== "youtube")
+    .map((highlight) => {
+      if (highlight.id === "videoCreations") {
+        return {
+          label: "Video creations",
+          value: highlight.value,
+          changePercent: highlight.changePercent,
+          changePeriodDays: highlight.periodDays,
+          detailLabel: "Top platform",
+          detailValue: highlight.topPlatform,
+        };
+      }
       return {
-        label: "Video creations",
+        label: "Shazams",
         value: highlight.value,
         changePercent: highlight.changePercent,
         changePeriodDays: highlight.periodDays,
-        detailLabel: "Top platform",
-        detailValue: highlight.topPlatform,
+        detailLabel: "Top market",
+        detailValue: highlight.topMarket,
       };
-    }
-    if (highlight.id === "youtube") {
-      return {
-        label: "Views",
-        value: highlight.value,
-        changePercent: highlight.changePercent,
-        changePeriodDays: highlight.periodDays,
-        detailLabel: "Top platform",
-        detailValue: "YouTube",
-      };
-    }
-    return {
-      label: "Shazams",
-      value: highlight.value,
-      changePercent: highlight.changePercent,
-      changePeriodDays: highlight.periodDays,
-      detailLabel: "Top market",
-      detailValue: highlight.topMarket,
-    };
-  });
+    });
   const metricCards: MetricCard[] = [
     ...[
       {
@@ -129,6 +124,15 @@ export function renderCampaignReportEmail({
           value: streamCount,
           detailLabel: "Top platform",
           detailValue: topStreaming?.[0],
+        },
+      },
+      {
+        visible: hasStats(metrics.socialMedia),
+        card: {
+          label: "Social media",
+          value: socialCount,
+          detailLabel: "Top platform",
+          detailValue: topSocial?.[0],
         },
       },
       {

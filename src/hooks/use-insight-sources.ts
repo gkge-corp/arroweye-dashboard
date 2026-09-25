@@ -17,7 +17,7 @@ const DISCOVERY_AND_STREAMING_PLATFORMS = [
 export interface InsightSources {
   /** Selected discovery/DSP rows. */
   playlistPlatforms: string[];
-  /** Platforms summed into the PERFORMANCE playlist reach split. */
+  /** Platforms counted in the PLAYLIST BREAKDOWN chart. */
   reachPlatforms: string[];
   /**
    * Retained so stored settings from before the SOCIAL MEDIA chart moved to

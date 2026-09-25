@@ -197,7 +197,7 @@ export function InsightSourcesDialog({
                 Discovery &amp; streaming
               </TabsTrigger>
               <TabsTrigger value="performance" className="text-sm">
-                Performance
+                Playlist breakdown
               </TabsTrigger>
             </TabsList>
           </Tabs>

@@ -12,14 +12,8 @@ import {
   fetchRadioStations,
   toEpochSeconds,
 } from "@/lib/music-analytics/songstats-radio";
-import { withRetry } from "@/lib/music-analytics/fan-out";
-import {
-  normalizeIsrc,
-  songstatsRequest,
-} from "@/lib/music-analytics/songstats-client";
 import {
   fetchTrackStats,
-  readList,
   songstatsErrorResponse,
   type SourceData,
 } from "@/lib/music-analytics/songstats-track-stats";
@@ -71,15 +65,6 @@ const ACTION_SOURCE_LABELS: Record<string, string> = {
   youtube: "YouTube",
 };
 
-type HistoryPoint = Record<string, unknown> & { date?: string };
-
-interface PlaylistEntry {
-  spotify_userid?: string;
-  owner_name?: string;
-  playlist_type?: string;
-  followers_count?: number;
-}
-
 type InsightStats = Record<string, number>;
 
 const daysAgo = (days: number) => {
@@ -106,58 +91,30 @@ const withTotal = (entries: [string, number][]): InsightStats => {
 };
 
 /**
- * Songstats does not tag curation, so editorial placements are recognised by
- * owner: Spotify's own account, Deezer's editors, Apple's `editorial` type.
+ * PLAYLIST BREAKDOWN: current playlist placements per platform, the playlists behind
+ * the streaming figures. Reach rides along for the tooltip; Apple Music and
+ * Amazon report placements without it.
  */
-const isEditorial = (source: string, entry: PlaylistEntry) => {
-  if (entry.playlist_type === "editorial") return true;
-  if (source === "spotify") return entry.spotify_userid === "spotify";
-  if (source === "deezer") return /deezer/i.test(entry.owner_name ?? "");
-  return false;
-};
-
-/**
- * Songstats gives total reach per platform only. The editorial share is the
- * follower sum of editorial placements among the (at most 100) largest
- * current playlists; everything else counts as other playlists.
- */
-const splitReach = (stats: Map<string, SourceData>, sources: string[]) => {
-  let editorialReach = 0;
-  let otherReach = 0;
-  const platformsWithoutReach: string[] = [];
+const summarizePlaylists = (
+  stats: Map<string, SourceData>,
+  sources: string[],
+) => {
+  const counts: [string, number][] = [];
+  const reach: Record<string, number> = {};
 
   for (const source of sources) {
     const data = stats.get(source);
-    const reach = readNumber(data, "playlist_reach_current");
+    const label =
+      REACH_PLATFORMS.find(
+        (platform) => platform.code === fromSongstatsSource(source),
+      )?.label ?? source;
 
-    // Apple Music and Amazon report placements but no reach figure, so they
-    // are named rather than silently counting as zero.
-    if (reach === 0) {
-      if (readNumber(data, "playlists_current") > 0) {
-        const platform = REACH_PLATFORMS.find(
-          (entry) => entry.code === fromSongstatsSource(source),
-        );
-        platformsWithoutReach.push(platform?.label ?? source);
-      }
-      continue;
-    }
-
-    const editorial = readList<PlaylistEntry>(data, "playlists")
-      .filter((entry) => isEditorial(source, entry))
-      .reduce((sum, entry) => sum + Number(entry.followers_count ?? 0), 0);
-
-    const capped = Math.min(editorial, reach);
-    editorialReach += capped;
-    otherReach += reach - capped;
+    counts.push([label, readNumber(data, "playlists_current")]);
+    const platformReach = readNumber(data, "playlist_reach_current");
+    if (platformReach > 0) reach[label] = platformReach;
   }
 
-  return {
-    performance: withTotal([
-      ["Editorial playlists", editorialReach],
-      ["Other playlists", otherReach],
-    ]),
-    platformsWithoutReach,
-  };
+  return { performance: withTotal(counts), performanceReach: reach };
 };
 
 const readMetric = (stats: Map<string, SourceData>, metric: DspMetric) =>
@@ -165,46 +122,6 @@ const readMetric = (stats: Map<string, SourceData>, metric: DspMetric) =>
 
 const asDate = (value: string | null) =>
   value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
-
-/** Running totals, so the campaign's share is the last point minus the first. */
-const readGrowth = (history: HistoryPoint[], field: string) => {
-  const values = history
-    .map((point) => Number(point[field]))
-    .filter((value) => Number.isFinite(value));
-  return values.length < 2 ? 0 : Math.max(0, values.at(-1)! - values[0]);
-};
-
-type Histories = Map<string, HistoryPoint[]>;
-
-/**
- * Daily history over the campaign for every source STREAMING
- * read, in one call. Points are sorted oldest first per source.
- */
-const readCampaignHistory = async (
-  isrc: string,
-  startDate: string,
-  endDate: string,
-): Promise<Histories> => {
-  const payload = await withRetry(() =>
-    songstatsRequest<{
-      stats?: { source?: string; data?: { history?: HistoryPoint[] } }[];
-    }>("/tracks/historic_stats", {
-      isrc: normalizeIsrc(isrc),
-      source: DSP_METRICS.map((metric) => metric.source),
-      start_date: startDate,
-      end_date: endDate,
-    }),
-  );
-
-  return new Map(
-    (payload.stats ?? []).map((entry) => [
-      entry.source ?? "",
-      [...(entry.data?.history ?? [])].sort((a, b) =>
-        String(a.date).localeCompare(String(b.date)),
-      ),
-    ]),
-  );
-};
 
 /** Current running totals per action, so ACTIONS renders from day one. */
 const summarizeActionTotals = (stats: Map<string, SourceData>) => {
@@ -228,10 +145,6 @@ const summarizePlatformTotals = (stats: Map<string, SourceData>) =>
       ),
     ]),
   );
-
-/** Plays each platform gained between the campaign's first and last day. */
-const readCampaignPlays = (histories: Histories, metric: DspMetric) =>
-  readGrowth(histories.get(metric.source) ?? [], metric.field);
 
 /**
  * Spins per country over the window, so the markets picker can filter without
@@ -278,10 +191,7 @@ export async function GET(request: NextRequest) {
   const requestedEnd = asDate(request.nextUrl.searchParams.get("endDate"));
   const today = daysAgo(0);
   const endDate = !requestedEnd || requestedEnd > today ? today : requestedEnd;
-  // Before the campaign starts there is no window to measure ACTIONS or
-  // campaign STREAMING over; STREAMING then shows all-time totals.
   const hasCampaignWindow = Boolean(startDate && startDate <= endDate);
-  const wantHistory = wantSocial && hasCampaignWindow;
   // Spins are counted over the campaign; before it starts there is no window,
   // so the recent RADIO_WINDOW_DAYS stand in.
   const radioWindow = hasCampaignWindow
@@ -318,7 +228,7 @@ export async function GET(request: NextRequest) {
   ];
 
   try {
-    const [statsResult, radioResult, historyResult] = await Promise.allSettled([
+    const [statsResult, radioResult] = await Promise.allSettled([
       statSources.length > 0
         ? fetchTrackStats(isrc, statSources, {
             with_playlists: reachSources.length > 0,
@@ -327,9 +237,6 @@ export async function GET(request: NextRequest) {
           })
         : Promise.resolve(new Map<string, SourceData>()),
       wantRadio ? readAirplay(isrc, radioWindow) : Promise.resolve(null),
-      wantHistory
-        ? readCampaignHistory(isrc, startDate!, endDate)
-        : Promise.resolve(undefined),
     ]);
 
     // With both halves down there is nothing to chart, so surface the error
@@ -345,9 +252,6 @@ export async function GET(request: NextRequest) {
     }
     if (radioResult.status === "rejected") {
       console.error("Songstats radio spins failed:", radioResult.reason);
-    }
-    if (historyResult.status === "rejected") {
-      console.error("Songstats campaign history failed:", historyResult.reason);
     }
 
     const stats =
@@ -378,10 +282,7 @@ export async function GET(request: NextRequest) {
         label: metric.label,
       }));
 
-    const histories =
-      historyResult.status === "fulfilled" ? historyResult.value : undefined;
-
-    const { performance, platformsWithoutReach } = splitReach(
+    const { performance, performanceReach } = summarizePlaylists(
       stats,
       reachSources,
     );
@@ -389,23 +290,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       periodDays: PERIOD_DAYS,
       radioWindow,
-      platformsWithoutReach,
       stats: {
         // SOCIAL MEDIA and ACTIONS read the same totals: summed per platform
         // for one, per kind of action for the other.
         socialMedia: wantSocial ? summarizePlatformTotals(stats) : undefined,
         actions: wantSocial ? summarizeActionTotals(stats) : undefined,
-        // Plays gained during the campaign; all-time totals only when there
-        // is no campaign window yet. Left unfiltered: which platforms the
-        // viewer wants shown is applied on the client, so toggling one costs
-        // no further calls.
+        // All-time plays. Left unfiltered: which platforms the viewer wants
+        // shown is applied on the client, so toggling one costs no further
+        // calls.
         dsp: withTotal(
-          dspMetrics.map((metric) => [
-            metric.label,
-            histories
-              ? readCampaignPlays(histories, metric)
-              : readMetric(stats, metric),
-          ]),
+          dspMetrics.map((metric) => [metric.label, readMetric(stats, metric)]),
         ),
         radioSpins,
         airplayByCountry,
@@ -413,6 +307,7 @@ export async function GET(request: NextRequest) {
         airplayCountryCodes: airplay?.countryCodes ?? {},
         availableStreamingPlatforms,
         performance,
+        performanceReach,
       },
     });
   } catch (error) {

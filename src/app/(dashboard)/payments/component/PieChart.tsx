@@ -31,6 +31,8 @@ type ChartFilterState = {
 interface InsightChartProps<TFilters extends ChartFilterState> {
   title: string;
   value: number | string;
+  /** Extra tooltip line per slice, keyed by slice label. */
+  segmentNotes?: Record<string, string>;
   percentageChange?: string;
   selectOptions?: Array<{ value: string; label: string }[]>;
   selectOptionsBottom?: Array<{ value: string; label: string }[]>;
@@ -99,6 +101,7 @@ const CampaignPieChart = <
 >({
   title,
   value,
+  segmentNotes,
   selectOptions,
   selectOptionsBottom,
   chartData,
@@ -288,7 +291,36 @@ const CampaignPieChart = <
                     <ChartTooltip
                       cursor={false}
                       content={
-                        <ChartTooltipContent hideLabel nameKey="segment" />
+                        <ChartTooltipContent
+                          hideLabel
+                          nameKey="segment"
+                          formatter={
+                            segmentNotes
+                              ? (hoveredValue, _name, item) => {
+                                  const label = String(item.payload?.label);
+                                  return (
+                                    <div className="flex min-w-32 flex-col gap-0.5">
+                                      <div className="flex items-center justify-between gap-5">
+                                        <span className="text-muted-foreground">
+                                          {label}
+                                        </span>
+                                        <span className="font-mono font-medium text-foreground tabular-nums">
+                                          {Number(
+                                            hoveredValue,
+                                          ).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      {segmentNotes[label] && (
+                                        <span className="text-muted-foreground">
+                                          {segmentNotes[label]}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                              : undefined
+                          }
+                        />
                       }
                     />
                   )}
