@@ -23,6 +23,7 @@ interface PlaylistEntry {
   external_url?: string;
   followers_count?: number;
   current_position?: number | null;
+  added_at?: string | null;
 }
 
 // Songstats caps expanded lists at 100 per source per call.
@@ -83,6 +84,7 @@ export async function GET(request: NextRequest) {
           platform: platform.label,
           url: entry.external_url,
           position: entry.current_position ?? undefined,
+          addedAt: entry.added_at ?? undefined,
           subscriberCount: entry.followers_count,
         })),
       };

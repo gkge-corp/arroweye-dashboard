@@ -98,10 +98,10 @@ export const renderCampaignTrend = (
   aiSummary: string,
 ) => {
   const entries = [
-    { label: "RADIO", value: values.airplay, color: COLORS.airplay },
-    { label: "SPINS", value: values.spins, color: COLORS.spins },
-    { label: "SOCIAL", value: values.social, color: COLORS.social },
-    { label: "STREAMING", value: values.streaming, color: COLORS.streaming },
+    { label: "Radio", value: values.airplay, color: COLORS.airplay },
+    { label: "Spins", value: values.spins, color: COLORS.spins },
+    { label: "Social", value: values.social, color: COLORS.social },
+    { label: "Streaming", value: values.streaming, color: COLORS.streaming },
   ].filter(({ value }) => value > 0);
   if (entries.length === 0) return "";
 
@@ -109,7 +109,7 @@ export const renderCampaignTrend = (
   const summaryRows = entries
     .map(
       ({ label, value, color }) =>
-        `<tr><td style="font-size:11px;text-transform:uppercase;color:#444;padding:4px 0;"><span style="display:inline-block;width:9px;height:9px;background:${color};border-radius:2px;margin-right:6px;"></span>${label}</td><td style="font-size:11px;color:#444;text-align:right;font-weight:800;">${formatNumber(value)}</td></tr>`,
+        `<tr><td style="font-size:11px;text-transform:capitalize;color:#444;padding:4px 0;"><span style="display:inline-block;width:9px;height:9px;background:${color};border-radius:2px;margin-right:6px;"></span>${label}</td><td style="font-size:11px;color:#444;text-align:right;font-weight:800;">${formatNumber(value)}</td></tr>`,
     )
     .join("");
   const summary = aiSummary.trim()

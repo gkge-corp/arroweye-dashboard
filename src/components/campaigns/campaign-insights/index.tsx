@@ -403,6 +403,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
         name: playlist.name,
         platform: playlist.platform,
         url: playlist.url,
+        position: playlist.position,
+        addedAt: playlist.addedAt,
       })),
     };
   }, [
@@ -550,7 +552,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               stations={stations}
               loading={isRadioLoading}
               songTitle={songTitle}
-              downloadButtonText="Download Data"
               hasMore={hasMoreRadio}
               isLoadingMore={isLoadingMoreRadio}
               onLoadMore={loadMoreRadio}
@@ -619,10 +620,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               creators={topCreators}
               loading={isTopCreatorsLoading}
               isLinked={Boolean(songIsrc)}
-              summaries={[
-                { title: "Social Media", data: socialMediaData },
-                { title: "Actions", data: smactionData },
-              ]}
               onLinkSong={() => {
                 if (editMode) {
                   setLinkSongModal(true);
@@ -690,7 +687,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
               playlists={playlists}
               loading={isPlaylistsLoading}
               songTitle={songTitle}
-              downloadButtonText="Download Data"
               failedPlatforms={failedPlatforms}
               onRetry={retryPlaylists}
               hasMore={hasMorePlaylists}

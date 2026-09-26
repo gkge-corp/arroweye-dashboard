@@ -3,12 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { readCountryName } from "@/lib/music-analytics/country-names";
 import {
   RADIO_PAGE_SIZE,
-  countPlaysInWindow,
   fetchRadioStations,
-  toEpochSeconds,
+  soundchartsErrorResponse,
   type RadioStation,
-} from "@/lib/music-analytics/songstats-radio";
-import { songstatsErrorResponse } from "@/lib/music-analytics/songstats-track-stats";
+} from "@/lib/music-analytics/soundcharts-radio";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,45 +54,37 @@ export async function GET(request: NextRequest) {
 
   try {
     const page = Number.isFinite(offset) && offset > 0 ? offset : 0;
-    const sourceItems = await fetchRadioStations(isrc, page);
-    const from = toEpochSeconds(startDate);
-    const to = toEpochSeconds(endDate, true);
+    const sourceItems = await fetchRadioStations(
+      isrc,
+      { startDate, endDate },
+      page,
+    );
 
     const isSelected = (station: RadioStation) =>
       !selectedCountries ||
-      selectedCountries.has(readCountryName(station.country_code)) ||
-      selectedCountries.has(station.country_code ?? "");
+      selectedCountries.has(readCountryName(station.countryCode)) ||
+      selectedCountries.has(station.countryCode);
 
     const items = sourceItems
       .filter(isSelected)
       .map((station) => ({
-        id: String(
-          station.radio_station_id ?? `${station.name}-${station.country_code}`,
-        ),
-        name: station.name ?? "Unknown station",
-        country: readCountryName(station.country_code),
-        city: station.city_name ?? "",
-        plays: countPlaysInWindow(station.radio_plays, from, to),
+        id: station.id,
+        name: station.name,
+        country: readCountryName(station.countryCode),
+        city: station.city,
+        plays: station.plays,
       }))
       .filter((station) => station.plays > 0)
       .sort((a, b) => b.plays - a.plays);
 
-    // Pages run newest-played first, so once a station's last spin predates
-    // the window every later page is outside it too.
-    const lastStation = sourceItems[sourceItems.length - 1];
-    const reachedOlderPlays =
-      Math.max(0, ...(lastStation?.radio_plays ?? [])) < from;
-
     return NextResponse.json({
       items,
       nextOffset:
-        sourceItems.length === RADIO_PAGE_SIZE && !reachedOlderPlays
-          ? page + RADIO_PAGE_SIZE
-          : null,
+        sourceItems.length === RADIO_PAGE_SIZE ? page + RADIO_PAGE_SIZE : null,
       window: { startDate, endDate },
     });
   } catch (error) {
-    console.error("Songstats top radio failed:", error);
-    return songstatsErrorResponse(error);
+    console.error("Soundcharts top radio failed:", error);
+    return soundchartsErrorResponse(error);
   }
 }

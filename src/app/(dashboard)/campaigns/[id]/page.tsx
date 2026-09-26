@@ -95,15 +95,11 @@ const ProjectDetails = () => {
   } = useCampaignDetail(id);
   const {
     toggleNotifications,
-    editMode,
     editModeOff,
     showIcons,
-    setEditMode,
     setEditModeOff,
     setShowIcons,
     requestEditModeChange,
-    confirmEditMode,
-    cancelEditMode,
     confirmEditModeOff,
     cancelEditModeOff,
   } = useCampaignEditMode();
@@ -260,15 +256,6 @@ const ProjectDetails = () => {
             cancelLabel="Cancel"
             onOpenChange={setDeleteModal}
             onConfirm={handleCampaignActionRemove}
-          />
-
-          <ConfirmActionDialog
-            open={editMode}
-            title="Enable edit mode"
-            description="Do you want to switch to edit mode?"
-            onOpenChange={setEditMode}
-            onConfirm={confirmEditMode}
-            onCancel={cancelEditMode}
           />
 
           <ConfirmActionDialog

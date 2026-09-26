@@ -79,6 +79,10 @@ const sanitizePlaylists = (value: unknown): CampaignReportPlaylist[] =>
       name: sanitizeText(playlist?.name, 120),
       platform: sanitizeText(playlist?.platform, 50),
       url: sanitizeText(playlist?.url, 500) || undefined,
+      position: sanitizeCount(playlist?.position) || undefined,
+      addedAt: /^\d{4}-\d{2}-\d{2}$/.test(playlist?.addedAt)
+        ? playlist.addedAt
+        : undefined,
     }))
     .filter((playlist) => playlist.name);
 

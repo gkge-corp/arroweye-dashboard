@@ -1,5 +1,6 @@
 import "server-only";
 
+import { SoundchartsError } from "./soundcharts-client";
 import { SongstatsError } from "./songstats-client";
 
 /**
@@ -17,7 +18,9 @@ export const withRetry = async <T>(
       return await task();
     } catch (error) {
       const isRetryable =
-        !(error instanceof SongstatsError) ||
+        !(
+          error instanceof SongstatsError || error instanceof SoundchartsError
+        ) ||
         error.status === 429 ||
         error.status >= 500;
 
