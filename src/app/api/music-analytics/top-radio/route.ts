@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { readCountryName } from "@/lib/music-analytics/country-names";
 import {
+  ALL_TIME_START,
   RADIO_PAGE_SIZE,
   fetchRadioStations,
   soundchartsErrorResponse,
@@ -10,8 +11,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const DEFAULT_WINDOW_DAYS = 90;
 
 const asDate = (value: string | null) =>
   value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
@@ -30,11 +29,11 @@ export async function GET(request: NextRequest) {
   const requestedEnd = asDate(request.nextUrl.searchParams.get("endDate"));
   const endDate = !requestedEnd || requestedEnd > today ? today : requestedEnd;
   // Same window insight stats counts over, so station spins add up to the
-  // AIRPLAY total: the campaign, or recent days before it starts.
+  // AIRPLAY total: all-time unless a window is requested.
   const startDate =
     requestedStart && requestedStart <= endDate
       ? requestedStart
-      : daysAgo(DEFAULT_WINDOW_DAYS);
+      : ALL_TIME_START;
   const countryParam = request.nextUrl.searchParams.get("countries");
   const selectedCountries = countryParam
     ? new Set(

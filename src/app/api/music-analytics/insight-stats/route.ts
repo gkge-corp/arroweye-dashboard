@@ -7,7 +7,10 @@ import {
   parsePlatforms,
   toSongstatsSource,
 } from "@/lib/music-analytics/platforms";
-import { fetchRadioStations } from "@/lib/music-analytics/soundcharts-radio";
+import {
+  ALL_TIME_START,
+  fetchRadioStations,
+} from "@/lib/music-analytics/soundcharts-radio";
 import {
   fetchTrackStats,
   songstatsErrorResponse,
@@ -18,7 +21,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PERIOD_DAYS = 30;
-const RADIO_WINDOW_DAYS = 90;
 
 // DSP plots each platform's headline play count. Songstats reports no play
 // counts for Apple Music, Amazon, Deezer or Tidal, so those only appear in
@@ -182,12 +184,11 @@ export async function GET(request: NextRequest) {
   const requestedEnd = asDate(request.nextUrl.searchParams.get("endDate"));
   const today = daysAgo(0);
   const endDate = !requestedEnd || requestedEnd > today ? today : requestedEnd;
-  const hasCampaignWindow = Boolean(startDate && startDate <= endDate);
-  // Spins are counted over the campaign; before it starts there is no window,
-  // so the recent RADIO_WINDOW_DAYS stand in.
-  const radioWindow = hasCampaignWindow
-    ? { startDate: startDate!, endDate }
-    : { startDate: daysAgo(RADIO_WINDOW_DAYS), endDate: today };
+  // Spins are all-time unless a window is requested.
+  const radioWindow = {
+    startDate: startDate && startDate <= endDate ? startDate : ALL_TIME_START,
+    endDate,
+  };
   const countryParam = request.nextUrl.searchParams.get("countries");
   const selectedCountries = countryParam
     ? new Set(

@@ -134,8 +134,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       social: true,
       reachPlatforms: sources.reachPlatforms,
       countries: selectedMarkets,
-      startDate: campaignStartDate,
-      endDate: campaignEndDate,
       ready: sourcesLoaded && marketsLoaded,
     },
   );
@@ -297,8 +295,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   } = useCampaignRadio(songIsrc, {
     enabled: marketsLoaded && !airplayDisabled,
     countries: selectedMarkets,
-    startDate: campaignStartDate,
-    endDate: campaignEndDate,
   });
   const songTitle =
     content?.title || content?.song_title || content?.campaign?.song_title;
@@ -514,7 +510,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 value={airPlayData?.total_count ?? 0}
                 chartData={chartDataForDoughnutAirplay}
                 isLoading={isInsightStatsLoading}
-                info="Estimated total number of airplay instances this campaign received across radio, television, and DJ/club activations."
+                info="Estimated total number of airplay instances this song has received to date across radio, television, and DJ/club activations."
                 emptyMessage={
                   airplayDisabled
                     ? "Airplay is off — no countries selected. Radio spins and stations stay hidden until at least one country is picked."
