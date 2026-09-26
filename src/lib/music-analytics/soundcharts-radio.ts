@@ -9,6 +9,9 @@ import { normalizeIsrc } from "./songstats-client";
 // Soundcharts caps limit at 100 and bills per call.
 export const RADIO_PAGE_SIZE = 100;
 
+// Predates any airplay Soundcharts tracks, so a window from here is all-time.
+export const ALL_TIME_START = "2000-01-01";
+
 // A song's Soundcharts id never changes, so the lookup is kept for a week.
 const SONG_UUID_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
