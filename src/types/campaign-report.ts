@@ -23,6 +23,8 @@ export interface CampaignReportPlaylist {
   name: string;
   platform: string;
   url?: string;
+  position?: number;
+  addedAt?: string;
 }
 
 export interface CampaignReportAudienceGrowth {

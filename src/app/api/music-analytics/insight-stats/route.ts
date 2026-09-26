@@ -7,11 +7,7 @@ import {
   parsePlatforms,
   toSongstatsSource,
 } from "@/lib/music-analytics/platforms";
-import {
-  countPlaysInWindow,
-  fetchRadioStations,
-  toEpochSeconds,
-} from "@/lib/music-analytics/songstats-radio";
+import { fetchRadioStations } from "@/lib/music-analytics/soundcharts-radio";
 import {
   fetchTrackStats,
   songstatsErrorResponse,
@@ -154,22 +150,17 @@ const readAirplay = async (
   isrc: string,
   window: { startDate: string; endDate: string },
 ) => {
-  const stations = await fetchRadioStations(isrc);
-  const from = toEpochSeconds(window.startDate);
-  const to = toEpochSeconds(window.endDate, true);
+  const stations = await fetchRadioStations(isrc, window);
 
   const byCountry: Record<string, number> = {};
   const countryCodes: Record<string, string> = {};
 
   for (const station of stations) {
-    const name = readCountryName(station.country_code);
-    if (!name) continue;
+    const name = readCountryName(station.countryCode);
+    if (!name || station.plays === 0) continue;
 
-    const plays = countPlaysInWindow(station.radio_plays, from, to);
-    if (plays === 0) continue;
-
-    byCountry[name] = (byCountry[name] ?? 0) + plays;
-    countryCodes[name] = station.country_code!.toUpperCase();
+    byCountry[name] = (byCountry[name] ?? 0) + station.plays;
+    countryCodes[name] = station.countryCode;
   }
 
   return { byCountry, countryCodes };
@@ -251,7 +242,7 @@ export async function GET(request: NextRequest) {
       console.error("Songstats insight stats failed:", statsResult.reason);
     }
     if (radioResult.status === "rejected") {
-      console.error("Songstats radio spins failed:", radioResult.reason);
+      console.error("Soundcharts radio spins failed:", radioResult.reason);
     }
 
     const stats =

@@ -6,6 +6,7 @@ import type {
 import {
   asNumber,
   escapeHtml,
+  formatDate,
   formatNumber,
   safeUrl,
   sectionLabel,
@@ -46,7 +47,17 @@ const renderPlaylistCard = (
     ? `<a href="${link}" target="_blank" style="color:#fff;text-decoration:none;">${name}</a>`
     : name;
 
-  return `<td width="33.33%" valign="top" style="padding:${padding};"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:#fff;border:1px solid #e7e7e7;"><tr><td style="padding:7px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr><td height="150" valign="top" style="height:150px;padding:10px;${gradient(index, "135deg")}color:#fff;"><div style="font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;opacity:.82;">${escapeHtml(playlist.platform)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;height:105px;"><tr><td height="105" valign="bottom" style="height:105px;padding:0 0 12px;"><div style="font-size:15px;font-weight:900;line-height:1.1;max-height:34px;overflow:hidden;">${title}</div></td></tr></table></td></tr></table></td></tr></table></td>`;
+  const addedOn = formatDate(playlist.addedAt, "", "long");
+  const details = [
+    playlist.position
+      ? `<div style="font-size:11px;color:#777;margin-top:8px;">Position &middot; <strong style="font-weight:800;color:#444;">#${playlist.position}</strong></div>`
+      : "",
+    addedOn
+      ? `<div style="font-size:10px;color:#777;margin-top:3px;">Added on ${addedOn}</div>`
+      : "",
+  ].join("");
+
+  return `<td width="33.33%" valign="top" style="padding:${padding};"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:#fff;border:1px solid #e7e7e7;"><tr><td style="padding:7px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr><td height="150" valign="top" style="height:150px;padding:10px;${gradient(index, "135deg")}color:#fff;"><div style="font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;opacity:.82;">${escapeHtml(playlist.platform)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;height:105px;"><tr><td height="105" valign="bottom" style="height:105px;padding:0 0 12px;"><div style="font-size:15px;font-weight:900;line-height:1.1;max-height:34px;overflow:hidden;">${title}</div></td></tr></table></td></tr></table>${details}</td></tr></table></td>`;
 };
 
 export const renderPlaylistAdditions = (
@@ -101,5 +112,5 @@ export const renderPlaylistBreakdown = (
     })
     .join("");
 
-  return `<div style="margin-top:24px;"><div style="font-size:11px;letter-spacing:1.2px;font-weight:900;text-transform:uppercase;color:#777;margin-bottom:10px;">Playlist breakdown</div><div style="margin-top:14px;background:#f9f9f9;padding:16px;border-radius:7px;border:1px solid #e5e5e5;"><div style="font-size:10px;letter-spacing:1px;font-weight:900;text-transform:uppercase;color:#666;">Placements</div><div style="font-size:25px;line-height:1;font-weight:900;margin:8px 0 4px;color:#222;">${formatNumber(placements)}</div><div style="font-size:11px;color:#777;margin-bottom:16px;">Playlists the song is currently on, by platform</div>${bars}<p style="font-size:11px;color:#777;margin:14px 0 0;line-height:1.45;"><strong>&#9432;</strong> Followers show the combined audience of those playlists where the platform reports it.</p></div></div>`;
+  return `<div style="margin-top:24px;"><div style="font-size:11px;letter-spacing:1.2px;font-weight:900;text-transform:uppercase;color:#777;margin-bottom:10px;">Playlist breakdown</div><div style="margin-top:14px;background:#f9f9f9;padding:16px;border-radius:7px;border:1px solid #e5e5e5;"><div style="font-size:10px;letter-spacing:1px;font-weight:900;text-transform:uppercase;color:#666;">Placements</div><div style="font-size:25px;line-height:1;font-weight:800;margin:8px 0 4px;color:#222;">${formatNumber(placements)}</div><div style="font-size:11px;color:#777;margin-bottom:16px;">Playlists the song is currently on, by platform</div>${bars}<p style="font-size:11px;color:#777;margin:14px 0 0;line-height:1.45;"><strong>&#9432;</strong> Followers show the combined audience of those playlists where the platform reports it.</p></div></div>`;
 };
