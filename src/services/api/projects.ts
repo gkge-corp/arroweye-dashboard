@@ -284,3 +284,16 @@ export const ClaimReward = async (payload: unknown): Promise<void> => {
     return;
   }
 };
+
+export const uploadProjectReport = async (
+  projectId: string,
+  data: { file: string; report_type: string },
+): Promise<void> => {
+  await apiRequest({
+    method: "POST",
+    url: `/api/v1/projects/${projectId}/report/upload/`,
+    data: { ...data, project_id: Number(projectId) },
+    requireToken: true,
+    silent: true,
+  });
+};

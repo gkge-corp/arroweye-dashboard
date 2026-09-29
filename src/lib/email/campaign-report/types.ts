@@ -18,6 +18,7 @@ export interface CampaignReportTemplateInput {
   campaignId: string;
   generatedAt: Date;
   aiInsights?: CampaignAiInsights;
+  radioMonitor?: { downloadLink: string; fileName: string };
 }
 
 export interface MetricCard {
