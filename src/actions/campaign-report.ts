@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import OpenAI from "openai";
 
 import { renderCampaignReportEmail } from "@/lib/email/campaign-report-template";
@@ -8,6 +8,9 @@ import { hasNumericClaim } from "@/lib/email/campaign-report/ai-sections";
 import type { CampaignAiInsights } from "@/lib/email/campaign-report/types";
 import { asNumber, asString, total } from "@/lib/email/campaign-report/utils";
 import { sendZeptoMail } from "@/lib/email/zeptomail";
+import { getAuthorizedProject } from "@/lib/server/get-authorized-project";
+import { findLatestRadioMonitor } from "@/lib/storage/r2";
+import { buildRadioMonitorLink } from "@/lib/storage/report-link";
 import type {
   CampaignReportCreator,
   CampaignReportHighlight,
@@ -278,31 +281,25 @@ const generateCampaignAiInsights = async (
   return parseAiInsights(response.output_text);
 };
 
-const getAuthorizedProject = async (campaignId: string) => {
-  const token = (await cookies()).get("auth_token")?.value;
-  const apiBaseUrl = process.env.NEXT_PUBLIC_APP_SERVER_DOMAIN?.replace(
-    /\/$/,
-    "",
-  );
+// Links in the email must point at the app that sent it, not the API server.
+const getAppBaseUrl = async () => {
+  const requestHeaders = await headers();
+  const host =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  if (!host) throw new Error("The app URL could not be determined.");
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") ??
+    (host.startsWith("localhost") ? "http" : "https");
+  return `${protocol}://${host}`;
+};
 
-  if (!token)
-    throw new Error("Your session has expired. Please sign in again.");
-  if (!apiBaseUrl) throw new Error("The campaign service is not configured.");
-
-  const response = await fetch(
-    `${apiBaseUrl}/api/v1/projects/${encodeURIComponent(campaignId)}/`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    },
-  );
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("You do not have permission to send this campaign report.");
-  }
-  if (!response.ok) throw new Error("The campaign could not be verified.");
-
-  return (await response.json()) as UnknownRecord;
+const getRadioMonitorAttachment = async (campaignId: string) => {
+  const file = await findLatestRadioMonitor(campaignId);
+  if (!file) return undefined;
+  return {
+    downloadLink: buildRadioMonitorLink(await getAppBaseUrl(), campaignId),
+    fileName: file.fileName,
+  };
 };
 
 export async function sendCampaignReport(
@@ -324,7 +321,10 @@ export async function sendCampaignReport(
   }
 
   try {
-    const project = await getAuthorizedProject(campaignId);
+    const project = await getAuthorizedProject(
+      campaignId,
+      "You do not have permission to send this campaign report.",
+    );
     const generatedAt = new Date();
     const metrics = sanitizeMetrics(input.metrics);
     const aiInsights = await generateCampaignAiInsights(project, metrics).catch(
@@ -336,12 +336,19 @@ export async function sendCampaignReport(
         return undefined;
       },
     );
+    const radioMonitor = await getRadioMonitorAttachment(campaignId).catch(
+      (error: unknown) => {
+        console.error("Radio monitor link failed:", error);
+        return undefined;
+      },
+    );
     const { html, text, subject } = renderCampaignReportEmail({
       project,
       metrics,
       campaignId,
       generatedAt,
       aiInsights,
+      radioMonitor,
     });
 
     await sendZeptoMail({

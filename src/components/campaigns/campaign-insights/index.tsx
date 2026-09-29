@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import AddMedia from "../AddMedia";
-import { Plus, Settings2 } from "lucide-react";
+import { FileUp, Plus, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PieChart from "@/app/(dashboard)/payments/component/PieChart";
 import DoughnutChart from "../Doughnut";
@@ -10,6 +10,7 @@ import ColumnChart from "../ColumnChart";
 import { BottomDock } from "./bottom-dock";
 import { PlaylistsCard } from "./playlists-card";
 import { LinkSongDialog } from "./link-song-dialog";
+import { RadioMonitorUploadDialog } from "./radio-monitor-upload-dialog";
 import {
   InsightSourcesDialog,
   type InsightSourceScope,
@@ -74,6 +75,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   onRequestEditModeChange,
 }) => {
   const [linkSongModal, setLinkSongModal] = React.useState(false);
+  const [radioMonitorModal, setRadioMonitorModal] = React.useState(false);
   const { songIsrc: linkedIsrc, linkSong } = useCampaignSong({
     campaignId: content?.id,
     isrc: content?.isrc,
@@ -501,6 +503,15 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                     </Button>
                   </>
                 )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={editActionButtonClassName}
+                  onClick={() => setRadioMonitorModal(true)}
+                >
+                  <FileUp className="size-4" />
+                  Upload radio monitor
+                </Button>
               </div>
             )}
 
@@ -719,6 +730,12 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
         artistName={content?.artist_name}
         onOpenChange={setLinkSongModal}
         onLink={linkSong}
+      />
+
+      <RadioMonitorUploadDialog
+        open={radioMonitorModal}
+        campaignId={content?.id}
+        onOpenChange={setRadioMonitorModal}
       />
 
       <BottomDock
