@@ -148,6 +148,17 @@ const summarizePlatformTotals = (stats: Map<string, SourceData>) =>
     ]),
   );
 
+/** The "Video creations" action per platform, so the report can name the top one. */
+const summarizeVideoCreations = (stats: Map<string, SourceData>) =>
+  withTotal(
+    Object.entries(ACTION_FIELDS)
+      .filter(([, fields]) => fields["Video creations"])
+      .map(([source, fields]) => [
+        ACTION_SOURCE_LABELS[source] ?? source,
+        readNumber(stats.get(source), fields["Video creations"]),
+      ]),
+  );
+
 /**
  * Spins per country over the window, so the markets picker can filter without
  * another call. Reads the same first page Top Radio does.
@@ -291,6 +302,9 @@ export async function GET(request: NextRequest) {
         // for one, per kind of action for the other.
         socialMedia: wantSocial ? summarizePlatformTotals(stats) : undefined,
         actions: wantSocial ? summarizeActionTotals(stats) : undefined,
+        videoCreationsByPlatform: wantSocial
+          ? summarizeVideoCreations(stats)
+          : undefined,
         // All-time plays. Left unfiltered: which platforms the viewer wants
         // shown is applied on the client, so toggling one costs no further
         // calls.

@@ -302,6 +302,11 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   const reportMetrics = React.useMemo<CampaignReportMetrics>(() => {
     // Same figure as the ACTIONS "Video creations" slice, so the report matches it.
     const videoCreations = Number(smactionData?.["Video creations"] ?? 0);
+    const topCreationPlatform = Object.entries(
+      insightStats?.videoCreationsByPlatform ?? {},
+    )
+      .filter(([label, value]) => label !== "total_count" && value > 0)
+      .sort(([, a], [, b]) => b - a)[0]?.[0];
     const shazamRow = socialTraction.find((item) => item.id === "shazam");
     const youtubeRow = socialTraction.find((item) => item.id === "youtube");
 
@@ -337,6 +342,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
                 value: videoCreations,
                 changePercent: null,
                 periodDays: socialTractionPeriodDays,
+                topPlatform: topCreationPlatform,
               },
             ]
           : []),
@@ -387,6 +393,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     dspData,
     dspPerformanceData,
     insightStats?.performanceReach,
+    insightStats?.videoCreationsByPlatform,
     playlists,
     smactionData,
     socialMediaData,

@@ -9,6 +9,8 @@ export interface SongInsightStats {
   socialMedia?: InsightStats;
   /** Current views, likes, comments and shares on the song. */
   actions?: InsightStats;
+  /** The "Video creations" action split by platform. */
+  videoCreationsByPlatform?: InsightStats;
   dsp?: InsightStats;
   /** Radio spins over the window; null when radio data could not be read. */
   radioSpins?: number | null;
