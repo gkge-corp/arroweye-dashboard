@@ -1,8 +1,58 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const SPINS_PATH = "/spins";
+// Top-level dashboard routes that must not be treated as spin ids on the spins subdomain.
+const APP_ROUTE_PREFIXES = [
+  "/login",
+  "/campaigns",
+  "/drops",
+  "/payments",
+  "/schedule",
+  "/settings",
+];
+
+function isSpinsHost(request: NextRequest) {
+  const host = request.headers.get("host") ?? "";
+  return host.startsWith("spins.");
+}
+
+function isAppRoute(pathname: string) {
+  return APP_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+// spins.arroweye.pro/        -> /spins
+// spins.arroweye.pro/:id     -> /spins/:id
+// spins.arroweye.pro/spins/* -> redirect to the prefix-less URL
+function handleSpinsHost(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const url = request.nextUrl.clone();
+
+  if (pathname === SPINS_PATH || pathname.startsWith(`${SPINS_PATH}/`)) {
+    url.pathname = pathname.slice(SPINS_PATH.length) || "/";
+    return NextResponse.redirect(url, 308);
+  }
+
+  if (isAppRoute(pathname)) {
+    return null;
+  }
+
+  url.pathname = pathname === "/" ? SPINS_PATH : `${SPINS_PATH}${pathname}`;
+  return NextResponse.rewrite(url);
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (isSpinsHost(request)) {
+    const spinsResponse = handleSpinsHost(request);
+    if (spinsResponse) {
+      return spinsResponse;
+    }
+  }
+
   const token = request.cookies.get("auth_token")?.value;
   const isPublicSpinsRoute =
     pathname === "/spins" || pathname.startsWith("/spins/");

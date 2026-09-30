@@ -37,15 +37,19 @@ type DspMetric = (typeof DSP_METRICS)[number];
 /**
  * ACTIONS: engagement on the song across social video, by kind. Each source
  * names its daily running totals differently; TikTok alone reports shares.
+ * Sources sharing a label are summed, so "Video creations" is one slice
+ * covering TikTok videos and Instagram Reels made with the song.
  */
 const ACTION_FIELDS: Record<string, Record<string, string>> = {
   tiktok: {
+    "Video creations": "videos_total",
     Views: "views_total",
     Likes: "likes_total",
     Comments: "comments_total",
     Shares: "shares_total",
   },
   instagram: {
+    "Video creations": "videos_total",
     Views: "views_total",
     Likes: "likes_total",
     Comments: "comments_total",
@@ -142,6 +146,17 @@ const summarizePlatformTotals = (stats: Map<string, SourceData>) =>
         0,
       ),
     ]),
+  );
+
+/** The "Video creations" action per platform, so the report can name the top one. */
+const summarizeVideoCreations = (stats: Map<string, SourceData>) =>
+  withTotal(
+    Object.entries(ACTION_FIELDS)
+      .filter(([, fields]) => fields["Video creations"])
+      .map(([source, fields]) => [
+        ACTION_SOURCE_LABELS[source] ?? source,
+        readNumber(stats.get(source), fields["Video creations"]),
+      ]),
   );
 
 /**
@@ -287,6 +302,9 @@ export async function GET(request: NextRequest) {
         // for one, per kind of action for the other.
         socialMedia: wantSocial ? summarizePlatformTotals(stats) : undefined,
         actions: wantSocial ? summarizeActionTotals(stats) : undefined,
+        videoCreationsByPlatform: wantSocial
+          ? summarizeVideoCreations(stats)
+          : undefined,
         // All-time plays. Left unfiltered: which platforms the viewer wants
         // shown is applied on the client, so toggling one costs no further
         // calls.

@@ -37,7 +37,6 @@ import { TopCreatorsCard } from "./top-creators-card";
 import type { CampaignReportMetrics } from "@/types/campaign-report";
 import { PLAYLIST_PLATFORMS } from "@/lib/music-analytics/platforms";
 
-const videoCreationPlatformIds = new Set(["tiktok", "instagram"]);
 const playlistPlatformCodes = new Set(
   PLAYLIST_PLATFORMS.map((platform) => platform.code),
 );
@@ -301,34 +300,13 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   const songTitle =
     content?.title || content?.song_title || content?.campaign?.song_title;
   const reportMetrics = React.useMemo<CampaignReportMetrics>(() => {
-    const creationRows = socialTraction.filter(
-      (row) =>
-        videoCreationPlatformIds.has(row.id) && typeof row.value === "number",
-    );
-    const videoCreations = creationRows.reduce(
-      (sum, row) => sum + (row.value ?? 0),
-      0,
-    );
-    const topCreationPlatform = creationRows
-      .filter((row) => (row.value ?? 0) > 0)
-      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))[0]?.platform;
-    const hasCompleteEvolution =
-      creationRows.length > 0 &&
-      creationRows.every((row) => typeof row.evolution === "number");
-    const creationEvolution = hasCompleteEvolution
-      ? creationRows.reduce((sum, row) => sum + (row.evolution ?? 0), 0)
-      : null;
-    const previousVideoCreations =
-      creationEvolution === null ? null : videoCreations - creationEvolution;
-    const videoCreationChange =
-      creationRows.length === 1 &&
-      typeof creationRows[0].percentEvolution === "number"
-        ? creationRows[0].percentEvolution
-        : previousVideoCreations !== null && previousVideoCreations > 0
-          ? (creationEvolution! / previousVideoCreations) * 100
-          : creationEvolution === 0
-            ? 0
-            : null;
+    // Same figure as the ACTIONS "Video creations" slice, so the report matches it.
+    const videoCreations = Number(smactionData?.["Video creations"] ?? 0);
+    const topCreationPlatform = Object.entries(
+      insightStats?.videoCreationsByPlatform ?? {},
+    )
+      .filter(([label, value]) => label !== "total_count" && value > 0)
+      .sort(([, a], [, b]) => b - a)[0]?.[0];
     const shazamRow = socialTraction.find((item) => item.id === "shazam");
     const youtubeRow = socialTraction.find((item) => item.id === "youtube");
 
@@ -357,12 +335,12 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
             }
           : undefined,
       highlights: [
-        ...(creationRows.length > 0
+        ...(videoCreations > 0
           ? [
               {
                 id: "videoCreations" as const,
                 value: videoCreations,
-                changePercent: videoCreationChange,
+                changePercent: null,
                 periodDays: socialTractionPeriodDays,
                 topPlatform: topCreationPlatform,
               },
@@ -415,6 +393,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     dspData,
     dspPerformanceData,
     insightStats?.performanceReach,
+    insightStats?.videoCreationsByPlatform,
     playlists,
     smactionData,
     socialMediaData,
