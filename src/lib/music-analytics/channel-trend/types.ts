@@ -10,7 +10,8 @@ export interface ChannelTrendPoint extends ChannelDay {
 }
 
 export interface StoredChannelTrend {
-  version: 1;
+  /** 2 added Audiomack to streaming; older copies are rebuilt. */
+  version: 2;
   /** First and last day the stored points cover without gaps. */
   from: string;
   to: string;

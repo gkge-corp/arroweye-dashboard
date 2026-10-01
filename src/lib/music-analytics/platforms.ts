@@ -3,7 +3,10 @@ export interface AnalyticsPlatform {
   label: string;
 }
 
-/** Platforms Songstats lists individual playlist placements for. */
+/**
+ * Platforms with individual playlist placements. Songstats covers all but
+ * the ones without a Songstats source, which Soundcharts supplies.
+ */
 export const PLAYLIST_PLATFORMS: AnalyticsPlatform[] = [
   { code: "spotify", label: "Spotify" },
   { code: "apple-music", label: "Apple Music" },
@@ -11,6 +14,8 @@ export const PLAYLIST_PLATFORMS: AnalyticsPlatform[] = [
   { code: "amazon", label: "Amazon" },
   { code: "youtube", label: "YouTube" },
   { code: "tidal", label: "Tidal" },
+  { code: "audiomack", label: "Audiomack" },
+  { code: "boomplay", label: "Boomplay" },
 ];
 
 /** Discovery metrics that can be plotted beside streams but have no playlists. */

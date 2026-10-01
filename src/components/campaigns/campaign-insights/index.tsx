@@ -293,8 +293,9 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     loadMorePlaylists,
     retryPlaylists,
   } = useCampaignPlaylists(songIsrc, {
-    platforms: sources.playlistPlatforms.filter((code) =>
-      playlistPlatformCodes.has(code),
+    // Platforms added since the viewer saved their picks start switched on.
+    platforms: resolveStreamingSelection(sources, streamingOptions).filter(
+      (code) => playlistPlatformCodes.has(code),
     ),
     ready: sourcesLoaded && marketsLoaded,
   });

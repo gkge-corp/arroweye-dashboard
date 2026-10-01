@@ -7,6 +7,7 @@ import {
   parsePlatforms,
   toSongstatsSource,
 } from "@/lib/music-analytics/platforms";
+import { fetchAudiomackTotal } from "@/lib/music-analytics/soundcharts-audiomack";
 import {
   ALL_TIME_START,
   fetchRadioStations,
@@ -33,6 +34,9 @@ const DSP_METRICS = [
 ];
 
 type DspMetric = (typeof DSP_METRICS)[number];
+
+// Songstats has no Audiomack data, so its plays come from Soundcharts.
+const AUDIOMACK = { code: "audiomack", label: "Audiomack" };
 
 /**
  * ACTIONS: engagement on the song across social video, by kind. Each source
@@ -230,7 +234,7 @@ export async function GET(request: NextRequest) {
   ];
 
   try {
-    const [statsResult, radioResult] = await Promise.allSettled([
+    const [statsResult, radioResult, audiomackResult] = await Promise.allSettled([
       statSources.length > 0
         ? fetchTrackStats(isrc, statSources, {
             with_playlists: reachSources.length > 0,
@@ -239,6 +243,7 @@ export async function GET(request: NextRequest) {
           })
         : Promise.resolve(new Map<string, SourceData>()),
       wantRadio ? readAirplay(isrc, radioWindow) : Promise.resolve(null),
+      wantSocial ? fetchAudiomackTotal(isrc) : Promise.resolve(null),
     ]);
 
     // With both halves down there is nothing to chart, so surface the error
@@ -255,6 +260,11 @@ export async function GET(request: NextRequest) {
     if (radioResult.status === "rejected") {
       console.error("Soundcharts radio spins failed:", radioResult.reason);
     }
+    if (audiomackResult.status === "rejected") {
+      console.error("Soundcharts Audiomack plays failed:", audiomackResult.reason);
+    }
+    const audiomackPlays =
+      audiomackResult.status === "fulfilled" ? audiomackResult.value : null;
 
     const stats =
       statsResult.status === "fulfilled"
@@ -277,12 +287,15 @@ export async function GET(request: NextRequest) {
 
     // Every streaming platform this song has plays on, switched off ones
     // included, so the picker can still list what it is hiding.
-    const availableStreamingPlatforms = dspMetrics
-      .filter((metric) => readMetric(stats, metric) > 0)
-      .map((metric) => ({
-        code: fromSongstatsSource(metric.source),
-        label: metric.label,
-      }));
+    const availableStreamingPlatforms = [
+      ...dspMetrics
+        .filter((metric) => readMetric(stats, metric) > 0)
+        .map((metric) => ({
+          code: fromSongstatsSource(metric.source),
+          label: metric.label,
+        })),
+      ...(audiomackPlays ? [AUDIOMACK] : []),
+    ];
 
     const { performance, performanceReach } = summarizePlaylists(
       stats,
@@ -303,9 +316,15 @@ export async function GET(request: NextRequest) {
         // All-time plays. Left unfiltered: which platforms the viewer wants
         // shown is applied on the client, so toggling one costs no further
         // calls.
-        dsp: withTotal(
-          dspMetrics.map((metric) => [metric.label, readMetric(stats, metric)]),
-        ),
+        dsp: withTotal([
+          ...dspMetrics.map((metric): [string, number] => [
+            metric.label,
+            readMetric(stats, metric),
+          ]),
+          ...(audiomackPlays
+            ? [[AUDIOMACK.label, audiomackPlays] as [string, number]]
+            : []),
+        ]),
         radioSpins,
         airplayByCountry,
         availableAirplayCountries,
