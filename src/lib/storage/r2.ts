@@ -26,7 +26,7 @@ export interface StoredRadioMonitor {
 
 let client: S3Client | undefined;
 
-const getConfig = () => {
+export const getConfig = () => {
   const accountId = process.env.R2_ACCOUNT_ID?.trim();
   const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
@@ -95,25 +95,39 @@ export const createRadioMonitorUpload = async (
   };
 };
 
-export const findLatestRadioMonitor = async (
+/** Every upload for the campaign, newest first. */
+export const listRadioMonitors = async (
   campaignId: string,
-): Promise<StoredRadioMonitor | null> => {
+): Promise<StoredRadioMonitor[]> => {
   const { client, bucket } = getConfig();
   const { Contents = [] } = await client.send(
     new ListObjectsV2Command({ Bucket: bucket, Prefix: folderFor(campaignId) }),
   );
 
-  const latest = Contents.filter((object) => object.Key).sort(
-    (a, b) =>
-      (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0),
-  )[0];
-  if (!latest?.Key) return null;
+  return Contents.filter((object) => object.Key)
+    .sort(
+      (a, b) =>
+        (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0),
+    )
+    .map((object) => ({
+      key: object.Key!,
+      fileName: toFileName(object.Key!),
+      uploadedAt: (object.LastModified ?? new Date()).toISOString(),
+    }));
+};
 
-  return {
-    key: latest.Key,
-    fileName: toFileName(latest.Key),
-    uploadedAt: (latest.LastModified ?? new Date()).toISOString(),
-  };
+export const findLatestRadioMonitor = async (
+  campaignId: string,
+): Promise<StoredRadioMonitor | null> =>
+  (await listRadioMonitors(campaignId))[0] ?? null;
+
+export const readRadioMonitor = async (file: StoredRadioMonitor) => {
+  const { client, bucket } = getConfig();
+  const { Body } = await client.send(
+    new GetObjectCommand({ Bucket: bucket, Key: file.key }),
+  );
+  if (!Body) throw new Error("The radio monitor file is empty.");
+  return Body.transformToByteArray();
 };
 
 export const getRadioMonitorDownloadUrl = (file: StoredRadioMonitor) => {

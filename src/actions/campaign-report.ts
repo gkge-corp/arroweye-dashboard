@@ -9,7 +9,9 @@ import type { CampaignAiInsights } from "@/lib/email/campaign-report/types";
 import { asNumber, asString, total } from "@/lib/email/campaign-report/utils";
 import { sendZeptoMail } from "@/lib/email/zeptomail";
 import { getAuthorizedProject } from "@/lib/server/get-authorized-project";
-import { findLatestRadioMonitor } from "@/lib/storage/r2";
+import { loadRadioMonitorSummary } from "@/lib/radio-monitor/load-radio-monitor-summary";
+import { generateRadioMonitorWording } from "@/lib/radio-monitor/radio-monitor-wording";
+import { listRadioMonitors } from "@/lib/storage/r2";
 import { buildRadioMonitorLink } from "@/lib/storage/report-link";
 import type {
   CampaignReportCreator,
@@ -293,12 +295,36 @@ const getAppBaseUrl = async () => {
   return `${protocol}://${host}`;
 };
 
-const getRadioMonitorAttachment = async (campaignId: string) => {
-  const file = await findLatestRadioMonitor(campaignId);
-  if (!file) return undefined;
+// A file that cannot be summarised still ships as a download link.
+const getRadioMonitorAttachment = async (
+  campaignId: string,
+  project: UnknownRecord,
+) => {
+  const files = await listRadioMonitors(campaignId);
+  if (files.length === 0) return undefined;
+
+  const summary = await loadRadioMonitorSummary(files, {
+    title: asString(project.song_title || project.title),
+    artist: asString(project.artist_name || project.song_artist),
+  }).catch((error: unknown) => {
+    console.error("Radio monitor summary failed:", error);
+    return undefined;
+  });
+  const wording = summary
+    ? await generateRadioMonitorWording(summary).catch((error: unknown) => {
+        console.error(
+          "Radio monitor wording failed:",
+          error instanceof Error ? error.message : "Unknown error",
+        );
+        return undefined;
+      })
+    : undefined;
+
   return {
     downloadLink: buildRadioMonitorLink(await getAppBaseUrl(), campaignId),
-    fileName: file.fileName,
+    fileName: files[0].fileName,
+    summary,
+    wording,
   };
 };
 
@@ -336,7 +362,10 @@ export async function sendCampaignReport(
         return undefined;
       },
     );
-    const radioMonitor = await getRadioMonitorAttachment(campaignId).catch(
+    const radioMonitor = await getRadioMonitorAttachment(
+      campaignId,
+      project,
+    ).catch(
       (error: unknown) => {
         console.error("Radio monitor link failed:", error);
         return undefined;

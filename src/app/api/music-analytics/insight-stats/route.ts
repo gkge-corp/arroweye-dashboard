@@ -38,7 +38,8 @@ type DspMetric = (typeof DSP_METRICS)[number];
  * ACTIONS: engagement on the song across social video, by kind. Each source
  * names its daily running totals differently; TikTok alone reports shares.
  * Sources sharing a label are summed, so "Video creations" is one slice
- * covering TikTok videos and Instagram Reels made with the song.
+ * covering TikTok videos and Instagram Reels made with the song. YouTube is
+ * left out: its views already count under streaming.
  */
 const ACTION_FIELDS: Record<string, Record<string, string>> = {
   tiktok: {
@@ -54,17 +55,11 @@ const ACTION_FIELDS: Record<string, Record<string, string>> = {
     Likes: "likes_total",
     Comments: "comments_total",
   },
-  youtube: {
-    Views: "video_views_total",
-    Likes: "video_likes_total",
-    Comments: "video_comments_total",
-  },
 };
 
 const ACTION_SOURCE_LABELS: Record<string, string> = {
   tiktok: "TikTok",
   instagram: "Instagram",
-  youtube: "YouTube",
 };
 
 type InsightStats = Record<string, number>;

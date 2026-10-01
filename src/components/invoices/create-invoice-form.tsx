@@ -393,10 +393,11 @@ const CreateInvoiceForm = () => {
     }
   };
 
-  // Mirrors CreateInvoiceSerializer.calculate_total on the backend: both charges
-  // are taken off the pre-discount subtotal, the discount is applied last to the
-  // grand total, and every stored column is an IntegerField, so the server
-  // truncates each figure on save. Truncating here keeps the preview honest.
+  // Mirrors CreateInvoiceSerializer.calculate_total on the backend: service
+  // charge is taken off the pre-discount subtotal, VAT off subtotal + service
+  // charge, the discount is applied last to the grand total, and every stored
+  // column is an IntegerField, so the server truncates each figure on save.
+  // Truncating here keeps the preview honest.
   const calculateTotal = (items: Item[], discount: number) => {
     const subtotal = items.reduce(
       (sum, item) =>
@@ -408,7 +409,7 @@ const CreateInvoiceForm = () => {
 
     const serviceCharge = subtotal * 0.05;
 
-    const tax = subtotal * 0.075;
+    const tax = (subtotal + serviceCharge) * 0.075;
 
     const discountFactor = Math.max(0, Math.min(discount, 100)) / 100;
     const grossTotal = subtotal + serviceCharge + tax;
