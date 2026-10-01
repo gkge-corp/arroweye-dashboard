@@ -27,7 +27,7 @@ export const readChannelTrend = async (
     const stored = JSON.parse(
       await Body.transformToString(),
     ) as StoredChannelTrend;
-    return stored.version === 1 ? stored : null;
+    return stored.version === 2 ? stored : null;
   } catch (error) {
     if (isMissingObject(error)) return null;
     throw error;

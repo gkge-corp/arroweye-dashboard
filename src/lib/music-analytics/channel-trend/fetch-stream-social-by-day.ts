@@ -31,7 +31,11 @@ const readTotal = (point: HistoryPoint, field: string) => {
  * Running totals turned into per-day gains. A missing day folds its gain into
  * the next reported day; drops from provider corrections count as zero.
  */
-const toDailyGains = (history: HistoryPoint[], field: string, from: string) => {
+export const toDailyGains = (
+  history: HistoryPoint[],
+  field: string,
+  from: string,
+) => {
   const points = history
     .map((point) => ({ date: point.date, value: readTotal(point, field) }))
     .filter(

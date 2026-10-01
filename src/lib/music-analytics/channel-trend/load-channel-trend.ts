@@ -3,6 +3,7 @@ import "server-only";
 import { normalizeIsrc } from "../songstats-client";
 import { readChannelTrend, writeChannelTrend } from "./channel-trend-store";
 import { addDays, listDates, maxDate, minDate, todayKey } from "./dates";
+import { fetchAudiomackByDay } from "./fetch-audiomack-by-day";
 import { fetchRadioByDay } from "./fetch-radio-by-day";
 import { fetchStreamSocialByDay } from "./fetch-stream-social-by-day";
 import type {
@@ -72,9 +73,10 @@ const mergeDays = (
  * other, but only a complete result is safe to store.
  */
 const fetchDays = async (isrc: string, from: string, to: string) => {
-  const [statsResult, radioResult] = await Promise.allSettled([
+  const [statsResult, radioResult, audiomackResult] = await Promise.allSettled([
     fetchStreamSocialByDay(isrc, from, to),
     fetchRadioByDay(isrc, from, to),
+    fetchAudiomackByDay(isrc, from, to),
   ]);
   if (statsResult.status === "rejected") {
     console.error("Streaming and social history failed:", statsResult.reason);
@@ -82,18 +84,26 @@ const fetchDays = async (isrc: string, from: string, to: string) => {
   if (radioResult.status === "rejected") {
     console.error("Radio spin history failed:", radioResult.reason);
   }
+  if (audiomackResult.status === "rejected") {
+    console.error("Audiomack play history failed:", audiomackResult.reason);
+  }
   if (statsResult.status === "rejected" && radioResult.status === "rejected") {
     throw statsResult.reason;
   }
 
   const stats = statsResult.status === "fulfilled" ? statsResult.value : null;
   const radio = radioResult.status === "fulfilled" ? radioResult.value : null;
+  const audiomack =
+    audiomackResult.status === "fulfilled" ? audiomackResult.value : null;
   const radioThrough = radio?.through ?? to;
+  const hasStreaming = Boolean(stats?.streaming || audiomack);
 
   const days: Record<string, ChannelDay> = {};
   for (const date of listDates(from, to)) {
     days[date] = {
-      streaming: stats?.streaming ? (stats.streaming.get(date) ?? 0) : null,
+      streaming: hasStreaming
+        ? (stats?.streaming?.get(date) ?? 0) + (audiomack?.get(date) ?? 0)
+        : null,
       social: stats?.social ? (stats.social.get(date) ?? 0) : null,
       radio:
         radio && date <= radioThrough ? (radio.spins.get(date) ?? 0) : null,
@@ -103,7 +113,9 @@ const fetchDays = async (isrc: string, from: string, to: string) => {
   return {
     days,
     complete:
-      statsResult.status === "fulfilled" && radioResult.status === "fulfilled",
+      statsResult.status === "fulfilled" &&
+      radioResult.status === "fulfilled" &&
+      audiomackResult.status === "fulfilled",
     completeThrough: minDate(to, radioThrough),
   };
 };
@@ -148,7 +160,7 @@ const loadUncached = async (
   if (fetched.complete) {
     try {
       await writeChannelTrend(isrc, {
-        version: 1,
+        version: 2,
         from: covered?.from ?? start,
         to: covered
           ? maxDate(covered.to, fetched.completeThrough)
