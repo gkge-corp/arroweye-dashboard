@@ -33,7 +33,7 @@ export interface RadioStation {
   plays: number;
 }
 
-const resolveSongUuid = async (isrc: string) => {
+export const resolveSongUuid = async (isrc: string) => {
   const payload = await withRetry(() =>
     soundchartsRequest<{ object?: { uuid?: string } }>(
       `/api/v2.25/song/by-isrc/${encodeURIComponent(normalizeIsrc(isrc))}`,

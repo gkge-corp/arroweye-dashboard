@@ -34,6 +34,8 @@ import {
 } from "@/hooks/use-insight-sources";
 import { TopRadioCard } from "./top-radio-card";
 import { TopCreatorsCard } from "./top-creators-card";
+import { ChannelTrendCard } from "./channel-trend-card";
+import { useCampaignChannelTrend } from "./hooks/use-campaign-channel-trend";
 import type { CampaignReportMetrics } from "@/types/campaign-report";
 import { PLAYLIST_PLATFORMS } from "@/lib/music-analytics/platforms";
 
@@ -142,6 +144,15 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     useCampaignSocialTraction(songIsrc);
   const { topCreators, isTopCreatorsLoading } =
     useCampaignTopCreators(songIsrc);
+  const {
+    trendPoints,
+    radioAvailable,
+    isTrendLoading,
+    hasTrendError,
+  } = useCampaignChannelTrend(songIsrc, {
+    startDate: campaignStartDate,
+    endDate: campaignEndDate,
+  });
   const playlistReachNotes = React.useMemo(
     () =>
       Object.fromEntries(
@@ -449,6 +460,17 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
             >
               {linkedIsrc ? "Change song" : "Link song"}
             </Button>
+          </div>
+        )}
+
+        {hasIsrc && campaignStartDate && (
+          <div className="mb-[20px]">
+            <ChannelTrendCard
+              points={trendPoints}
+              radioAvailable={radioAvailable}
+              loading={isTrendLoading}
+              hasError={hasTrendError}
+            />
           </div>
         )}
 
