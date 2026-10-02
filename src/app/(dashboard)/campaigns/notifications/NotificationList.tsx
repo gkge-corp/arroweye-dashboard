@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { markNotificationsAsRead, notificationQueryKey } from "@/services";
-import type { ApiNotification } from "@/types/notifications";
+import { isApiNotification, type ApiNotification } from "@/types/notifications";
 import { NotificationCard } from "./NotificationCard";
 import { NotificationEmptyState } from "./NotificationEmptyState";
 
@@ -36,6 +36,20 @@ export function NotificationList({
           current.map((item) =>
             item.id === id ? { ...item, read: true } : item,
           ),
+      );
+      queryClient.setQueriesData<{ notifications?: unknown } | null>(
+        { queryKey: ["campaign-detail"] },
+        (current) =>
+          current && Array.isArray(current.notifications)
+            ? {
+                ...current,
+                notifications: current.notifications.map((item) =>
+                  isApiNotification(item) && item.id === id
+                    ? { ...item, read: true }
+                    : item,
+                ),
+              }
+            : current,
       );
     },
     onError: (_error, id) => {

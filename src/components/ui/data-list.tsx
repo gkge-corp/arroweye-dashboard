@@ -99,9 +99,11 @@ export function DataList<Row>({
           ))}
         </div>
       ) : hasRows ? (
-        <div className="max-h-[400px] overflow-y-auto">
+        <div className="flex min-h-0 flex-col">
+          {/* Outside the scroll area so it stays put; the matching gutter keeps
+              its columns aligned with the rows when a scrollbar shows. */}
           <div
-            className="grid gap-4 border-b py-[10px]"
+            className="grid gap-4 overflow-y-hidden border-b py-[10px] [scrollbar-gutter:stable]"
             style={gridTemplate(allColumns)}
           >
             {allColumns.map((column) => (
@@ -114,37 +116,39 @@ export function DataList<Row>({
             ))}
           </div>
 
-          {rows.map((row, index) => (
-            <div
-              key={getRowKey(row, index)}
-              className="grid items-center gap-4 border-b py-[12px] last:border-b-0"
-              style={gridTemplate(allColumns)}
-            >
-              {allColumns.map((column) => (
-                <div
-                  key={column.key}
-                  className={`min-w-0 font-SansFlex text-[14px] ${column.className ?? ""}`}
-                >
-                  {column.key === "__rank" ? (
-                    <RankBadge rank={index + 1} />
-                  ) : (
-                    column.render(row)
-                  )}
-                </div>
-              ))}
-            </div>
-          ))}
+          <div className="max-h-[360px] overflow-y-auto [scrollbar-gutter:stable]">
+            {rows.map((row, index) => (
+              <div
+                key={getRowKey(row, index)}
+                className="grid items-center gap-4 border-b py-[12px] last:border-b-0"
+                style={gridTemplate(allColumns)}
+              >
+                {allColumns.map((column) => (
+                  <div
+                    key={column.key}
+                    className={`min-w-0 font-SansFlex text-[14px] ${column.className ?? ""}`}
+                  >
+                    {column.key === "__rank" ? (
+                      <RankBadge rank={index + 1} />
+                    ) : (
+                      column.render(row)
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
 
-          {hasMore && onLoadMore && (
-            <button
-              type="button"
-              className="w-full cursor-pointer py-[12px] font-SansFlex text-[13px] font-[500] text-muted-foreground hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={onLoadMore}
-              disabled={isLoadingMore}
-            >
-              {isLoadingMore ? "Loading…" : "See more"}
-            </button>
-          )}
+            {hasMore && onLoadMore && (
+              <button
+                type="button"
+                className="w-full cursor-pointer py-[12px] font-SansFlex text-[13px] font-[500] text-muted-foreground hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={onLoadMore}
+                disabled={isLoadingMore}
+              >
+                {isLoadingMore ? "Loading…" : "See more"}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="flex h-[160px] flex-col items-center justify-center gap-3 rounded-[8px] border border-dashed px-4 text-center">
