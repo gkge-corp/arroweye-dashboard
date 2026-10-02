@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationList } from "./campaigns/notifications/NotificationList";
 import { DropzoneUploadDialog } from "./campaigns/notifications/dropzone-upload-dialog";
+import { useProjectNotifications } from "@/hooks/use-project-notifications";
 import { useTopNav } from "@/hooks/use-top-nav";
 import { getDropZones, getProjectDropZone } from "@/services";
 import type { NotificationByType } from "@/types/notifications";
@@ -37,6 +38,7 @@ const NotificationsMenu = ({
   const routeProjectId = pathname.match(/^\/campaigns\/(\d+)\/?$/)?.[1];
   const activeProjectId = projectId ?? routeProjectId;
   const [dropzoneDialogOpen, setDropzoneDialogOpen] = useState(false);
+  const projectNotifications = useProjectNotifications(activeProjectId);
   const {
     notifications,
     notificationLoading,
@@ -50,7 +52,7 @@ const NotificationsMenu = ({
     handleMainTabClick,
     handleInnerTabClick,
     hasOpenedNotifications,
-  } = useTopNav();
+  } = useTopNav(projectNotifications);
 
   const {
     data: dropZones = [],

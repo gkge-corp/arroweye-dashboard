@@ -52,7 +52,7 @@ const chartConfig = {
 const SERIES: TrendChannel[] = ["streaming", "social", "radio"];
 
 const RANGE_OPTIONS: { value: TrendRange; label: string }[] = [
-  { value: "campaign", label: "Whole campaign" },
+  { value: "campaign", label: "All time" },
   { value: "30d", label: "Last 30 days" },
   { value: "7d", label: "Last 7 days" },
 ];
@@ -142,7 +142,7 @@ export function ChannelTrendCard({
             className="hidden w-[160px] rounded-lg sm:ml-auto sm:flex"
             aria-label="Select a time range"
           >
-            <SelectValue placeholder="Whole campaign" />
+            <SelectValue placeholder="All time" />
           </SelectTrigger>
           <SelectContent className="rounded-xl">
             {RANGE_OPTIONS.map((option) => (

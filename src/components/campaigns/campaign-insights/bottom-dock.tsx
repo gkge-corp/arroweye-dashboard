@@ -22,7 +22,6 @@ import { toast } from "sonner";
 
 import { sendCampaignReport } from "@/actions/campaign-report";
 import { NotificationList } from "@/app/(dashboard)/campaigns/notifications/NotificationList";
-import { NotificationCard } from "@/app/(dashboard)/campaigns/notifications/NotificationCard";
 import { DropzoneUploadDialog } from "@/app/(dashboard)/campaigns/notifications/dropzone-upload-dialog";
 import { DropsIcon } from "@/app/(dashboard)/sidebar";
 import { Button } from "@/components/ui/button";
@@ -342,18 +341,10 @@ export function BottomDock({
 
           {activePanel === "updates" && (
             <ScrollArea className="h-[min(46vh,360px)] min-h-48">
-              {updateNotifications.length > 0 ? (
-                updateNotifications.map((notification) => (
-                  <NotificationCard
-                    key={notification.id}
-                    notification={notification}
-                  />
-                ))
-              ) : (
-                <p className="p-5 text-center text-sm text-gray-500">
-                  No updates available.
-                </p>
-              )}
+              <NotificationList
+                notifications={updateNotifications}
+                emptyCategory="campaign"
+              />
             </ScrollArea>
           )}
 

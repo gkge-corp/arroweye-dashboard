@@ -16,6 +16,11 @@ const isNetworkError = (err: any) =>
   err.code === "ECONNABORTED" ||
   err.message?.includes("timeout");
 
+export const getCampaignDetailQueryKey = (
+  id: string | undefined,
+  isAdvertiser: boolean,
+) => ["campaign-detail", isAdvertiser ? "advertiser" : "project", id];
+
 export function useCampaignDetail(id?: string) {
   const queryClient = useQueryClient();
   const { isAdvertiser, isLoading: isAuthLoading, userProfile } = useAuth();
@@ -24,7 +29,7 @@ export function useCampaignDetail(id?: string) {
   const campaignId = Number(id);
   const hasCampaignId = Boolean(id) && Number.isFinite(campaignId);
   const campaignDetailQueryKey = useMemo(
-    () => ["campaign-detail", isAdvertiser ? "advertiser" : "project", id],
+    () => getCampaignDetailQueryKey(id, isAdvertiser),
     [id, isAdvertiser],
   );
 

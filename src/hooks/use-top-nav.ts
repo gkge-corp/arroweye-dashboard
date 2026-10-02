@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getNotifications, notificationQueryKey } from "@/services";
-import { groupNotifications } from "@/types/notifications";
+import { groupNotifications, isApiNotification } from "@/types/notifications";
 import { useAuth } from "@/context/auth-session";
 
 export type NotificationMainTab = "updates" | "drops";
@@ -26,20 +26,34 @@ const isInnerTab = (value: string): value is NotificationInnerTab =>
     "payment",
   ].includes(value);
 
-export const useTopNav = () => {
+// When a campaign page supplies the notifications embedded in its project
+// payload, those take precedence over the global feed so the menu matches the
+// bottom dock.
+export const useTopNav = (projectNotifications?: unknown) => {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const hasProjectNotifications = Array.isArray(projectNotifications);
   const {
-    data: notificationItems = [],
+    data: globalNotificationItems = [],
     isLoading,
-    isError: notificationError,
+    isError: globalNotificationError,
     refetch: refetchNotifications,
   } = useQuery({
     queryKey: notificationQueryKey,
     queryFn: getNotifications,
-    enabled: isAuthenticated && !isAuthLoading,
+    enabled: isAuthenticated && !isAuthLoading && !hasProjectNotifications,
     staleTime: 60_000,
   });
-  const notificationLoading = isAuthLoading || isLoading;
+  const notificationItems = useMemo(
+    () =>
+      hasProjectNotifications
+        ? projectNotifications.filter(isApiNotification)
+        : globalNotificationItems,
+    [hasProjectNotifications, projectNotifications, globalNotificationItems],
+  );
+  const notificationLoading =
+    !hasProjectNotifications && (isAuthLoading || isLoading);
+
+  const notificationError = !hasProjectNotifications && globalNotificationError;
 
   const retryNotifications = useCallback(() => {
     void refetchNotifications();
