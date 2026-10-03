@@ -75,6 +75,9 @@ export const fetchRadioStations = async (
     ),
   );
 
+  // TEMP: check whether broadcast-groups already carries station reach.
+  console.log("[radio-reach-probe]", JSON.stringify(payload.items?.[0]));
+
   return (payload.items ?? []).map((item) => ({
     id: item.radio?.slug ?? `${item.radio?.name}-${item.radio?.countryCode}`,
     name: item.radio?.name ?? "Unknown station",

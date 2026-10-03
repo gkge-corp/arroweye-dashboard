@@ -21,6 +21,12 @@ export const getCampaignDetailQueryKey = (
   isAdvertiser: boolean,
 ) => ["campaign-detail", isAdvertiser ? "advertiser" : "project", id];
 
+export const fetchCampaignDetail = (
+  campaignId: number,
+  isAdvertiser: boolean,
+) =>
+  isAdvertiser ? getSingleCampaign(campaignId) : getSingleProject(campaignId);
+
 export function useCampaignDetail(id?: string) {
   const queryClient = useQueryClient();
   const { isAdvertiser, isLoading: isAuthLoading, userProfile } = useAuth();
@@ -50,10 +56,7 @@ export function useCampaignDetail(id?: string) {
     isFetching: isContentFetching,
   } = useQuery({
     queryKey: campaignDetailQueryKey,
-    queryFn: () =>
-      isAdvertiser
-        ? getSingleCampaign(campaignId)
-        : getSingleProject(campaignId),
+    queryFn: () => fetchCampaignDetail(campaignId, isAdvertiser),
     enabled: hasCampaignId && !isAuthLoading,
     initialData: cachedContent,
   });

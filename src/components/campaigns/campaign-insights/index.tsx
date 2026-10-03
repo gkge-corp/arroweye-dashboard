@@ -146,6 +146,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     useCampaignTopCreators(songIsrc);
   const {
     trendPoints,
+    hasTrendActivity,
     radioAvailable,
     isTrendLoading,
     hasTrendError,
@@ -464,16 +465,18 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
           </div>
         )}
 
-        {hasIsrc && campaignStartDate && (
-          <div className="mb-[20px]">
-            <ChannelTrendCard
-              points={trendPoints}
-              radioAvailable={radioAvailable}
-              loading={isTrendLoading}
-              hasError={hasTrendError}
-            />
-          </div>
-        )}
+        {hasIsrc &&
+          campaignStartDate &&
+          (isTrendLoading || hasTrendError || hasTrendActivity) && (
+            <div className="mb-[20px]">
+              <ChannelTrendCard
+                points={trendPoints}
+                radioAvailable={radioAvailable}
+                loading={isTrendLoading}
+                hasError={hasTrendError}
+              />
+            </div>
+          )}
 
         <div className={insightGridClass}>
           <div className={insightCardClass}>

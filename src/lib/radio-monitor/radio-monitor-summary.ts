@@ -1,14 +1,14 @@
-import type { StationChart, StationChartRow } from "./parse-station-chart";
+import type { Top100Chart, Top100Row } from "./parse-top-100-chart";
 
 export interface RadioMonitorSummary {
-  station: string;
+  /** e.g. "Cool FM 96.9 (Lagos) Top 100". */
+  chart: string;
   period: string;
-  /** Plays across every monitored station in the chart week. */
-  airplay: number;
-  /** Change against the previous week's chart; null when it was not uploaded. */
-  changePercent: number | null;
   position: number;
-  topStation?: string;
+  plays: number;
+  /** Plays against the chart's "Prev" column; null when the song is new. */
+  changePercent: number | null;
+  impressions: number | null;
 }
 
 const normalize = (value: string) =>
@@ -27,21 +27,36 @@ const normalizeTitle = (title: string) =>
 const primaryArtist = (artist: string) =>
   normalize(artist.split(/\s+(?:feat\.?|ft\.?|x)\s+|[,&]/i)[0] ?? "");
 
-/**
- * Chart artists are cut off with "..", so the campaign's primary artist must
- * appear in the row, or the row must be a prefix of it.
- */
-const isCampaignRow = (row: StationChartRow, title: string, artist: string) => {
-  const rowArtist = normalize(row.artist);
+const isTruncated = (value: string) => value.trimEnd().endsWith("..");
+
+// Long cells are cut off with "..", so a truncated value only has to be a
+// prefix of the campaign's.
+const matchesTitle = (cell: string, title: string) => {
+  const value = normalizeTitle(cell);
+  if (!value) return false;
+  return isTruncated(cell) ? title.startsWith(value) : value === title;
+};
+
+const matchesArtist = (cell: string, artist: string) => {
+  const value = normalize(cell);
   return (
-    normalizeTitle(row.title) === title &&
-    rowArtist.length > 0 &&
-    (rowArtist.includes(artist) || artist.startsWith(rowArtist))
+    value.length > 0 &&
+    (value.includes(artist) || (isTruncated(cell) && artist.startsWith(value)))
   );
 };
 
+// A long artist can swallow the title cell ("Blaqbonez feat. Fola Despacito").
+const matchesMergedCell = (row: Top100Row, title: string, artist: string) =>
+  !row.title &&
+  normalize(row.artist).startsWith(artist) &&
+  normalize(row.artist).endsWith(` ${title}`);
+
+const isCampaignRow = (row: Top100Row, title: string, artist: string) =>
+  (matchesTitle(row.title, title) && matchesArtist(row.artist, artist)) ||
+  matchesMergedCell(row, title, artist);
+
 export const findCampaignRow = (
-  chart: StationChart,
+  chart: Top100Chart,
   songTitle: string,
   songArtist: string,
 ) => {
@@ -54,47 +69,23 @@ export const findCampaignRow = (
     .sort((a, b) => a.position - b.position)[0];
 };
 
-const totalPlays = (row: StationChartRow) =>
-  row.stationPlays.length > 0
-    ? row.stationPlays.reduce((sum, plays) => sum + plays, 0)
-    : row.plays;
-
-const readTopStation = (chart: StationChart, row: StationChartRow) => {
-  if (chart.stations.length !== row.stationPlays.length) return undefined;
-
-  const top = Math.max(...row.stationPlays);
-  return top > 0 ? chart.stations[row.stationPlays.indexOf(top)] : undefined;
-};
-
-/** The chart covering the week the latest chart compares itself against. */
-export const isPreviousChart = (latest: StationChart, candidate: StationChart) =>
-  candidate.station === latest.station &&
-  candidate.period === latest.comparedPeriod;
-
 export const summarizeRadioMonitor = (
-  latest: StationChart,
-  previous: StationChart | undefined,
+  chart: Top100Chart,
   songTitle: string,
   songArtist: string,
 ): RadioMonitorSummary | undefined => {
-  const row = findCampaignRow(latest, songTitle, songArtist);
+  const row = findCampaignRow(chart, songTitle, songArtist);
   if (!row) return undefined;
 
-  const airplay = totalPlays(row);
-  const previousRow = previous
-    ? findCampaignRow(previous, songTitle, songArtist)
-    : undefined;
-  const previousAirplay = previousRow ? totalPlays(previousRow) : 0;
-
   return {
-    station: latest.station,
-    period: latest.period.replace(/\s+between\s.*$/i, ""),
-    airplay,
-    changePercent:
-      previousAirplay > 0
-        ? ((airplay - previousAirplay) / previousAirplay) * 100
-        : null,
+    chart: `${chart.station} ${chart.chart}`,
+    period: chart.period,
     position: row.position,
-    topStation: readTopStation(latest, row),
+    plays: row.plays,
+    changePercent:
+      row.previousPlays && row.previousPlays > 0
+        ? ((row.plays - row.previousPlays) / row.previousPlays) * 100
+        : null,
+    impressions: row.impressions,
   };
 };
