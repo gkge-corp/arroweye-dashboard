@@ -1,4 +1,5 @@
 import apiRequest from "@/Server/Api";
+import { handleApiError } from "@/lib/utils";
 import type { CreateBusinessInput } from "@/types/api";
 import { ContentItem } from "@/types/contents";
 import axios from "axios";
@@ -100,14 +101,41 @@ export const CreateInvoice = async (payload: unknown): Promise<void> => {
       url: `/api/v1/payments/invoice/create/`,
       data: payload,
       requireToken: true,
+      skipErrorHandling: true,
     });
 
     console.log(response);
     toast.success("Invoice Created Successful!");
     window.location.reload();
   } catch (error: unknown) {
-    return;
+    if (isDuplicatePoCodeError(error)) {
+      toast.error(DUPLICATE_PO_CODE_MESSAGE);
+      throw new DuplicatePoCodeError();
+    }
+    handleApiError(error);
+    throw error;
   }
+};
+
+export const DUPLICATE_PO_CODE_MESSAGE =
+  "An invoice with this PO code already exists. Please use a different PO code.";
+
+export class DuplicatePoCodeError extends Error {
+  constructor() {
+    super(DUPLICATE_PO_CODE_MESSAGE);
+    this.name = "DuplicatePoCodeError";
+  }
+}
+
+// The backend surfaces the database's unique-constraint failure as raw text,
+// so it is matched on the constraint and column names rather than a code.
+const isDuplicatePoCodeError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return false;
+  const body = JSON.stringify(error.response?.data ?? "");
+  return (
+    body.includes("payments_invoice_po_code_key") ||
+    (body.includes("po_code") && /already exists|unique/i.test(body))
+  );
 };
 
 export const getInvoice = async (): Promise<ContentItem[] | null> => {
