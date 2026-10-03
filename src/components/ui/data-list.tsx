@@ -109,7 +109,7 @@ export function DataList<Row>({
             {allColumns.map((column) => (
               <p
                 key={column.key}
-                className="text-[11px] font-[700] tracking-[.08rem] text-foreground font-SansFlex uppercase"
+                className="text-[9px] font-[700] tracking-[.08rem] text-foreground font-SansFlex uppercase"
               >
                 {column.header}
               </p>

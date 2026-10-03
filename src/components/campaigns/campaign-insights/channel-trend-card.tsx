@@ -36,11 +36,11 @@ import {
 const chartConfig = {
   streaming: {
     label: "Streaming",
-    theme: { light: "#16a34a", dark: "var(--chart-1)" },
+    theme: { light: "#4ecdc4", dark: "var(--chart-1)" },
   },
   social: {
     label: "Social media",
-    theme: { light: "#db2777", dark: "var(--chart-3)" },
+    theme: { light: "#ff5c7a", dark: "var(--chart-3)" },
   },
   radio: {
     label: "Radio",

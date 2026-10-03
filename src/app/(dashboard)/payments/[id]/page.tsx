@@ -131,6 +131,16 @@ const Invoice = () => {
                 </div>
               </div>
               <div className="flex justify-between text-[16px]">
+                <p className="font-[600]">Issuer</p>
+                <div className="font-[400]">
+                  {isLoading ? (
+                    <DetailSkeleton className="w-28" />
+                  ) : (
+                    content?.project?.vendor?.organization_name
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-between text-[16px]">
                 <p className="font-[600]">Customer</p>
                 <div className="font-[400]">
                   {isLoading ? (

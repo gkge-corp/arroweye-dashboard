@@ -4,6 +4,8 @@ import React from "react";
 import InsightCard from "./InsightCard";
 import { ContentItem } from "@/types/contents";
 import { useCampaignAudienceGrowth } from "@/hooks/use-campaign-audience-growth";
+import { useCampaignStreamingRevenue } from "@/hooks/use-campaign-streaming-revenue";
+import { STREAMING_PAYOUT_PER_STREAM } from "@/lib/streaming-payout";
 
 interface ProjectSingleInsightProps {
   isAdvertiser: boolean | null;
@@ -63,6 +65,19 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
     : soundchartsAudienceGrowth === null
       ? "—"
       : `${soundchartsAudienceGrowth > 0 ? "+ " : soundchartsAudienceGrowth < 0 ? "− " : ""}${formatNumber(Math.abs(soundchartsAudienceGrowth))}`;
+  const { streamingRevenue, isStreamingRevenueLoading } =
+    useCampaignStreamingRevenue({
+      isrc: campaignIsrc,
+      startDate: campaignStartDate,
+      endDate: campaignEndDate,
+      enabled: isAdvertiser === false,
+    });
+  const formatRevenue = (amount: number | undefined) =>
+    isStreamingRevenueLoading
+      ? "…"
+      : amount === undefined
+        ? "—"
+        : formatNumber(Math.round(amount));
   const audienceGrowthPercentage =
     audienceGrowth?.changePercent === null ||
     audienceGrowth?.changePercent === undefined
@@ -92,23 +107,31 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
             currency={<>{!isAdvertiser ? "$" : "₦"}</>}
             value={
               !isAdvertiser
-                ? formatNumber(content?.total_revenue?.minimum || 0)
+                ? formatRevenue(streamingRevenue?.min)
                 : formatNumber(content?.kpis?.estimated_revenue_min_naira || 0)
             }
             maxValue={
               !isAdvertiser
-                ? formatNumber(content?.total_revenue?.maximum || 0)
+                ? formatRevenue(streamingRevenue?.max)
                 : formatNumber(content?.kpis?.estimated_revenue_max_naira || 0)
             }
             extraClass="h-[220px]"
-            percentageChange={content?.total_revenue?.percentage}
+            percentageChange={
+              isAdvertiser ? content?.total_revenue?.percentage : undefined
+            }
             percentageColor={
               content?.total_revenue?.change === "increase"
                 ? "#11cc48"
                 : "#ff4d4f"
             }
-            increaseType={content?.total_revenue?.change}
-            info="This is the estimated revenue range generated from streams, purchases, and views for this campaign. These figures are estimates; please confirm the actual revenue with your distributor."
+            increaseType={
+              isAdvertiser ? content?.total_revenue?.change : undefined
+            }
+            info={
+              !isAdvertiser
+                ? `Estimated revenue range from streams gained during the campaign, at $${STREAMING_PAYOUT_PER_STREAM.low} to $${STREAMING_PAYOUT_PER_STREAM.high} per stream. These figures are estimates; please confirm the actual revenue with your distributor.`
+                : "This is the estimated revenue range generated from streams, purchases, and views for this campaign. These figures are estimates; please confirm the actual revenue with your distributor."
+            }
           />
         </div>
 

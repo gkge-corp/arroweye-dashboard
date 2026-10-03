@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   CreateInvoice,
+  DuplicatePoCodeError,
   CreateService,
   getBusiness,
   getService,
@@ -387,6 +388,9 @@ const CreateInvoiceForm = () => {
         })
         .catch((err) => {
           console.error("Error submitting form:", err);
+          if (err instanceof DuplicatePoCodeError) {
+            setProjectErrors((prev) => ({ ...prev, po_code: err.message }));
+          }
         });
     } else {
       console.log("Form has errors. Not submitting.");
@@ -687,9 +691,8 @@ const CreateInvoiceForm = () => {
                         placeholder="Cost"
                         label="COST"
                         labelClassName={LABEL_CLASS}
-                        className={`${INPUT_CLASS} cursor-not-allowed text-muted-foreground`}
+                        className={INPUT_CLASS}
                         value={item.cost || ""}
-                        readOnly
                         onChange={(e) => {
                           const updatedCost = e.target.value;
 
@@ -701,6 +704,7 @@ const CreateInvoiceForm = () => {
                           const updatedServices = [...projectFormData.services];
                           updatedServices[index] = {
                             ...updatedServices[index],
+                            cost: updatedCost,
                           };
                           setProjectFormData((prevData) => ({
                             ...prevData,
