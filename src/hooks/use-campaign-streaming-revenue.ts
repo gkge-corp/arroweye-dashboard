@@ -24,11 +24,16 @@ export function useCampaignStreamingRevenue({
   const { trendPoints, isTrendLoading, hasTrendError } =
     useCampaignChannelTrend(isrc, { startDate, endDate, enabled });
 
+  const canLoad = enabled && Boolean(isrc && startDate);
+
   const campaignStreams = useMemo(() => {
+    if (!canLoad || isTrendLoading || hasTrendError) return null;
+    // No finished day in the window yet: the campaign starts today or later.
+    if (trendPoints.length === 0) return 0;
     const days = trendPoints.filter((point) => point.streaming !== null);
     if (days.length === 0) return null;
     return days.reduce((sum, point) => sum + (point.streaming ?? 0), 0);
-  }, [trendPoints]);
+  }, [canLoad, isTrendLoading, hasTrendError, trendPoints]);
 
   const streamingRevenue = useMemo(
     () =>

@@ -72,12 +72,11 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
       endDate: campaignEndDate,
       enabled: isAdvertiser === false,
     });
-  const formatRevenue = (amount: number | undefined) =>
-    isStreamingRevenueLoading
-      ? "…"
-      : amount === undefined
-        ? "—"
-        : formatNumber(Math.round(amount));
+  // Auth resolving leaves the query disabled, which would otherwise read as
+  // "no data" for a moment.
+  const isRevenuePending = isAdvertiser === null || isStreamingRevenueLoading;
+  const hasStreamingRevenue = !isRevenuePending && streamingRevenue !== null;
+  const revenuePlaceholder = isRevenuePending ? "…" : "—";
   const audienceGrowthPercentage =
     audienceGrowth?.changePercent === null ||
     audienceGrowth?.changePercent === undefined
@@ -104,16 +103,22 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
         <div className=" w-full">
           <InsightCard
             title="TOTAL REVENUE"
-            currency={<>{!isAdvertiser ? "$" : "₦"}</>}
+            currency={
+              isAdvertiser ? "₦" : hasStreamingRevenue ? "$" : undefined
+            }
             value={
-              !isAdvertiser
-                ? formatRevenue(streamingRevenue?.min)
-                : formatNumber(content?.kpis?.estimated_revenue_min_naira || 0)
+              isAdvertiser
+                ? formatNumber(content?.kpis?.estimated_revenue_min_naira || 0)
+                : streamingRevenue && hasStreamingRevenue
+                  ? formatNumber(Math.round(streamingRevenue.min))
+                  : revenuePlaceholder
             }
             maxValue={
-              !isAdvertiser
-                ? formatRevenue(streamingRevenue?.max)
-                : formatNumber(content?.kpis?.estimated_revenue_max_naira || 0)
+              isAdvertiser
+                ? formatNumber(content?.kpis?.estimated_revenue_max_naira || 0)
+                : streamingRevenue && hasStreamingRevenue
+                  ? formatNumber(Math.round(streamingRevenue.max))
+                  : undefined
             }
             extraClass="h-[220px]"
             percentageChange={
