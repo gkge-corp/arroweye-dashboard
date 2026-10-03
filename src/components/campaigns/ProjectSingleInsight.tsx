@@ -127,11 +127,7 @@ const ProjectSingleInsight: React.FC<ProjectSingleInsightProps> = ({
             increaseType={
               isAdvertiser ? content?.total_revenue?.change : undefined
             }
-            info={
-              !isAdvertiser
-                ? `Estimated revenue range from streams gained during the campaign, at $${STREAMING_PAYOUT_PER_STREAM.low} to $${STREAMING_PAYOUT_PER_STREAM.high} per stream. These figures are estimates; please confirm the actual revenue with your distributor.`
-                : "This is the estimated revenue range generated from streams, purchases, and views for this campaign. These figures are estimates; please confirm the actual revenue with your distributor."
-            }
+            info={`This is the estimated revenue range generated from streams, purchases, and views for this campaign. These figures are estimates; please confirm the actual revenue with your distributor.`}
           />
         </div>
 

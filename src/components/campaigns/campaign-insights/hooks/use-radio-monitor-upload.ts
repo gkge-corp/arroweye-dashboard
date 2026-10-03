@@ -6,12 +6,10 @@ import {
   getRadioMonitorFile,
   getRadioMonitorUploadSignature,
 } from "@/actions/radio-monitor";
-import { uploadProjectReport } from "@/services";
 import type { RadioMonitorUploadParams } from "@/types/radio-monitor";
 
 export const RADIO_MONITOR_ACCEPT = ".csv,.pdf";
 export const RADIO_MONITOR_MAX_BYTES = 10 * 1024 * 1024;
-const RADIO_MONITOR_REPORT_TYPE = "radio_monitor";
 
 const radioMonitorKey = (campaignId?: string | number) => [
   "radio-monitor",
@@ -45,19 +43,6 @@ const uploadToStorage = async (file: File, upload: RadioMonitorUploadParams) => 
   }
 };
 
-// Storage is the source of truth for the email link; the backend record is
-// best-effort until it exposes a way to read reports back.
-const registerWithBackend = async (campaignId: string, fileUrl: string) => {
-  try {
-    await uploadProjectReport(campaignId, {
-      file: fileUrl,
-      report_type: RADIO_MONITOR_REPORT_TYPE,
-    });
-  } catch (error) {
-    console.error("Radio monitor backend registration failed:", error);
-  }
-};
-
 export function useRadioMonitorUpload(
   campaignId?: string | number,
   enabled = true,
@@ -88,7 +73,6 @@ export function useRadioMonitorUpload(
       if (!signed.success) throw new Error(signed.message);
 
       await uploadToStorage(file, signed.upload);
-      await registerWithBackend(id, signed.upload.fileUrl);
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: radioMonitorKey(campaignId) }),

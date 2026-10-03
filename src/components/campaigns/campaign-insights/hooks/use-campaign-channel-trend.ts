@@ -133,9 +133,20 @@ export function useCampaignChannelTrend(
   });
 
   const points = useMemo(() => data?.points ?? [], [data?.points]);
+  const hasTrendActivity = useMemo(
+    () =>
+      points.some(
+        (point) =>
+          (point.streaming ?? 0) > 0 ||
+          (point.social ?? 0) > 0 ||
+          (point.radio ?? 0) > 0,
+      ),
+    [points],
+  );
 
   return {
     trendPoints: points,
+    hasTrendActivity,
     radioAvailable: data?.radioAvailable ?? false,
     isTrendLoading: isLoading,
     hasTrendError: isError,

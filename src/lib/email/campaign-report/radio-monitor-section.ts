@@ -17,10 +17,10 @@ const formatChange = (changePercent: number) => {
 };
 
 const describeTrend = (changePercent: number | null) => {
-  if (changePercent === null) return "Radio performance was monitored";
-  if (changePercent > 0) return "Radio performance remained positive";
-  if (changePercent < 0) return "Radio performance softened";
-  return "Radio performance held steady";
+  if (changePercent === null) return "The song charted";
+  if (changePercent > 0) return "Radio plays grew";
+  if (changePercent < 0) return "Radio plays eased";
+  return "Radio plays held steady";
 };
 
 /**
@@ -33,19 +33,23 @@ const fillWording = (
   { strong, plain }: SentenceFormat,
 ) => {
   const values: Record<string, string> = {
-    airplay: strong(formatNumber(summary.airplay)),
+    plays: strong(formatNumber(summary.plays)),
     change:
       summary.changePercent === null
         ? ""
         : strong(formatChange(summary.changePercent)),
     rank: strong(`#${summary.position}`),
-    station: plain(summary.station),
-    topStation: summary.topStation ? strong(summary.topStation) : "",
+    chart: plain(summary.chart),
+    impressions: summary.impressions
+      ? strong(formatNumber(summary.impressions))
+      : "",
   };
 
   return wording
     .split(/\{([A-Za-z]+)\}/)
-    .map((part, index) => (index % 2 === 1 ? (values[part] ?? "") : plain(part)))
+    .map((part, index) =>
+      index % 2 === 1 ? (values[part] ?? "") : plain(part),
+    )
     .join("");
 };
 
@@ -60,20 +64,21 @@ export const describeRadioMonitor = (
       : summary.changePercent === 0
         ? plain(", unchanged from the previous reporting period")
         : `${plain(" and ")}${strong(formatChange(summary.changePercent))}${plain(" versus the previous reporting period")}`;
-  const topStation = summary.topStation
-    ? `${plain(", while ")}${strong(summary.topStation)}${plain(" was the leading monitored station")}`
+  const impressions = summary.impressions
+    ? `${plain(", reaching an estimated ")}${strong(formatNumber(summary.impressions))}${plain(" impressions")}`
     : "";
 
   return [
     plain(
-      `${describeTrend(summary.changePercent)} during the reporting week (${summary.period}), with airplay at `,
+      `${describeTrend(summary.changePercent)} during ${summary.period}, with `,
     ),
-    strong(formatNumber(summary.airplay)),
+    strong(formatNumber(summary.plays)),
+    plain(" plays"),
     change,
     plain(". The song ranked "),
     strong(`#${summary.position}`),
-    plain(` on the ${summary.station} chart`),
-    topStation,
+    plain(` on the ${summary.chart}`),
+    impressions,
     plain("."),
   ].join("");
 };
