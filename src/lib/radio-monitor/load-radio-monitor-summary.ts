@@ -9,8 +9,8 @@ const isPdf = (file: StoredRadioMonitor) =>
   file.fileName.toLowerCase().endsWith(".pdf");
 
 /**
- * Summarises the newest upload for the campaign's song. Only Radiomonitor
- * Top 100 PDFs are read; CSVs and unmatched songs return undefined.
+ * Summarises the campaign's song from the newest shared upload. Only
+ * Radiomonitor Top 100 PDFs are read; unmatched songs return undefined.
  */
 export const loadRadioMonitorSummary = async (
   files: StoredRadioMonitor[],

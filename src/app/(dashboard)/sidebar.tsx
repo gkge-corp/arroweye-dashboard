@@ -21,6 +21,7 @@ import {
   mdiCreationOutline,
   mdiFormatListBulletedType,
   mdiCog,
+  mdiRadio,
 } from "@mdi/js";
 
 import {
@@ -447,6 +448,15 @@ const CampaignsSidebarContent = () => {
                     label="Drops"
                     active={isActive("/drops")}
                     icon={<DropsIcon />}
+                  />
+                )}
+
+                {!isAdvertiser && (
+                  <NavItem
+                    href="/radio-monitor"
+                    label="Radio Monitor"
+                    active={isActive("/radio-monitor")}
+                    icon={<Icon path={mdiRadio} size={0.85} />}
                   />
                 )}
 

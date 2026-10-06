@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import type { TrendRange } from "@/lib/music-analytics/channel-trend/trend-range";
+
 export type TrendChannel = "radio" | "social" | "streaming";
 
 export interface ChannelTrendPoint {
@@ -42,21 +44,10 @@ const fetchChannelTrend = async (
   return payload;
 };
 
-export type TrendRange = "campaign" | "30d" | "7d";
-
-const RANGE_DAYS: Record<Exclude<TrendRange, "campaign">, number> = {
-  "30d": 30,
-  "7d": 7,
-};
-
-/** Trailing window counted back from the last day in the series. */
-export const filterTrendByRange = (
-  points: ChannelTrendPoint[],
-  range: TrendRange,
-) => {
-  if (range === "campaign" || points.length === 0) return points;
-  return points.slice(-RANGE_DAYS[range]);
-};
+export {
+  filterTrendByRange,
+  type TrendRange,
+} from "@/lib/music-analytics/channel-trend/trend-range";
 
 const CHANNELS: TrendChannel[] = ["streaming", "social", "radio"];
 

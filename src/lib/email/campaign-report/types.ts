@@ -21,8 +21,7 @@ export interface CampaignReportTemplateInput {
   aiInsights?: CampaignAiInsights;
   radioMonitor?: {
     downloadLink: string;
-    fileName: string;
-    summary?: RadioMonitorSummary;
+    summary: RadioMonitorSummary;
     /** Validated model wording with placeholders; absent means the template. */
     wording?: string;
   };
