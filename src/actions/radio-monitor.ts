@@ -1,5 +1,6 @@
 "use server";
 
+import { canManageRadioMonitor } from "@/lib/radio-monitor/radio-monitor-access";
 import { getAuthorizedStaff } from "@/lib/server/get-authorized-staff";
 import {
   createRadioMonitorUpload,
@@ -15,6 +16,13 @@ import type {
 const toMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
+const authorizeRadioMonitor = async () => {
+  const user = await getAuthorizedStaff();
+  if (!canManageRadioMonitor(user.user_profile)) {
+    throw new Error("You do not have access to this page.");
+  }
+};
+
 export async function getRadioMonitorUploadSignature(
   fileNameInput: string,
   fileSize: number,
@@ -29,7 +37,7 @@ export async function getRadioMonitorUploadSignature(
   }
 
   try {
-    await getAuthorizedStaff();
+    await authorizeRadioMonitor();
     return {
       success: true,
       upload: await createRadioMonitorUpload(fileName),
@@ -45,7 +53,7 @@ export async function getRadioMonitorUploadSignature(
 
 export async function getRadioMonitorFile(): Promise<RadioMonitorFileResult> {
   try {
-    await getAuthorizedStaff();
+    await authorizeRadioMonitor();
     const file = await findLatestRadioMonitor();
     return {
       success: true,

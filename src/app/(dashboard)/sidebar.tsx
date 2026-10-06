@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-session";
+import { canManageRadioMonitor } from "@/lib/radio-monitor/radio-monitor-access";
 
 type NavItemProps = {
   href?: string;
@@ -451,7 +452,7 @@ const CampaignsSidebarContent = () => {
                   />
                 )}
 
-                {!isAdvertiser && (
+                {canManageRadioMonitor(userProfile) && (
                   <NavItem
                     href="/radio-monitor"
                     label="Radio Monitor"
