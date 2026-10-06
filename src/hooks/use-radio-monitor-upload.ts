@@ -8,18 +8,15 @@ import {
 } from "@/actions/radio-monitor";
 import type { RadioMonitorUploadParams } from "@/types/radio-monitor";
 
-export const RADIO_MONITOR_ACCEPT = ".csv,.pdf";
+export const RADIO_MONITOR_ACCEPT = ".pdf";
 export const RADIO_MONITOR_MAX_BYTES = 10 * 1024 * 1024;
 
-const radioMonitorKey = (campaignId?: string | number) => [
-  "radio-monitor",
-  String(campaignId ?? ""),
-];
+const RADIO_MONITOR_KEY = ["radio-monitor"];
 
 export const validateRadioMonitorFile = (file: File) => {
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
   if (!RADIO_MONITOR_ACCEPT.split(",").includes(`.${extension}`)) {
-    return "Upload a CSV or PDF file.";
+    return "Upload a PDF file.";
   }
   if (file.size > RADIO_MONITOR_MAX_BYTES) {
     return "Files must be 10MB or smaller.";
@@ -43,18 +40,13 @@ const uploadToStorage = async (file: File, upload: RadioMonitorUploadParams) => 
   }
 };
 
-export function useRadioMonitorUpload(
-  campaignId?: string | number,
-  enabled = true,
-) {
+export function useRadioMonitorUpload() {
   const queryClient = useQueryClient();
-  const id = campaignId === undefined ? "" : String(campaignId);
 
   const fileQuery = useQuery({
-    queryKey: radioMonitorKey(campaignId),
-    enabled: enabled && Boolean(id),
+    queryKey: RADIO_MONITOR_KEY,
     queryFn: async () => {
-      const result = await getRadioMonitorFile(id);
+      const result = await getRadioMonitorFile();
       if (!result.success) throw new Error(result.message);
       return result.file;
     },
@@ -65,17 +57,13 @@ export function useRadioMonitorUpload(
       const validationError = validateRadioMonitorFile(file);
       if (validationError) throw new Error(validationError);
 
-      const signed = await getRadioMonitorUploadSignature(
-        id,
-        file.name,
-        file.size,
-      );
+      const signed = await getRadioMonitorUploadSignature(file.name, file.size);
       if (!signed.success) throw new Error(signed.message);
 
       await uploadToStorage(file, signed.upload);
     },
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: radioMonitorKey(campaignId) }),
+      queryClient.invalidateQueries({ queryKey: RADIO_MONITOR_KEY }),
   });
 
   return {

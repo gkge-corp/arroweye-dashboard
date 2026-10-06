@@ -9,7 +9,6 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const RADIO_MONITOR_CONTENT_TYPES = {
-  csv: "text/csv",
   pdf: "application/pdf",
 } as const;
 type RadioMonitorFormat = keyof typeof RADIO_MONITOR_CONTENT_TYPES;
@@ -44,7 +43,8 @@ export const getConfig = () => {
   return { client, bucket, endpoint };
 };
 
-const folderFor = (campaignId: string) => `radio-monitor/campaign-${campaignId}/`;
+// One shared report: every campaign looks for its song in the newest upload.
+const RADIO_MONITOR_FOLDER = "radio-monitor/shared/";
 
 // Keys are `<folder><timestamp>-<name>`; strip the timestamp for display.
 const toFileName = (key: string) =>
@@ -69,14 +69,11 @@ export const isRadioMonitorFormat = (
 ): fileName is `${string}.${RadioMonitorFormat}` =>
   Object.hasOwn(RADIO_MONITOR_CONTENT_TYPES, getFormat(fileName));
 
-export const createRadioMonitorUpload = async (
-  campaignId: string,
-  fileName: string,
-) => {
+export const createRadioMonitorUpload = async (fileName: string) => {
   const { client, bucket, endpoint } = getConfig();
   const contentType =
     RADIO_MONITOR_CONTENT_TYPES[getFormat(fileName) as RadioMonitorFormat];
-  const key = `${folderFor(campaignId)}${Date.now()}-${toSafeFileName(fileName)}`;
+  const key = `${RADIO_MONITOR_FOLDER}${Date.now()}-${toSafeFileName(fileName)}`;
   const uploadUrl = await getSignedUrl(
     client,
     new PutObjectCommand({
@@ -95,13 +92,11 @@ export const createRadioMonitorUpload = async (
   };
 };
 
-/** Every upload for the campaign, newest first. */
-export const listRadioMonitors = async (
-  campaignId: string,
-): Promise<StoredRadioMonitor[]> => {
+/** Every upload, newest first. */
+export const listRadioMonitors = async (): Promise<StoredRadioMonitor[]> => {
   const { client, bucket } = getConfig();
   const { Contents = [] } = await client.send(
-    new ListObjectsV2Command({ Bucket: bucket, Prefix: folderFor(campaignId) }),
+    new ListObjectsV2Command({ Bucket: bucket, Prefix: RADIO_MONITOR_FOLDER }),
   );
 
   return Contents.filter((object) => object.Key)
@@ -116,10 +111,9 @@ export const listRadioMonitors = async (
     }));
 };
 
-export const findLatestRadioMonitor = async (
-  campaignId: string,
-): Promise<StoredRadioMonitor | null> =>
-  (await listRadioMonitors(campaignId))[0] ?? null;
+export const findLatestRadioMonitor =
+  async (): Promise<StoredRadioMonitor | null> =>
+    (await listRadioMonitors())[0] ?? null;
 
 export const readRadioMonitor = async (file: StoredRadioMonitor) => {
   const { client, bucket } = getConfig();

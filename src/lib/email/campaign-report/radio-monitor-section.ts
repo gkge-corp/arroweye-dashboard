@@ -109,17 +109,14 @@ const renderSummary = (
 ) =>
   `<div style="background-color:#fff;padding:16px 18px;border-radius:10px;border:1px solid #e5e5e5;"><div style="font-size:11px;letter-spacing:1px;font-weight:900;text-transform:uppercase;color:#7a42e8;margin-bottom:8px;">&#10022; ${wording ? "AI summary" : "Summary"}</div><div style="font-size:14px;color:#444;line-height:1.55;">${writeRadioMonitorSummary(summary, wording, htmlFormat)}</div></div>`;
 
-const renderFileNotice = (fileName: string | undefined) =>
-  `<div style="background-color:#f9f9f9;padding:16px;border-radius:7px;border:1px solid #e5e5e5;"><div style="font-size:14px;color:#555;line-height:1.5;">The full radio monitoring report for this campaign is available to download.${fileName ? `<div style="font-size:13px;color:#777;font-weight:500;margin-top:6px;">${escapeHtml(fileName)}</div>` : ""}</div></div>`;
-
+// Only campaigns whose song is on the shared chart get this section.
 export const renderRadioMonitor = (
   downloadLink: string | undefined,
-  fileName: string | undefined,
-  summary?: RadioMonitorSummary,
+  summary: RadioMonitorSummary | undefined,
   wording?: string,
 ) => {
   const link = safeUrl(downloadLink);
-  if (!link) return "";
+  if (!link || !summary) return "";
 
-  return `<div style="margin-top:24px;">${sectionLabel("Radio Monitor", "Weekly radio performance covering plays and rankings across monitored stations.")}${summary ? renderSummary(summary, wording) : renderFileNotice(fileName)}<div style="text-align:right;margin-top:14px;"><a href="${link}" style="display:inline-block;font-size:14px;font-weight:700;color:#fff;background-color:#111;padding:10px 24px;text-decoration:none;border-radius:22px;">Download</a></div><p style="font-size:12px;color:#777;margin:10px 0 0;line-height:1.5;"><strong>&#9432;</strong> This download link expires in 30 days.</p></div>`;
+  return `<div style="margin-top:24px;">${sectionLabel("Radio Monitor", "Weekly radio performance covering plays and rankings across monitored stations.")}${renderSummary(summary, wording)}<div style="text-align:right;margin-top:14px;"><a href="${link}" style="display:inline-block;font-size:14px;font-weight:700;color:#fff;background-color:#111;padding:10px 24px;text-decoration:none;border-radius:22px;">Download</a></div><p style="font-size:12px;color:#777;margin:10px 0 0;line-height:1.5;"><strong>&#9432;</strong> This download link expires in 30 days.</p></div>`;
 };

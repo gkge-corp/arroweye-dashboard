@@ -295,34 +295,30 @@ const getAppBaseUrl = async () => {
   return `${protocol}://${host}`;
 };
 
-// A file that cannot be summarised still ships as a download link.
-const getRadioMonitorAttachment = async (
-  campaignId: string,
-  project: UnknownRecord,
-) => {
-  const files = await listRadioMonitors(campaignId);
+// The report is shared across campaigns, so it is only attached when this
+// campaign's song is on the chart.
+const getRadioMonitorAttachment = async (project: UnknownRecord) => {
+  const files = await listRadioMonitors();
   if (files.length === 0) return undefined;
 
   const summary = await loadRadioMonitorSummary(files, {
     title: asString(project.song_title || project.title),
     artist: asString(project.artist_name || project.song_artist),
-  }).catch((error: unknown) => {
-    console.error("Radio monitor summary failed:", error);
-    return undefined;
   });
-  const wording = summary
-    ? await generateRadioMonitorWording(summary).catch((error: unknown) => {
-        console.error(
-          "Radio monitor wording failed:",
-          error instanceof Error ? error.message : "Unknown error",
-        );
-        return undefined;
-      })
-    : undefined;
+  if (!summary) return undefined;
+
+  const wording = await generateRadioMonitorWording(summary).catch(
+    (error: unknown) => {
+      console.error(
+        "Radio monitor wording failed:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
+      return undefined;
+    },
+  );
 
   return {
-    downloadLink: buildRadioMonitorLink(await getAppBaseUrl(), campaignId),
-    fileName: files[0].fileName,
+    downloadLink: buildRadioMonitorLink(await getAppBaseUrl()),
     summary,
     wording,
   };
@@ -362,12 +358,9 @@ export async function sendCampaignReport(
         return undefined;
       },
     );
-    const radioMonitor = await getRadioMonitorAttachment(
-      campaignId,
-      project,
-    ).catch(
+    const radioMonitor = await getRadioMonitorAttachment(project).catch(
       (error: unknown) => {
-        console.error("Radio monitor link failed:", error);
+        console.error("Radio monitor attachment failed:", error);
         return undefined;
       },
     );

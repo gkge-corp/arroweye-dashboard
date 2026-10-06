@@ -90,9 +90,35 @@ function TooltipRow({
   );
 }
 
+function TrendSummary({
+  summary,
+  loading,
+}: {
+  summary: string | null;
+  loading: boolean;
+}) {
+  if (loading) return <Skeleton className="mt-4 h-[64px] w-full rounded-lg" />;
+  if (!summary) return null;
+
+  return (
+    <div className="mt-4 rounded-lg border bg-muted/40 px-[14px] py-[12px]">
+      <p className="text-[10px] font-[900] uppercase tracking-[.1rem] text-chart-1">
+        &#10022; AI summary
+      </p>
+      <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+        {summary}
+      </p>
+    </div>
+  );
+}
+
 interface ChannelTrendCardProps {
   points: ChannelTrendPoint[];
   radioAvailable: boolean;
+  timeRange: TrendRange;
+  onTimeRangeChange: (range: TrendRange) => void;
+  summary?: string | null;
+  summaryLoading?: boolean;
   loading?: boolean;
   hasError?: boolean;
 }
@@ -100,10 +126,13 @@ interface ChannelTrendCardProps {
 export function ChannelTrendCard({
   points,
   radioAvailable,
+  timeRange,
+  onTimeRangeChange,
+  summary = null,
+  summaryLoading = false,
   loading = false,
   hasError = false,
 }: ChannelTrendCardProps) {
-  const [timeRange, setTimeRange] = React.useState<TrendRange>("campaign");
   const series = React.useMemo(
     () => SERIES.filter((channel) => channel !== "radio" || radioAvailable),
     [radioAvailable],
@@ -136,7 +165,7 @@ export function ChannelTrendCard({
         </div>
         <Select
           value={timeRange}
-          onValueChange={(value) => setTimeRange(value as TrendRange)}
+          onValueChange={(value) => onTimeRangeChange(value as TrendRange)}
         >
           <SelectTrigger
             className="hidden w-[160px] rounded-lg sm:ml-auto sm:flex"
@@ -239,6 +268,9 @@ export function ChannelTrendCard({
               <ChartLegend content={<ChartLegendContent />} />
             </AreaChart>
           </ChartContainer>
+        )}
+        {!loading && !hasError && chartData.length > 0 && (
+          <TrendSummary summary={summary} loading={summaryLoading} />
         )}
       </CardContent>
     </Card>

@@ -7,6 +7,7 @@ const APP_ROUTE_PREFIXES = [
   "/login",
   "/campaigns",
   "/drops",
+  "/radio-monitor",
   "/payments",
   "/schedule",
   "/settings",

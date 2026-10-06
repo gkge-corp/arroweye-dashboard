@@ -6,17 +6,11 @@ import {
 } from "@/lib/storage/r2";
 import { verifyRadioMonitorLink } from "@/lib/storage/report-link";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ campaignId: string }> },
-) {
-  const { campaignId } = await params;
+export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
 
   if (
-    !/^\d+$/.test(campaignId) ||
     !verifyRadioMonitorLink(
-      campaignId,
       Number(searchParams.get("exp")),
       searchParams.get("sig") ?? "",
     )
@@ -27,7 +21,7 @@ export async function GET(
   }
 
   try {
-    const file = await findLatestRadioMonitor(campaignId);
+    const file = await findLatestRadioMonitor();
     if (!file) {
       return new NextResponse("The file is no longer available.", {
         status: 404,
