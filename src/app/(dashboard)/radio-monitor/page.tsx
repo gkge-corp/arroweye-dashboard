@@ -1,9 +1,25 @@
 import { mdiRadio } from "@mdi/js";
 import Icon from "@mdi/react";
+import { redirect } from "next/navigation";
+
+import { canManageRadioMonitor } from "@/lib/radio-monitor/radio-monitor-access";
+import { getAuthorizedStaff } from "@/lib/server/get-authorized-staff";
 
 import { RadioMonitorUploader } from "./component/radio-monitor-uploader";
 
-export default function RadioMonitorPage() {
+export const dynamic = "force-dynamic";
+
+const hasRadioMonitorAccess = () =>
+  getAuthorizedStaff()
+    .then((user) => canManageRadioMonitor(user.user_profile))
+    .catch((error: unknown) => {
+      console.error("Radio monitor access check failed:", error);
+      return false;
+    });
+
+export default async function RadioMonitorPage() {
+  if (!(await hasRadioMonitorAccess())) redirect("/campaigns");
+
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-6 text-center">
       <div className="flex items-center gap-[10px]">
