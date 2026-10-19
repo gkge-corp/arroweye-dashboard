@@ -46,6 +46,8 @@ import {
   type NotificationByType,
 } from "@/types/notifications";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 type DockPanel =
   | "updates"
   | "drops"
@@ -179,16 +181,22 @@ export function BottomDock({
   const canSendReport = Boolean(onSendReport || reportMetrics);
 
   const handleSendEmail = async () => {
-    if (!contentId || !email || !canSendReport || reportLoading) return;
+    const recipient = email.trim();
+    if (!contentId || !recipient || !canSendReport || reportLoading) return;
+
+    if (!EMAIL_PATTERN.test(recipient)) {
+      toast.error("Enter a valid email address.");
+      return;
+    }
 
     setIsSending(true);
 
     try {
       const result = onSendReport
-        ? await onSendReport(email)
+        ? await onSendReport(recipient)
         : await sendCampaignReport({
             campaignId: String(contentId),
-            recipient: email,
+            recipient,
             metrics: reportMetrics!,
           });
 

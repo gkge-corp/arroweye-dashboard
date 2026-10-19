@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCampaignDetail } from "@/hooks/use-campaign-detail";
 import { useCampaignExports } from "@/hooks/use-campaign-exports";
 import { hasAccess } from "@/lib/utils";
+import { CampaignMembersSection } from "../_components/campaign-members-section";
 
 const readIsrc = (content: any) =>
   String(content?.isrc || content?.song_isrc || "")
@@ -41,6 +42,8 @@ const ArtistAnalyticsPage = () => {
   const id = params?.id ?? "";
   const {
     content,
+    subvendorStaff,
+    staffSuggestions,
     userLoggedInProfile,
     isContentFetching,
     hasNetworkError,
@@ -94,6 +97,16 @@ const ArtistAnalyticsPage = () => {
         campaignTitle={campaignTitle}
         artistName={artistName}
         isrc={isrc}
+        members={
+          <CampaignMembersSection
+            id={id}
+            content={content}
+            refreshContent={refreshContent}
+            members={subvendorStaff}
+            staffSuggestions={staffSuggestions}
+            userLoggedInProfile={userLoggedInProfile}
+          />
+        }
         dockProps={{
           contentId: content?.id,
           handleDownloadData: handleExportCSV,
