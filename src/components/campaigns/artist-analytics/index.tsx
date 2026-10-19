@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { ArtistAudienceCard } from "./artist-audience-card";
 import { ArtistProfileHeader } from "./artist-profile-header";
 import { ArtistStatsGrid } from "./artist-stats-grid";
@@ -17,6 +19,7 @@ interface ArtistAnalyticsProps {
   campaignTitle?: string;
   artistName?: string;
   isrc?: string;
+  members?: ReactNode;
   dockProps: Omit<BottomDockProps, "onSendReport" | "reportMetrics">;
 }
 
@@ -28,6 +31,7 @@ export default function ArtistAnalytics({
   campaignTitle,
   artistName,
   isrc,
+  members,
   dockProps,
 }: ArtistAnalyticsProps) {
   const analytics = useArtistAnalytics(campaignId, {
@@ -44,7 +48,9 @@ export default function ArtistAnalytics({
         fallbackName={artistName}
         artist={analytics.profile?.artist}
         loading={analytics.isProfileLoading}
-      />
+      >
+        {members}
+      </ArtistProfileHeader>
 
       {analytics.profileError ? (
         <div className="flex h-[160px] items-center justify-center rounded-[8px] border border-dashed px-4 text-center font-SansFlex text-[14px] text-muted-foreground">

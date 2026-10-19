@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -13,6 +14,7 @@ interface ArtistProfileHeaderProps {
   fallbackName?: string;
   artist?: ArtistProfile["artist"];
   loading?: boolean;
+  children?: ReactNode;
 }
 
 export function ArtistProfileHeader({
@@ -21,6 +23,7 @@ export function ArtistProfileHeader({
   fallbackName,
   artist,
   loading = false,
+  children,
 }: ArtistProfileHeaderProps) {
   const name = artist?.name || fallbackName || "Artist";
 
@@ -59,6 +62,8 @@ export function ArtistProfileHeader({
           )}
         </div>
       </div>
+
+      {children}
     </div>
   );
 }

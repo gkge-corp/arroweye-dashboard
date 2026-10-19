@@ -6,29 +6,18 @@ import { flushSync } from "react-dom";
 import { MdAddCircleOutline } from "react-icons/md";
 import type { AppUser } from "@/types/api";
 import { cn, hasAccess } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import ProjectSingleInsight from "@/components/campaigns/ProjectSingleInsight";
 import NotificationsMenu from "../../../notifications-menu";
+import { CampaignMembersList } from "./campaign-members-list";
 import Icon from "@mdi/react";
-import {
-  mdiAccountPlusOutline,
-  mdiCheckCircleOutline,
-  mdiCloseCircleOutline,
-} from "@mdi/js";
+import { mdiCheckCircleOutline, mdiCloseCircleOutline } from "@mdi/js";
 
 interface CampaignDetailsHeaderProps {
   content: any;
   setContent: React.Dispatch<React.SetStateAction<any | null>>;
   subvendorStaff: AppUser[] | null;
-  predefinedColors: string[];
   userLoggedInProfile: any;
   isAdvertiser: boolean | null;
   toggleNotifications: boolean;
@@ -44,7 +33,6 @@ export function CampaignDetailsHeader({
   content,
   setContent,
   subvendorStaff,
-  predefinedColors,
   userLoggedInProfile,
   isAdvertiser,
   toggleNotifications,
@@ -245,57 +233,12 @@ export function CampaignDetailsHeader({
 
           {!isSticky && (
             <div className="my-[20px] flex flex-wrap items-center justify-between gap-[20px]">
-              <TooltipProvider>
-                <div className="flex space-x-[5px]">
-                  {subvendorStaff?.map((user, index) => (
-                    <Tooltip key={user?.id || index}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          size="icon-lg"
-                          variant="ghost"
-                          className="size-[50px] rounded-full p-0"
-                          onClick={() => onUserClick(user)}
-                        >
-                          <Avatar className="size-[50px]">
-                            <AvatarFallback
-                              className={`${predefinedColors[index % predefinedColors.length]} text-xs font-bold tracking-[0.12em] text-white`}
-                            >
-                              {user?.user_profile?.fullname
-                                ?.slice(0, 2)
-                                .toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="sr-only">
-                            View {user?.user_profile?.fullname}
-                          </span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {user?.user_profile?.fullname}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-
-                  {canAddMember && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          size="icon-lg"
-                          variant="secondary"
-                          className="size-[50px] rounded-full bg-[#ffdead]"
-                          onClick={onAddMemberClick}
-                        >
-                          <Icon path={mdiAccountPlusOutline} size={1} />
-                          <span className="sr-only">Add member</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Add member</TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-              </TooltipProvider>
+              <CampaignMembersList
+                members={subvendorStaff}
+                canAddMember={canAddMember}
+                onAddMemberClick={onAddMemberClick}
+                onUserClick={onUserClick}
+              />
 
               {canUseEditMode && (
                 <div className="flex items-center gap-3">
