@@ -24,23 +24,18 @@ export interface Top100Chart {
 
 interface Cell {
   x: number;
+  width: number;
   text: string;
 }
 
-const COLUMNS = [
-  "Pos",
-  "LW",
-  "Org",
-  "Artist",
-  "Title",
-  "Owner",
-  "Plays",
-  "Prev",
-  "Imp's",
-  "Trend",
-] as const;
+interface HeaderColumn {
+  name: string;
+  x: number;
+}
 
-type Column = (typeof COLUMNS)[number];
+// Exports differ in their other columns (station charts add LW/Org/Prev,
+// national charts add Pk/Wks/Label), so only these have to be present.
+const REQUIRED_COLUMNS = ["Pos", "Artist", "Title", "Plays"];
 
 // Data cells start a few points right of their header, so a cell belongs to
 // the last header that begins at or before it.
@@ -65,7 +60,11 @@ const readLines = async (data: Uint8Array) => {
       if (!("str" in item) || !item.str.trim()) continue;
       const y = Math.round(item.transform[5]);
       const cells = byBaseline.get(y) ?? [];
-      cells.push({ x: item.transform[4], text: item.str.trim() });
+      cells.push({
+        x: item.transform[4],
+        width: item.width,
+        text: item.str.trim(),
+      });
       byBaseline.set(y, cells);
     }
 
@@ -77,23 +76,53 @@ const readLines = async (data: Uint8Array) => {
   return lines;
 };
 
-const readHeader = (cells: Cell[]) => {
-  const header = new Map<Column, number>();
-  for (const cell of cells) {
-    const column = COLUMNS.find((name) => name === cell.text);
-    if (column) header.set(column, cell.x);
+// Neighbouring cells can arrive as one text item ("Owner Plays", "WMG 162"),
+// so each word's x is estimated from its offset within the item.
+const splitWords = (cell: Cell): Cell[] => {
+  const words: Cell[] = [];
+  for (const match of cell.text.matchAll(/\S+/g)) {
+    words.push({
+      x: cell.x + (cell.width * match.index) / cell.text.length,
+      width: (cell.width * match[0].length) / cell.text.length,
+      text: match[0],
+    });
   }
-  return header.size === COLUMNS.length ? header : undefined;
+  return words;
 };
 
-const toColumns = (cells: Cell[], header: Map<Column, number>) => {
-  const values: Partial<Record<Column, string>> = {};
+const readHeader = (cells: Cell[]) => {
+  const header = cells.flatMap(splitWords).map(({ text, x }) => ({
+    name: text,
+    x,
+  }));
+  const names = new Set(header.map(({ name }) => name));
+  return REQUIRED_COLUMNS.every((name) => names.has(name))
+    ? header
+    : undefined;
+};
+
+const columnAt = (x: number, header: HeaderColumn[]) =>
+  header.findLast((column) => column.x <= x + COLUMN_TOLERANCE);
+
+// Only cells that run past the next column are split, so multi-word artists
+// and titles stay intact.
+const spansColumns = (cell: Cell, header: HeaderColumn[]) => {
+  const column = columnAt(cell.x, header);
+  const next = header[header.indexOf(column!) + 1];
+  return Boolean(next) && cell.x + cell.width > next.x + COLUMN_TOLERANCE;
+};
+
+const toColumns = (cells: Cell[], header: HeaderColumn[]) => {
+  const values: Record<string, string> = {};
   for (const cell of cells) {
-    const column = [...COLUMNS]
-      .reverse()
-      .find((name) => header.get(name)! <= cell.x + COLUMN_TOLERANCE);
-    if (!column) continue;
-    values[column] = [values[column], cell.text].filter(Boolean).join(" ");
+    const parts = spansColumns(cell, header) ? splitWords(cell) : [cell];
+    for (const part of parts) {
+      const column = columnAt(part.x, header);
+      if (!column) continue;
+      values[column.name] = [values[column.name], part.text]
+        .filter(Boolean)
+        .join(" ");
+    }
   }
   return values;
 };
@@ -111,9 +140,7 @@ const splitOwnerSuffix = (title: string, owner: string | undefined) => {
   return title.replace(OWNER_SUFFIX, "").trim() || title;
 };
 
-const parseRow = (
-  values: Partial<Record<Column, string>>,
-): Top100Row | null => {
+const parseRow = (values: Record<string, string>): Top100Row | null => {
   const { Pos, Plays, Prev, Artist } = values;
   if (
     !INTEGER_PATTERN.test(Pos ?? "") ||
@@ -133,9 +160,13 @@ const parseRow = (
   };
 };
 
+// Station exports print "NG | Cool FM 96.9 (Lagos)"; national ones print
+// "NG - All Radio (Fri to Thu by RAMS) (All)".
+const COUNTRY_TITLE = /^([A-Z]{2})\s+(?:\||-)\s+(.+)$/;
+
 /**
- * Reads a Radiomonitor "Top 100" PDF export. The page header prints
- * "NG | Cool FM 96.9 (Lagos)" then "Top 100 | Fri 18 - Sun 20 Sep 2026".
+ * Reads a Radiomonitor chart PDF export. Station exports follow the title
+ * with "Top 100 | Fri 18 - Sun 20 Sep 2026"; national ones with just the period.
  */
 export const parseTop100Chart = async (
   data: Uint8Array,
@@ -144,7 +175,7 @@ export const parseTop100Chart = async (
   let station = "";
   let chart = "";
   let period = "";
-  let header: Map<Column, number> | undefined;
+  let header: HeaderColumn[] | undefined;
   const rows: Top100Row[] = [];
 
   for (const cells of await readLines(data)) {
@@ -152,22 +183,28 @@ export const parseTop100Chart = async (
 
     if (cells[0]?.text === "Pos") {
       header = readHeader(cells) ?? header;
-    } else if (!header && text.includes(" | ")) {
+    } else if (!header) {
       const [left, right] = text.split(" | ").map((part) => part.trim());
-      if (/^Top \d+$/i.test(left)) {
+      const countryTitle = text.match(COUNTRY_TITLE);
+      if (/^Top \d+$/i.test(left) && right) {
         chart ||= left;
         period ||= right;
+      } else if (countryTitle && !station) {
+        countryCode = countryTitle[1];
+        station = countryTitle[2];
+      } else if (!station) {
+        station = left;
+        period ||= right ?? "";
       } else {
-        countryCode ||= left;
-        station ||= right;
+        period ||= text;
       }
-    } else if (header) {
+    } else {
       const row = parseRow(toColumns(cells, header));
       if (row) rows.push(row);
     }
   }
 
-  if (!station || !chart || !period || rows.length === 0) {
+  if (!station || rows.length === 0) {
     throw new Error(
       "The radio monitor file is not a recognised Top 100 chart.",
     );

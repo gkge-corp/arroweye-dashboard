@@ -9,7 +9,6 @@ import {
   mdiHistory,
   mdiLoading,
   mdiMicrosoftExcel,
-  mdiOpenInNew,
   mdiPostOutline,
   mdiPlus,
   mdiReload,
@@ -45,6 +44,8 @@ import {
   isApiNotification,
   type NotificationByType,
 } from "@/types/notifications";
+import { CampaignEventDialog } from "./campaign-event-dialog";
+import { useCampaignSchedule } from "./hooks/use-campaign-schedule";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -100,6 +101,8 @@ export function BottomDock({
   const [email, setEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [dropzoneDialogOpen, setDropzoneDialogOpen] = useState(false);
+  const projectId = Number(contentId) || undefined;
+  const schedule = useCampaignSchedule(projectId);
 
   const isDropsPanelOpen = popoverOpen && activePanel === "drops";
   const {
@@ -214,21 +217,6 @@ export function BottomDock({
     }
   };
 
-  const openSchedule = () => {
-    if (typeof document === "undefined") return;
-
-    const schedule = document.getElementById("campaign-schedule");
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    schedule?.scrollIntoView({
-      behavior: reduceMotion ? "auto" : "smooth",
-      block: "start",
-    });
-    closePopover();
-  };
-
   const exportCsv = () => {
     handleDownloadData?.();
     closePopover();
@@ -255,12 +243,11 @@ export function BottomDock({
       label: "Publications",
       icon: <Icon path={mdiPostOutline} size={1} />,
     },
-    // {
-    //   id: "schedule",
-    //   label: "Open campaign schedule",
-    //   icon: <MdiIcon className="size-full" path={mdiCalendarMonthOutline} />,
-    //   badge: true,
-    // },
+    {
+      id: "schedule",
+      label: "Schedule",
+      icon: <MdiIcon className="size-full" path={mdiCalendarMonthOutline} />,
+    },
     {
       id: "send",
       label: "Send",
@@ -275,7 +262,9 @@ export function BottomDock({
 
   // Sending needs report figures or a page-specific sender.
   const visibleDockItems = dockItems.filter(
-    (item) => item.id !== "send" || canSendReport,
+    (item) =>
+      (item.id !== "send" || canSendReport) &&
+      (item.id !== "schedule" || projectId),
   );
 
   return (
@@ -343,7 +332,8 @@ export function BottomDock({
           className={`w-[calc(100vw-2rem)] gap-0 overflow-hidden border-0 bg-white p-0 text-sm ring-1 ring-zinc-950/10 dark:bg-zinc-950 dark:ring-white/10 ${
             activePanel === "drops" ||
             activePanel === "updates" ||
-            activePanel === "publications"
+            activePanel === "publications" ||
+            activePanel === "schedule"
               ? "max-w-85"
               : "max-w-[310px]"
           }`}
@@ -490,18 +480,84 @@ export function BottomDock({
           )}
 
           {activePanel === "schedule" && (
-            <div className="space-y-3 p-4">
-              <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-                View this campaign&apos;s calendar and scheduled activity.
-              </p>
-              <button
-                type="button"
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-zinc-950 px-4 text-sm font-semibold text-white outline-none transition-[background-color,transform] duration-150 hover:bg-zinc-800 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-zinc-500/35 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
-                onClick={openSchedule}
-              >
-                <MdiIcon className="size-4" path={mdiCalendarMonthOutline} />
-                View schedule
-              </button>
+            <div className="flex min-h-0 flex-col">
+              <ScrollArea className="h-[min(46vh,360px)] min-h-48 [&_[data-slot=scroll-area-viewport]>div]:block! [&_[data-slot=scroll-area-viewport]>div]:w-full! [&_[data-slot=scroll-area-viewport]>div]:min-w-0!">
+                {schedule.isLoading ? (
+                  <p className="p-6 text-center text-sm text-neutral-500">
+                    Loading events…
+                  </p>
+                ) : schedule.campaignEvents.length > 0 ? (
+                  <div className="w-full min-w-0 divide-y divide-neutral-100 dark:divide-zinc-800">
+                    {schedule.campaignEvents.map((event) => (
+                      <button
+                        type="button"
+                        key={event.id}
+                        className="flex w-full min-w-0 items-start gap-3 bg-white px-5 py-4 text-left outline-none transition-colors hover:bg-zinc-50 focus-visible:bg-zinc-50 dark:bg-zinc-950 dark:hover:bg-zinc-900 dark:focus-visible:bg-zinc-900"
+                        onClick={() => {
+                          setPopoverOpen(false);
+                          schedule.openEventDetails(event.details);
+                        }}
+                      >
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                          <MdiIcon
+                            className="size-5"
+                            path={mdiCalendarMonthOutline}
+                          />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">
+                            {event.title}
+                          </p>
+                          <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                            {event.dateLabel}
+                          </p>
+                          {event.location && (
+                            <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                              {event.location}
+                            </p>
+                          )}
+                        </div>
+                        {event.status && (
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${event.status.pillClassName}`}
+                          >
+                            {event.status.label}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="p-5 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                    No events scheduled for this campaign.
+                  </p>
+                )}
+              </ScrollArea>
+
+              <div className="shrink-0 border-t border-neutral-100 px-4 py-3 dark:border-zinc-800">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    className="h-9 flex-1 rounded-[6px] bg-zinc-950 text-white hover:bg-orange-500 dark:bg-zinc-100 dark:text-zinc-950"
+                    onClick={() => router.push("/schedule")}
+                  >
+                    View Full Schedule
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    aria-label="Add event"
+                    title="Add event"
+                    className="size-9 shrink-0 rounded-[6px] bg-zinc-950 text-white hover:bg-orange-500 dark:bg-zinc-100 dark:text-zinc-950"
+                    onClick={() => {
+                      setPopoverOpen(false);
+                      schedule.openCreateModal();
+                    }}
+                  >
+                    <MdiIcon path={mdiPlus} size={0.8} />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -591,6 +647,8 @@ export function BottomDock({
           onUploaded={() => void refetchDropZones()}
         />
       )}
+
+      {projectId && <CampaignEventDialog schedule={schedule} />}
     </>
   );
 }
