@@ -9,10 +9,12 @@ import {
   mdiHistory,
   mdiLoading,
   mdiMicrosoftExcel,
+  mdiPencilOutline,
   mdiPostOutline,
   mdiPlus,
   mdiReload,
   mdiSend,
+  mdiTrashCanOutline,
 } from "@mdi/js";
 import MdiIcon, { Icon } from "@mdi/react";
 import { useQuery } from "@tanstack/react-query";
@@ -44,6 +46,9 @@ import {
   isApiNotification,
   type NotificationByType,
 } from "@/types/notifications";
+import type { PublicationMedia } from "@/hooks/use-publication-form";
+import { DeletePublicationDialog } from "./delete-publication-dialog";
+import { PublicationDialog } from "./publication-dialog";
 import { CampaignEventDialog } from "./campaign-event-dialog";
 import { useCampaignSchedule } from "./hooks/use-campaign-schedule";
 
@@ -57,14 +62,6 @@ type DockPanel =
   | "send"
   | "export";
 
-interface PublicationMedia {
-  id: number;
-  type: "Editorial";
-  publication?: string | null;
-  channel?: string | null;
-  editorial_link?: string | null;
-}
-
 export interface BottomDockProps {
   contentId?: number | string;
   handleDownloadData?: () => void;
@@ -74,6 +71,7 @@ export interface BottomDockProps {
   reportLoading?: boolean;
   /** Replaces the campaign report send, for pages with their own report. */
   onSendReport?: (recipient: string) => Promise<SendCampaignReportResult>;
+  onPublicationsChanged?: () => void;
 }
 
 const panelTitle: Record<DockPanel, string> = {
@@ -93,6 +91,7 @@ export function BottomDock({
   reportMetrics,
   reportLoading = false,
   onSendReport,
+  onPublicationsChanged,
 }: BottomDockProps) {
   const router = useRouter();
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -101,6 +100,17 @@ export function BottomDock({
   const [email, setEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [dropzoneDialogOpen, setDropzoneDialogOpen] = useState(false);
+  const [publicationDialogOpen, setPublicationDialogOpen] = useState(false);
+  const [editingPublication, setEditingPublication] =
+    useState<PublicationMedia>();
+  const [publicationToDelete, setPublicationToDelete] =
+    useState<PublicationMedia>();
+
+  const openPublicationDialog = (publication?: PublicationMedia) => {
+    setPopoverOpen(false);
+    setEditingPublication(publication);
+    setPublicationDialogOpen(true);
+  };
   const projectId = Number(contentId) || undefined;
   const schedule = useCampaignSchedule(projectId);
 
@@ -425,58 +435,113 @@ export function BottomDock({
           )}
 
           {activePanel === "publications" && (
-            <ScrollArea className="h-[min(46vh,360px)] min-h-48 [&_[data-slot=scroll-area-viewport]>div]:block! [&_[data-slot=scroll-area-viewport]>div]:w-full! [&_[data-slot=scroll-area-viewport]>div]:min-w-0!">
-              {publications.length > 0 ? (
-                <div className="w-full min-w-0 divide-y divide-neutral-100 dark:divide-zinc-800">
-                  {publications.map((publication) => {
-                    const name =
-                      publication.publication?.trim() || "Untitled publication";
-                    const channel = publication.channel?.trim();
-                    const link = publication.editorial_link?.trim();
+            <div className="flex min-h-0 flex-col">
+              <ScrollArea className="h-[min(46vh,360px)] min-h-48 [&_[data-slot=scroll-area-viewport]>div]:block! [&_[data-slot=scroll-area-viewport]>div]:w-full! [&_[data-slot=scroll-area-viewport]>div]:min-w-0!">
+                {publications.length > 0 ? (
+                  <div className="w-full min-w-0 divide-y divide-neutral-100 dark:divide-zinc-800">
+                    {publications.map((publication) => {
+                      const name =
+                        publication.publication?.trim() ||
+                        "Untitled publication";
+                      const channel = publication.channel?.trim();
+                      const link = publication.editorial_link?.trim();
 
-                    return (
-                      <article
-                        key={publication.id}
-                        className="flex w-full min-w-0 items-start gap-3 bg-white px-5 py-4 dark:bg-zinc-950"
-                      >
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
-                          <Icon path={mdiPostOutline} size={1} />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">
-                            {name}
-                          </p>
-                          {channel && (
-                            <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                              {channel}
+                      return (
+                        <article
+                          key={publication.id}
+                          className="flex w-full min-w-0 items-start gap-3 bg-white px-5 py-4 dark:bg-zinc-950"
+                        >
+                          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                            <Icon path={mdiPostOutline} size={1} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">
+                              {name}
                             </p>
-                          )}
-                          {link && (
-                            <Button
-                              asChild
-                              aria-label="View publication"
-                              className="mt-2 shrink-0 rounded-full border-0 bg-neutral-950 px-4 text-xs font-semibold text-white shadow-none transition-colors hover:bg-neutral-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
-                            >
-                              <a
-                                href={link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                View
-                              </a>
-                            </Button>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
+                            {channel && (
+                              <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                {channel}
+                              </p>
+                            )}
+                            <div className="mt-2 flex items-center gap-1">
+                              {link && (
+                                <Button
+                                  asChild
+                                  aria-label="View publication"
+                                  className="mr-1 shrink-0 rounded-full border-0 bg-neutral-950 px-4 text-xs font-semibold text-white shadow-none transition-colors hover:bg-neutral-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
+                                >
+                                  <a
+                                    href={link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    View
+                                  </a>
+                                </Button>
+                              )}
+                              {contentId && (
+                                <>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label={`Edit ${name}`}
+                                    title="Edit publication"
+                                    className="size-8 rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                                    onClick={() =>
+                                      openPublicationDialog(publication)
+                                    }
+                                  >
+                                    <MdiIcon
+                                      path={mdiPencilOutline}
+                                      size={0.7}
+                                    />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label={`Delete ${name}`}
+                                    title="Delete publication"
+                                    className="size-8 rounded-full text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+                                    onClick={() => {
+                                      setPopoverOpen(false);
+                                      setPublicationToDelete(publication);
+                                    }}
+                                  >
+                                    <MdiIcon
+                                      path={mdiTrashCanOutline}
+                                      size={0.7}
+                                    />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="p-5 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                    No publications available.
+                  </p>
+                )}
+              </ScrollArea>
+
+              {contentId && (
+                <div className="shrink-0 border-t border-neutral-100 px-4 py-3 dark:border-zinc-800">
+                  <Button
+                    type="button"
+                    className="h-9 w-full rounded-[6px] bg-zinc-950 text-white hover:bg-orange-500 dark:bg-zinc-100 dark:text-zinc-950"
+                    onClick={() => openPublicationDialog()}
+                  >
+                    <MdiIcon path={mdiPlus} size={0.8} />
+                    Add Publication
+                  </Button>
                 </div>
-              ) : (
-                <p className="p-5 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                  No publications available.
-                </p>
               )}
-            </ScrollArea>
+            </div>
           )}
 
           {activePanel === "schedule" && (
@@ -646,6 +711,25 @@ export function BottomDock({
           onOpenChange={setDropzoneDialogOpen}
           onUploaded={() => void refetchDropZones()}
         />
+      )}
+
+      {contentId && (
+        <>
+          <PublicationDialog
+            open={publicationDialogOpen}
+            projectId={contentId}
+            publication={editingPublication}
+            onOpenChange={setPublicationDialogOpen}
+            onSaved={onPublicationsChanged}
+          />
+          <DeletePublicationDialog
+            publication={publicationToDelete}
+            onOpenChange={(open) => {
+              if (!open) setPublicationToDelete(undefined);
+            }}
+            onDeleted={onPublicationsChanged}
+          />
+        </>
       )}
 
       {projectId && <CampaignEventDialog schedule={schedule} />}

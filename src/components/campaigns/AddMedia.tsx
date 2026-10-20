@@ -91,7 +91,9 @@ const AddMedia: React.FC<CompanyDetailsFormProps> = ({
           {activeDetailsTab === "moments" && <Moments onSuccess={onSuccess} />}
           {activeDetailsTab === "Recap" && <Recap onSuccess={onSuccess} />}
           {activeDetailsTab === "Dsp" && <DspCovers onSuccess={onSuccess} />}
-          {activeDetailsTab === "Editorial" && <EditorialAddMedia />}
+          {activeDetailsTab === "Editorial" && (
+            <EditorialAddMedia onSuccess={onSuccess} />
+          )}
           {activeDetailsTab === "Gifting" && <GiftingAddMedia />}
         </div>
       </DialogContent>

@@ -750,6 +750,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
         media={content?.media}
         reportMetrics={reportMetrics}
         reportLoading={reportLoading}
+        onPublicationsChanged={refreshContent}
       />
     </div>
   );

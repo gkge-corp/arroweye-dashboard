@@ -74,8 +74,26 @@ export const CreateMedia = async (
     console.log(`create media response: ${response}`);
     toast.success("Creation successful!");
   } catch (error: unknown) {
-    return;
+    // apiRequest already toasts the failure; rethrow so callers don't treat it as saved.
+    console.error("Create media failed:", error);
+    throw error;
   }
+};
+
+export const updateMedia = (id: number, payload: Record<string, unknown>) =>
+  apiRequest<unknown>({
+    method: "PATCH",
+    url: `/api/v1/projects/general/media/${id}/`,
+    data: payload,
+    requireToken: true,
+  });
+
+export const deleteMedia = async (id: number): Promise<void> => {
+  await apiRequest<void>({
+    method: "DELETE",
+    url: `/api/v1/projects/general/media/${id}/`,
+    requireToken: true,
+  });
 };
 
 export const CreateService = async (

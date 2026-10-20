@@ -1,9 +1,8 @@
 "use client";
 import { Input } from "@/components/ui/input";
 import { CreateMedia } from "@/services";
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import axios from "axios";
+import React, { useState } from "react";
+import { useParams } from "next/navigation";
 import { SelectInput } from "@/components/ui/selectinput";
 import { toast } from "sonner";
 
@@ -25,9 +24,13 @@ interface TableData {
   editorial_link: string;
 }
 
-const EditorialAddMedia = () => {
-  const router = useRouter();
-  const id = Number(router.query.id);
+interface EditorialAddMediaProps {
+  onSuccess?: () => void;
+}
+
+const EditorialAddMedia: React.FC<EditorialAddMediaProps> = ({ onSuccess }) => {
+  const params = useParams<{ id: string }>();
+  const id = Number(params?.id);
 
   const [formData, setFormData] = useState<FormData>({
     channel: "",
@@ -72,7 +75,7 @@ const EditorialAddMedia = () => {
     }
 
     if (!formData.publication.trim()) {
-      newErrors.publication = "Download link is required";
+      newErrors.publication = "Publication is required";
       isValid = false;
     }
 
@@ -98,36 +101,22 @@ const EditorialAddMedia = () => {
         type: "Editorial",
       };
 
-      CreateMedia(id, payload)
-        .then((response) => {
-          console.log("RESPONSE", response);
-          setTableData((prev) => [
-            ...prev,
-            {
-              channel: formData.channel,
-              publication: formData.publication,
-              editorial_link: formData.editorial_link,
-            },
-          ]);
-          resetForm();
-        })
-        .catch((err) => console.log(err));
+      await CreateMedia(id, payload);
+      setTableData((prev) => [
+        ...prev,
+        {
+          channel: payload.channel,
+          publication: payload.publication,
+          editorial_link: payload.editorial_link,
+        },
+      ]);
+      resetForm();
+      onSuccess?.();
     } catch (err) {
-      handleError(err);
+      // CreateMedia's request layer has already shown the error toast.
+      console.error("Editorial media creation failed:", err);
     } finally {
       setIsUploading(false);
-    }
-  };
-
-  const handleError = (err: unknown) => {
-    if (axios.isAxiosError(err)) {
-      const errorMessage =
-        err.response?.data?.[0] ||
-        err.response?.data?.message ||
-        "Failed to create media";
-      toast.error(errorMessage);
-    } else {
-      toast.error("An unexpected error occurred");
     }
   };
 
