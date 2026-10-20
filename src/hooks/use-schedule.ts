@@ -411,6 +411,22 @@ export const useSchedule = ({
     }
   };
 
+  const projectCampaign = projectId
+    ? campaignOptions.find((option) => String(option.id) === String(projectId))
+    : undefined;
+
+  // A project-scoped calendar creates events for that campaign by default.
+  const openCreateModal = () => {
+    if (projectCampaign) {
+      setFormData((prevData: any) => ({
+        ...prevData,
+        code: projectCampaign.value,
+        project: projectCampaign.id,
+      }));
+    }
+    setIsModalVisible(true);
+  };
+
   const handleDateClick = (info: DateClickArg) => {
     if (!isDateClickEnabled) return;
 
@@ -418,7 +434,7 @@ export const useSchedule = ({
     const currentDate = new Date().toISOString().split("T")[0];
 
     if (selectedDate >= currentDate) {
-      setIsModalVisible(true);
+      openCreateModal();
     } else {
       toast.warning(`You cannot set events in the past`);
     }
@@ -725,6 +741,7 @@ export const useSchedule = ({
     pendingDrops,
     setPendingDrops,
     exportICS,
+    openCreateModal,
     handleDelete,
     handleDateClick,
     handleCloseModal,

@@ -6,17 +6,35 @@ import { toast } from "react-toastify";
 import { useSchedule } from "@/hooks/use-schedule";
 import ScheduleEventBadge from "../component/schedule-event-badge";
 
+interface ScheduleEventDetails {
+  id?: string;
+  title?: string;
+  start?: Date | string | null;
+  end_date?: string | null;
+  vendor?: any;
+  subvendor?: any;
+  location?: string | null;
+  project?: any;
+  code?: string | null;
+  description?: string | null;
+  status?: string | null;
+}
+
 interface UseScheduleCalendarOptions {
   isSchedulePage?: boolean;
   isDateClickEnabled?: boolean;
+  projectId?: number;
 }
 
 export const useScheduleCalendar = ({
   isSchedulePage = false,
   isDateClickEnabled = false,
+  projectId,
 }: UseScheduleCalendarOptions) => {
   const schedule = useSchedule({
     isSchedulePage,
+    isProjectPage: Boolean(projectId),
+    projectId,
     isDateClickEnabled,
   });
 
@@ -39,31 +57,39 @@ export const useScheduleCalendar = ({
     [],
   );
 
-  const handleCalendarEventClick = useCallback(
-    (info: EventClickArg) => {
-      const { event } = info;
-      const extendedProps = event.extendedProps;
-
+  const openEventDetails = useCallback(
+    (event: ScheduleEventDetails) => {
       schedule.setFormErrors({});
-      schedule.setProjectPin(extendedProps?.code ?? "");
+      schedule.setProjectPin(event.code ?? "");
       schedule.setFormData({
         id: event.id?.split("-")[0],
         calendarEventId: event.id,
         title: event.title,
-        vendor_id: extendedProps?.vendor,
-        subvendor_id: extendedProps?.subvendor,
-        location: extendedProps?.location,
+        vendor_id: event.vendor,
+        subvendor_id: event.subvendor,
+        location: event.location,
         start_dte: toDateInputValue(event.start),
-        end_dte: toDateInputValue(extendedProps?.end_date),
-        code: extendedProps?.code ?? "",
-        project: extendedProps?.project,
-        description: extendedProps?.description ?? "",
-        status: extendedProps?.status ?? "confirmed",
+        end_dte: toDateInputValue(event.end_date),
+        code: event.code ?? "",
+        project: event.project,
+        description: event.description ?? "",
+        status: event.status ?? "confirmed",
       });
       schedule.setViewOnly(true);
       schedule.setIsModalVisible(true);
     },
     [schedule, toDateInputValue],
+  );
+
+  const handleCalendarEventClick = useCallback(
+    ({ event }: EventClickArg) =>
+      openEventDetails({
+        ...event.extendedProps,
+        id: event.id,
+        title: event.title,
+        start: event.start,
+      }),
+    [openEventDetails],
   );
 
   const renderEventContent = useCallback(
@@ -112,6 +138,7 @@ export const useScheduleCalendar = ({
     eventCampaignTitle: eventCampaign?.label,
     requestDeleteEvent,
     openEventProject,
+    openEventDetails,
     handleCalendarEventClick,
     renderEventContent,
   };
