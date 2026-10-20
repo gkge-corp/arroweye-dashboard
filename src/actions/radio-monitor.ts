@@ -5,10 +5,12 @@ import { getAuthorizedStaff } from "@/lib/server/get-authorized-staff";
 import {
   createRadioMonitorUpload,
   findLatestRadioMonitor,
+  getRadioMonitorDownloadUrl,
   isRadioMonitorFormat,
   RADIO_MONITOR_MAX_BYTES,
 } from "@/lib/storage/r2";
 import type {
+  RadioMonitorDownloadResult,
   RadioMonitorFileResult,
   RadioMonitorUploadSignatureResult,
 } from "@/types/radio-monitor";
@@ -64,6 +66,24 @@ export async function getRadioMonitorFile(): Promise<RadioMonitorFileResult> {
     return {
       success: false,
       message: toMessage(error, "The radio monitor file could not be loaded."),
+    };
+  }
+}
+
+// Any signed-in staff member can download the file; only managers upload it.
+export async function getRadioMonitorDownloadLink(): Promise<RadioMonitorDownloadResult> {
+  try {
+    await getAuthorizedStaff();
+    const file = await findLatestRadioMonitor();
+    if (!file) {
+      return { success: false, message: "No radio monitor uploaded yet." };
+    }
+    return { success: true, url: await getRadioMonitorDownloadUrl(file) };
+  } catch (error) {
+    console.error("Radio monitor download failed:", error);
+    return {
+      success: false,
+      message: toMessage(error, "The radio monitor could not be downloaded."),
     };
   }
 }

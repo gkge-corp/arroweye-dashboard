@@ -26,10 +26,11 @@ const Table: React.FC<TableProps> = ({
   emptyState = "No data available",
   highlightFirstCell = false,
 }) => {
+  // On desktop, clip instead of scroll so the sticky header follows the page scroll.
   return (
     <div
       className={cn(
-        "overflow-x-auto rounded-[8px] border border-border bg-card",
+        "overflow-x-auto rounded-[8px] border border-border bg-card lg:overflow-x-clip",
         className,
       )}
     >
@@ -39,7 +40,7 @@ const Table: React.FC<TableProps> = ({
             {headers.map((header, index) => (
               <th
                 key={index}
-                className="px-4 py-[11px] font-medium text-center"
+                className="sticky top-[var(--table-sticky-top,0px)] z-10 bg-[#31bc86] px-4 py-[11px] text-center font-medium dark:bg-[#17954c]"
               >
                 {header}
               </th>

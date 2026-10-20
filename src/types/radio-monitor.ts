@@ -13,6 +13,10 @@ export type RadioMonitorUploadSignatureResult =
   | { success: true; upload: RadioMonitorUploadParams }
   | { success: false; message: string };
 
+export type RadioMonitorDownloadResult =
+  | { success: true; url: string }
+  | { success: false; message: string };
+
 export type RadioMonitorFileResult =
   | { success: true; file: RadioMonitorFile | null }
   | { success: false; message: string };

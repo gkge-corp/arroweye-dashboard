@@ -247,6 +247,19 @@ const AssetsLibrary = () => {
     };
   }, []);
 
+  const renderSearchInput = (className: string) => (
+    <Input
+      type="text"
+      placeholder="Search..."
+      className={cn(
+        "w-full rounded-full border-border bg-background! text-foreground shadow-none",
+        className,
+      )}
+      value={filters.search}
+      onChange={(e) => updateFilters("search", e.target.value)}
+    />
+  );
+
   return (
     <>
       <div ref={stickySentinelRef} className="h-px" aria-hidden="true" />
@@ -272,7 +285,15 @@ const AssetsLibrary = () => {
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {isSticky && (
-              <NotificationsMenu triggerClassName="relative size-9 rounded-full text-foreground active:scale-[0.97] [&_svg]:size-[18px]!" />
+              <>
+                {/* -mt-2 cancels the gap Input reserves for its (empty) label row. */}
+                <div className="-mt-2 w-40 sm:w-80">
+                  {renderSearchInput(
+                    "h-9 py-0 text-[15px] placeholder:text-[15px]",
+                  )}
+                </div>
+                <NotificationsMenu triggerClassName="relative size-9 rounded-full text-foreground active:scale-[0.97] [&_svg]:size-[18px]!" />
+              </>
             )}
           </div>
         </div>
@@ -281,13 +302,9 @@ const AssetsLibrary = () => {
             <div>
               <div className="flex h-12 items-center gap-2.5">
                 <div className="grow">
-                  <Input
-                    type="text"
-                    placeholder="Search..."
-                    className="h-auto w-full rounded-full border-border bg-background! text-[17px] text-foreground shadow-none placeholder:text-[17px]"
-                    value={filters.search}
-                    onChange={(e) => updateFilters("search", e.target.value)}
-                  />
+                  {renderSearchInput(
+                    "h-auto text-[17px] placeholder:text-[17px]",
+                  )}
                 </div>
                 <Button
                   type="button"
