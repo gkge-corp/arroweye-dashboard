@@ -12,9 +12,7 @@ export default function CampaignsPageClient() {
 
   return (
     <>
-      <div className=" ">
-        <div className="flex gap-2.5 items-center mb-4 lg:ml-5"></div>
-
+      <div className="lg:pt-[20px]">
         <div>
           {activeTab === "manage" && (
             <div className="">

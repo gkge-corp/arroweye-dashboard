@@ -2,16 +2,15 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import {
-  mdiArrowDownCircleOutline,
   mdiCalendarMonthOutline,
   mdiClose,
   mdiEmailOutline,
   mdiHistory,
   mdiLoading,
-  mdiMicrosoftExcel,
   mdiPencilOutline,
   mdiPostOutline,
   mdiPlus,
+  mdiRadioTower,
   mdiReload,
   mdiSend,
   mdiTrashCanOutline,
@@ -37,6 +36,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useRadioMonitorDownload } from "@/hooks/use-radio-monitor-download";
 import { getProjectDropZone } from "@/services";
 import type {
   CampaignReportMetrics,
@@ -54,17 +54,10 @@ import { useCampaignSchedule } from "./hooks/use-campaign-schedule";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type DockPanel =
-  | "updates"
-  | "drops"
-  | "publications"
-  | "schedule"
-  | "send"
-  | "export";
+type DockPanel = "updates" | "drops" | "publications" | "schedule" | "send";
 
 export interface BottomDockProps {
   contentId?: number | string;
-  handleDownloadData?: () => void;
   notifications?: unknown;
   media?: unknown;
   reportMetrics?: CampaignReportMetrics;
@@ -80,12 +73,10 @@ const panelTitle: Record<DockPanel, string> = {
   publications: "Publications",
   schedule: "Campaign schedule",
   send: "Send report",
-  export: "Export report",
 };
 
 export function BottomDock({
   contentId,
-  handleDownloadData,
   notifications,
   media,
   reportMetrics,
@@ -113,6 +104,7 @@ export function BottomDock({
   };
   const projectId = Number(contentId) || undefined;
   const schedule = useCampaignSchedule(projectId);
+  const radioMonitor = useRadioMonitorDownload();
 
   const isDropsPanelOpen = popoverOpen && activePanel === "drops";
   const {
@@ -227,13 +219,8 @@ export function BottomDock({
     }
   };
 
-  const exportCsv = () => {
-    handleDownloadData?.();
-    closePopover();
-  };
-
   const dockItems: Array<{
-    id: DockPanel;
+    id: DockPanel | "radio-monitor";
     label: string;
     icon: React.ReactNode;
     badge?: boolean;
@@ -264,9 +251,14 @@ export function BottomDock({
       icon: <MdiIcon className="size-full" path={mdiEmailOutline} />,
     },
     {
-      id: "export",
-      label: "Export CSV",
-      icon: <MdiIcon className="size-full" path={mdiArrowDownCircleOutline} />,
+      id: "radio-monitor",
+      label: "Download radio monitor",
+      icon: (
+        <MdiIcon
+          className={`size-full ${radioMonitor.isDownloading ? "animate-spin" : ""}`}
+          path={radioMonitor.isDownloading ? mdiLoading : mdiRadioTower}
+        />
+      ),
     },
   ];
 
@@ -303,7 +295,15 @@ export function BottomDock({
                             ? "text-zinc-950 dark:text-zinc-50"
                             : "text-zinc-800 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-500"
                         }`}
-                        onClick={() => selectPanel(item.id)}
+                        disabled={
+                          item.id === "radio-monitor" &&
+                          radioMonitor.isDownloading
+                        }
+                        onClick={() =>
+                          item.id === "radio-monitor"
+                            ? radioMonitor.download()
+                            : selectPanel(item.id)
+                        }
                       >
                         <span className="flex size-6 items-center justify-center">
                           {item.icon}
@@ -606,7 +606,7 @@ export function BottomDock({
                     className="h-9 flex-1 rounded-[6px] bg-zinc-950 text-white hover:bg-orange-500 dark:bg-zinc-100 dark:text-zinc-950"
                     onClick={() => router.push("/schedule")}
                   >
-                    View Full Schedule
+                    View Calendar
                   </Button>
                   <Button
                     type="button"
@@ -676,29 +676,6 @@ export function BottomDock({
                   Preparing the latest campaign data…
                 </p>
               )}
-            </div>
-          )}
-
-          {activePanel === "export" && (
-            <div className="p-4">
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-left outline-none transition-[border-color,background-color,transform] duration-150 hover:border-emerald-300 hover:bg-emerald-50 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30"
-                onClick={exportCsv}
-                disabled={!handleDownloadData}
-              >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-                  <Icon className="size-5" path={mdiMicrosoftExcel} />
-                </span>
-                <span>
-                  <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    Download CSV
-                  </span>
-                  <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
-                    Export campaign insight data
-                  </span>
-                </span>
-              </button>
             </div>
           )}
         </PopoverContent>

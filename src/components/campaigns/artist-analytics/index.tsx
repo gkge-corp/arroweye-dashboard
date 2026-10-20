@@ -41,7 +41,7 @@ export default function ArtistAnalytics({
   const sendReport = useArtistReportSend(campaignId, analytics.followerRange);
 
   return (
-    <div className="space-y-[20px]">
+    <div>
       <ArtistProfileHeader
         campaignId={campaignId}
         campaignTitle={campaignTitle}
@@ -52,48 +52,50 @@ export default function ArtistAnalytics({
         {members}
       </ArtistProfileHeader>
 
-      {analytics.profileError ? (
-        <div className="flex h-[160px] items-center justify-center rounded-[8px] border border-dashed px-4 text-center font-SansFlex text-[14px] text-muted-foreground">
-          {analytics.profileError}
-        </div>
-      ) : (
-        <>
-          <ArtistStatsGrid
-            platforms={analytics.profile?.platforms ?? []}
-            growth={analytics.followerGrowth}
-            growthDays={analytics.followerRange}
-            growthLoading={analytics.isFollowerHistoryLoading}
-            loading={analytics.isProfileLoading}
-          />
-
-          <FollowerGrowthCard
-            platforms={analytics.followerPlatforms}
-            points={analytics.followerPoints}
-            range={analytics.followerRange}
-            onRangeChange={analytics.setFollowerRange}
-            summary={analytics.artistSummary}
-            summaryLoading={analytics.isArtistSummaryLoading}
-            loading={analytics.isFollowerHistoryLoading}
-            hasError={analytics.hasFollowerHistoryError}
-          />
-
-          <div className="grid grid-cols-1 gap-[20px] lg:grid-cols-3">
-            <div className={cardClassName}>
-              <ArtistTopTracksCard
-                tracks={analytics.topTracks}
-                loading={analytics.isTopTracksLoading}
-              />
-            </div>
-            <div className={`${cardClassName} lg:col-span-2`}>
-              <ArtistAudienceCard
-                cities={analytics.listenerCities}
-                countries={analytics.listenerCountries}
-                loading={analytics.isAudienceLoading}
-              />
-            </div>
+      <div className="mt-[60px] space-y-[20px]">
+        {analytics.profileError ? (
+          <div className="flex h-[160px] items-center justify-center rounded-[8px] border border-dashed px-4 text-center font-SansFlex text-[14px] text-muted-foreground">
+            {analytics.profileError}
           </div>
-        </>
-      )}
+        ) : (
+          <>
+            <ArtistStatsGrid
+              platforms={analytics.profile?.platforms ?? []}
+              growth={analytics.followerGrowth}
+              growthDays={analytics.followerRange}
+              growthLoading={analytics.isFollowerHistoryLoading}
+              loading={analytics.isProfileLoading}
+            />
+
+            <FollowerGrowthCard
+              platforms={analytics.followerPlatforms}
+              points={analytics.followerPoints}
+              range={analytics.followerRange}
+              onRangeChange={analytics.setFollowerRange}
+              summary={analytics.artistSummary}
+              summaryLoading={analytics.isArtistSummaryLoading}
+              loading={analytics.isFollowerHistoryLoading}
+              hasError={analytics.hasFollowerHistoryError}
+            />
+
+            <div className="grid grid-cols-1 gap-[20px] lg:grid-cols-3">
+              <div className={cardClassName}>
+                <ArtistTopTracksCard
+                  tracks={analytics.topTracks}
+                  loading={analytics.isTopTracksLoading}
+                />
+              </div>
+              <div className={`${cardClassName} lg:col-span-2`}>
+                <ArtistAudienceCard
+                  cities={analytics.listenerCities}
+                  countries={analytics.listenerCountries}
+                  loading={analytics.isAudienceLoading}
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       <BottomDock
         {...dockProps}

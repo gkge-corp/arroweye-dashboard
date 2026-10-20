@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
 import { Input } from "@/components/ui/input";
 import { IoFilter } from "react-icons/io5";
 import Archive from "./Archive";
@@ -7,6 +7,9 @@ import Campaigns from "./campaigns-table";
 import { Button } from "../ui/button";
 import { CreateInvoiceButton } from "../invoices/create-invoice-section";
 import type { CreateInvoiceState } from "@/hooks/use-create-invoice";
+import { useElementHeight } from "@/hooks/use-element-height";
+import { useStickyHeader } from "@/hooks/use-sticky-header";
+import NotificationsMenu from "@/app/(dashboard)/notifications-menu";
 
 const InvoicesTab = ({ invoice }: { invoice: CreateInvoiceState }) => {
   const [activeTab, setActiveTab] = useState<"Campaigns" | "Archive">(
@@ -14,15 +17,24 @@ const InvoicesTab = ({ invoice }: { invoice: CreateInvoiceState }) => {
   );
   const [filter, setFilter] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>("");
+  const toolbar = useElementHeight<HTMLDivElement>();
+  const { sentinelRef, isSticky } = useStickyHeader();
 
   useEffect(() => {
     setFilter(false);
   }, [activeTab]);
 
   return (
-    <div className="lg:p-5 ">
-      <div className=" ">
-        <div className="mb-4 grid items-center gap-[20px] md:flex md:gap-10">
+    <div
+      className="mt-[50px] lg:px-5 lg:pb-5"
+      style={{ "--table-sticky-top": `${toolbar.height}px` } as CSSProperties}
+    >
+      <div ref={sentinelRef} className="h-px" aria-hidden="true" />
+      <div
+        ref={toolbar.ref}
+        className="bg-background pb-4 lg:sticky lg:top-0 lg:z-20"
+      >
+        <div className="grid items-center gap-[20px] md:flex md:gap-10">
           <div className="flex gap-5 items-center  ">
             <button
               className={`pb-2.5 text-[18px] transition-all duration-300 ${
@@ -67,6 +79,9 @@ const InvoicesTab = ({ invoice }: { invoice: CreateInvoiceState }) => {
                 <IoFilter />
               </Button>
               <CreateInvoiceButton invoice={invoice} />
+              {isSticky && (
+                <NotificationsMenu triggerClassName="relative hidden size-10 rounded-full text-foreground active:scale-[0.97] lg:inline-flex [&_svg]:size-[18px]!" />
+              )}
             </div>
           </div>
         </div>

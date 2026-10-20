@@ -62,7 +62,6 @@ const editActionButtonClassName =
 interface InsightChartProps {
   editMode?: boolean;
   handleDownloadPage?: () => void;
-  handleDownloadData?: () => void;
   isAdvertiser?: boolean | null;
   content?: any;
   refreshContent?: () => void;
@@ -72,7 +71,6 @@ interface InsightChartProps {
 const CampaignInsights: React.FC<InsightChartProps> = ({
   editMode = false,
   handleDownloadPage,
-  handleDownloadData,
   isAdvertiser,
   content,
   refreshContent,
@@ -745,7 +743,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
 
       <BottomDock
         contentId={content?.id}
-        handleDownloadData={handleDownloadData}
         notifications={content?.notifications}
         media={content?.media}
         reportMetrics={reportMetrics}

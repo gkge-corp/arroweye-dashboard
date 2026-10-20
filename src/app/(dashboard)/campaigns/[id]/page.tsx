@@ -116,7 +116,7 @@ const ProjectDetails = () => {
     content,
     refreshContent,
   });
-  const { handleDownloadPDF, handleExportCSV } = useCampaignExports(content);
+  const { handleDownloadPDF } = useCampaignExports(content);
 
   const originalTitle = content?.title || "";
   const campaignTitle =
@@ -190,7 +190,6 @@ const ProjectDetails = () => {
               <CampaignInsights
                 editMode={toggleNotifications}
                 handleDownloadPage={handleDownloadPDF}
-                handleDownloadData={handleExportCSV}
                 isAdvertiser={isAdvertiser}
                 content={content}
                 refreshContent={refreshContent}
