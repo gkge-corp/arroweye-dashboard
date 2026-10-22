@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { toast } from "react-toastify";
 import { AddStaff, campaignStaffAction } from "@/services";
+import { sendCampaignWelcome } from "@/actions/campaign-welcome";
 import {
   AddCampaignUserErrors,
   AddCampaignUserFormData,
@@ -57,6 +58,19 @@ export function useCampaignMemberActions({
     });
   };
 
+  const sendWelcomeEmail = async (recipient: string) => {
+    if (!id || !recipient) return;
+
+    try {
+      const result = await sendCampaignWelcome({ campaignId: id, recipient });
+      if (result.success) return;
+      console.error("Welcome email failed:", result.message);
+    } catch (error) {
+      console.error("Welcome email failed:", error);
+    }
+    toast.warning("Member added, but the welcome email could not be sent.");
+  };
+
   const handleAddUserInputChange = (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -107,9 +121,12 @@ export function useCampaignMemberActions({
         user_id: selectedWatcher?.user,
       };
 
+      const recipient = selectedWatcher?.staff_email || addUserFormData.email;
+
       campaignStaffAction(Number(id), payload)
         .then((response) => {
           if (response) {
+            void sendWelcomeEmail(recipient);
             refreshContent();
             setVisible(false);
             setNameDialogVisible(false);
@@ -136,6 +153,7 @@ export function useCampaignMemberActions({
 
     AddStaff(payload)
       .then(() => {
+        void sendWelcomeEmail(payload.email);
         setVisible(false);
         setNameDialogVisible(false);
         resetAddUserForm();

@@ -99,7 +99,7 @@ export const getCampaignOptions = async (): Promise<CampaignOptionItem[]> => {
     method: "GET",
     url: `/api/v1/projects/`,
     params: {
-      fields: "id,title,code,pin",
+      fields: "id,title,code,pin,vendor,subvendor",
     },
     requireToken: true,
   });

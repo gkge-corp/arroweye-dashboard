@@ -38,8 +38,6 @@ const EventDialog = ({
   onUpdate,
   formData,
   formErrors,
-  vendorOptions,
-  subvendorOptions,
   campaignOptions,
   onFormChange,
   onSelectChange,
@@ -87,8 +85,6 @@ const EventDialog = ({
             dialog={dialog}
             formData={formData}
             formErrors={formErrors}
-            vendorOptions={vendorOptions}
-            subvendorOptions={subvendorOptions}
             campaignOptions={campaignOptions}
             onCancel={onCancelEdit}
             onFormChange={onFormChange}
@@ -109,8 +105,6 @@ const EventDialog = ({
             dialog={dialog}
             formData={formData}
             formErrors={formErrors}
-            vendorOptions={vendorOptions}
-            subvendorOptions={subvendorOptions}
             campaignOptions={campaignOptions}
             onCancel={close}
             onFormChange={onFormChange}

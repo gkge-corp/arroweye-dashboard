@@ -42,6 +42,8 @@ export interface CampaignOptionItem {
   title: string;
   code?: string;
   pin?: string;
+  vendor?: { id: number } | null;
+  subvendor?: { id: number } | null;
 }
 
 export type CampaignPage =

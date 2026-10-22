@@ -30,7 +30,6 @@ import {
   inputSlotClassName,
   triggerClassName,
 } from "./event-fields";
-import { FieldSelect, type SelectOption } from "./field-select";
 import CampaignCombobox from "./campaign-combobox";
 import { DropCombobox, LinkedDropList } from "./event-drops";
 import type { CampaignOption } from "../hooks/use-campaign-combobox";
@@ -42,8 +41,6 @@ export interface EventFormProps {
   dialog: EventDialogState;
   formData: Record<string, any>;
   formErrors: FormErrors;
-  vendorOptions: SelectOption[];
-  subvendorOptions: SelectOption[];
   campaignOptions: CampaignOption[];
   onCancel: () => void;
   onFormChange: (e: FormChangeEvent) => void;
@@ -59,8 +56,6 @@ const EventForm = ({
   dialog,
   formData,
   formErrors,
-  vendorOptions,
-  subvendorOptions,
   campaignOptions,
   onCancel,
   onFormChange,
@@ -206,35 +201,13 @@ const EventForm = ({
 
         {!isEdit && (
           <div className="border-t border-zinc-200 pt-3.5 dark:border-zinc-700">
-            <FieldLabel>Campaign &amp; vendor</FieldLabel>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <CampaignCombobox
-                  options={campaignOptions}
-                  value={formData.code}
-                  onChange={(value) => onSelectChange({ name: "code", value })}
-                  error={formErrors.code}
-                />
-              </div>
-              <FieldSelect
-                value={formData.vendor_id}
-                onChange={(value) =>
-                  onSelectChange({ name: "vendor_id", value })
-                }
-                options={vendorOptions}
-                placeholder="Select Vendor"
-                error={formErrors.vendor_id}
-              />
-              <FieldSelect
-                value={formData.subvendor_id}
-                onChange={(value) =>
-                  onSelectChange({ name: "subvendor_id", value })
-                }
-                options={subvendorOptions}
-                placeholder="Select Subvendor"
-                error={formErrors.subvendor_id}
-              />
-            </div>
+            <FieldLabel>Campaign</FieldLabel>
+            <CampaignCombobox
+              options={campaignOptions}
+              value={formData.code}
+              onChange={(value) => onSelectChange({ name: "code", value })}
+              error={formErrors.code}
+            />
           </div>
         )}
 
