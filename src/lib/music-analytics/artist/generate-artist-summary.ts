@@ -29,7 +29,7 @@ const escapeRegExp = (value: string) =>
 
 // Names like "21 Savage" and the period label we supply ("the last three
 // months") are not figures, so both are removed before the numeric check.
-const isValidSummary = (summary: string, allowed: string[]) =>
+export const isValidSummary = (summary: string, allowed: string[]) =>
   summary.length > 0 &&
   summary.length <= MAX_SUMMARY_LENGTH &&
   !/[<>]/.test(summary) &&

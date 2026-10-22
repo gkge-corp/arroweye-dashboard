@@ -201,7 +201,17 @@ export const useSchedule = ({
       id: campaign.id,
       pin: campaign.pin,
       code: campaign.code,
+      vendorId: campaign.vendor?.id,
+      subvendorId: campaign.subvendor?.id,
     }));
+
+  // Events belong to the campaign's vendor and subvendor, so they come from the campaign.
+  const campaignBusinessIds = (
+    campaign?: (typeof campaignOptions)[number],
+  ) => ({
+    vendor_id: campaign?.vendorId ? String(campaign.vendorId) : "",
+    subvendor_id: campaign?.subvendorId ? String(campaign.subvendorId) : "",
+  });
 
   // Fetch events based on schedule page vs project page
   const { data: eventItem = [], isLoading: isEventsLoading } = useQuery<
@@ -422,6 +432,7 @@ export const useSchedule = ({
         ...prevData,
         code: projectCampaign.value,
         project: projectCampaign.id,
+        ...campaignBusinessIds(projectCampaign),
       }));
     }
     setIsModalVisible(true);
@@ -526,6 +537,7 @@ export const useSchedule = ({
             nextData.project = matched.id;
           }
         }
+        Object.assign(nextData, campaignBusinessIds(matched));
       }
 
       return nextData;
@@ -549,20 +561,14 @@ export const useSchedule = ({
 
     Object.assign(newErrors, validateEventDetails(formData));
 
-    if (!formData.vendor_id) {
-      newErrors.vendor_id = "Vendor is required.";
-    }
-
-    if (!formData.subvendor_id) {
-      newErrors.subvendor_id = "Sub Vendor is required.";
-    }
-
     if (!formData.start_dte) {
       newErrors.start_dte = "Start Date is required.";
     }
 
     if (!formData.code) {
       newErrors.code = "Campaign is required.";
+    } else if (!formData.vendor_id || !formData.subvendor_id) {
+      newErrors.code = "This campaign has no vendor or subvendor assigned.";
     }
 
     if (!formData.end_dte) {

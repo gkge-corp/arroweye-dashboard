@@ -21,8 +21,6 @@ export function CampaignEventDialog({
       viewOnly={schedule.viewOnly}
       formData={schedule.formData}
       formErrors={schedule.formErrors}
-      vendorOptions={schedule.vendorOptions}
-      subvendorOptions={schedule.subvendorOptions}
       campaignOptions={schedule.campaignOptions}
       onFormChange={schedule.handleFormChange}
       onSelectChange={schedule.handleSelectChange}

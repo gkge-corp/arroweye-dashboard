@@ -38,7 +38,7 @@ export default function ArtistAnalytics({
     isrc,
     artist: artistName,
   });
-  const sendReport = useArtistReportSend(campaignId, analytics.followerRange);
+  const sendReport = useArtistReportSend(campaignId);
 
   return (
     <div>

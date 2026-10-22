@@ -2,16 +2,17 @@
 
 import { renderArtistReportEmail } from "@/lib/email/artist-report-template";
 import { sendZeptoMail } from "@/lib/email/zeptomail";
-import { isFollowerRange } from "@/lib/music-analytics/artist/follower-growth";
 import { loadArtistReport } from "@/lib/music-analytics/artist/load-artist-report";
 import { getAuthorizedProject } from "@/lib/server/get-authorized-project";
 import type { SendArtistReportInput } from "@/types/artist-report";
 import type { SendCampaignReportResult } from "@/types/campaign-report";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// The email always reports a month of follower growth, whatever range the page shows.
+const REPORT_GROWTH_DAYS = 30;
 
 /**
- * Only the campaign, recipient and period come from the client: every figure
+ * Only the campaign and recipient come from the client: every figure
  * is rebuilt on the server from the campaign's own linked song.
  */
 export async function sendArtistReport(
@@ -21,7 +22,6 @@ export async function sendArtistReport(
   const recipient = String(input?.recipient ?? "")
     .trim()
     .toLowerCase();
-  const days = Number(input?.days);
 
   if (!/^\d+$/.test(campaignId) || Number(campaignId) <= 0) {
     return { success: false, message: "A valid campaign is required." };
@@ -32,16 +32,13 @@ export async function sendArtistReport(
       message: "Enter a valid recipient email address.",
     };
   }
-  if (!isFollowerRange(days)) {
-    return { success: false, message: "Choose a valid growth period." };
-  }
 
   try {
     const project = await getAuthorizedProject(
       campaignId,
       "You do not have permission to send this artist report.",
     );
-    const report = await loadArtistReport(project, days);
+    const report = await loadArtistReport(project, REPORT_GROWTH_DAYS);
     if (!report) {
       return {
         success: false,
