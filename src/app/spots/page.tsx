@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import DashboardLayoutClient from "../(dashboard)/dashboard-layout-client";
 import SpotsPageClient from "./spots-page-client";
 
 export const metadata: Metadata = {
@@ -8,9 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function SpotsPage() {
-  return (
-    <DashboardLayoutClient requireAuth={false}>
-      <SpotsPageClient />
-    </DashboardLayoutClient>
-  );
+  return <SpotsPageClient />;
 }

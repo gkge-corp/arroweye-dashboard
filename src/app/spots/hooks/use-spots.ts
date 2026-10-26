@@ -24,6 +24,10 @@ const audienceFormat = new Intl.NumberFormat("en", {
 
 export const formatAudience = (value: number) => audienceFormat.format(value);
 
+// Same bands as the original Spots site.
+export const engagementLabel = (score: number) =>
+  score >= 7 ? "High" : score >= 4 ? "Mid" : "Low";
+
 const byAudience = <T extends { audience: number }>(rows: T[]) =>
   [...rows].sort((a, b) => b.audience - a.audience);
 
@@ -69,11 +73,10 @@ export function useSpots() {
   const exportCsv = () => {
     if (tab === "radio") {
       downloadCsv("spots-radio.csv", [
-        ["Position", "Channel", "City", "Country", "Reach"],
+        ["Position", "Channel", "Country", "Audience"],
         ...radioStations.map((station) => [
           station.position,
           station.name,
-          station.city,
           station.country,
           station.reach,
         ]),
@@ -111,7 +114,7 @@ export function useSpots() {
         publication.country,
         publication.seoScore,
         publication.audience,
-        publication.engagement,
+        engagementLabel(publication.engagement),
         publication.topPlatform,
         publication.website,
       ]),

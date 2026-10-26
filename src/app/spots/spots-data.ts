@@ -12,7 +12,7 @@ export interface Publication {
   country: string;
   seoScore: number;
   audience: number;
-  /** 1–10 */
+  /** 1–10, shown as Low / Mid / High */
   engagement: number;
   topPlatform: string;
   website: string;
