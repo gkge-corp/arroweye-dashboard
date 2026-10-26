@@ -9,6 +9,7 @@ import {
 import type { FormErrors } from "@/hooks/use-schedule";
 import { useEventDialog } from "../hooks/use-event-dialog";
 import { useEventDrops } from "../hooks/use-event-drops";
+import { useEventInvite } from "../hooks/use-event-invite";
 import EventDetailsCard, {
   type EventDetailsActions,
 } from "./event-details-card";
@@ -54,6 +55,7 @@ const EventDialog = ({
     onFormChange,
   });
   const linkedDrops = useEventDrops(open && viewOnly ? formData.id : undefined);
+  const eventInvite = useEventInvite(formData.id);
 
   const close = () => onOpenChange(false);
 
@@ -98,6 +100,8 @@ const EventDialog = ({
             formData={formData}
             onClose={close}
             linkedDrops={linkedDrops}
+            isSendingInvite={eventInvite.isSendingInvite}
+            onSendInvite={eventInvite.sendInvite}
             {...detailsActions}
           />
         ) : (

@@ -8,6 +8,8 @@ import {
   Clock,
   Copy,
   FileText,
+  LoaderCircle,
+  Mail,
   Paperclip,
   MapPin,
   Megaphone,
@@ -46,6 +48,8 @@ interface EventDetailsCardProps extends EventDetailsActions {
   formData: Record<string, any>;
   onClose: () => void;
   linkedDrops: EventDropsState;
+  isSendingInvite: boolean;
+  onSendInvite: () => void;
 }
 
 const DetailRow = ({
@@ -123,6 +127,8 @@ const EventDetailsCard = ({
   onShare,
   onViewProject,
   linkedDrops,
+  isSendingInvite,
+  onSendInvite,
 }: EventDetailsCardProps) => {
   const status = getEventStatusOption(formData.status);
   const timeLabel = formatTimeRange(formData.start_dte, formData.end_dte);
@@ -244,14 +250,32 @@ const EventDetailsCard = ({
         </DetailRow>
       </div>
 
-      <Button
-        type="button"
-        variant="ghost"
-        className="h-10 w-full shrink-0 rounded-xl bg-zinc-100 text-[14px] font-medium text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100"
-        onClick={dialog.startReschedule}
-      >
-        Reschedule
-      </Button>
+      <div className="flex shrink-0 gap-2">
+        {canEdit && formData.project && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 flex-1 rounded-xl bg-zinc-100 text-[14px] font-medium text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100"
+            disabled={isSendingInvite}
+            onClick={onSendInvite}
+          >
+            {isSendingInvite ? (
+              <LoaderCircle className="animate-spin" />
+            ) : (
+              <Mail />
+            )}
+            Resend invite
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-10 flex-1 rounded-xl bg-zinc-100 text-[14px] font-medium text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100"
+          onClick={dialog.startReschedule}
+        >
+          Reschedule
+        </Button>
+      </div>
     </div>
   );
 };

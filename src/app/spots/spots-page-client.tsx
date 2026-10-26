@@ -1,18 +1,9 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import Image from "next/image";
-import { Grip, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
 
-import DashboardLayoutClient from "@/app/(dashboard)/dashboard-layout-client";
-import { ToolsMenuItems } from "@/components/tools-menu-items";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/context/auth-session";
 import { useElementHeight } from "@/hooks/use-element-height";
 import { cn } from "@/lib/utils";
 import {
@@ -21,9 +12,6 @@ import {
   useSpots,
   type SpotsTab,
 } from "./hooks/use-spots";
-
-const LOGO_URL =
-  "https://res.cloudinary.com/dyueswnzk/image/upload/v1758701294/21_elj38n_jljfio.svg";
 
 const TABS: { id: SpotsTab; label: string }[] = [
   { id: "radio", label: "Radio" },
@@ -37,69 +25,32 @@ const cellClassName =
 function SpotsHeader({
   tab,
   onTabChange,
-  showBranding,
 }: {
   tab: SpotsTab;
   onTabChange: (tab: SpotsTab) => void;
-  /** The dashboard sidebar already shows the logo and tools menu. */
-  showBranding: boolean;
 }) {
   return (
-    <header className="grid grid-cols-[1fr_auto_1fr] items-center px-5 py-8 sm:px-8">
-      {showBranding ? (
-        <Image
-          src={LOGO_URL}
-          alt="Arroweye"
-          width={50}
-          height={28}
-          priority
-          className="h-auto w-[50px]"
-        />
-      ) : (
-        <span />
-      )}
-
-      <nav aria-label="Media type" className="flex items-center gap-6 sm:gap-9">
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            aria-pressed={tab === item.id}
-            onClick={() => onTabChange(item.id)}
-            className={cn(
-              "text-[17px] transition-colors",
-              tab === item.id
-                ? "font-semibold text-foreground"
-                : "text-foreground/80 hover:text-foreground",
-            )}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
-
-      {showBranding && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label="Open tools"
-              className="justify-self-end rounded-md p-1 text-foreground/70 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              <Grip className="size-6" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            sideOffset={10}
-            collisionPadding={16}
-            className="w-[360px] max-w-[calc(100vw-2rem)] border border-neutral-100 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950"
-          >
-            <ToolsMenuItems />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </header>
+    <nav
+      aria-label="Media type"
+      className="flex items-center justify-center gap-6 py-8 sm:gap-9"
+    >
+      {TABS.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          aria-pressed={tab === item.id}
+          onClick={() => onTabChange(item.id)}
+          className={cn(
+            "text-[17px] transition-colors",
+            tab === item.id
+              ? "font-semibold text-foreground"
+              : "text-foreground/80 hover:text-foreground",
+          )}
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -187,7 +138,7 @@ function RadioRows({ spots }: { spots: ReturnType<typeof useSpots> }) {
   ));
 }
 
-function SpotsContent({ inDashboard }: { inDashboard: boolean }) {
+export default function SpotsPageClient() {
   const spots = useSpots();
   const header = useElementHeight<HTMLDivElement>();
 
@@ -198,11 +149,7 @@ function SpotsContent({ inDashboard }: { inDashboard: boolean }) {
     >
       {/* Table headers stick just below this bar. */}
       <div ref={header.ref} className="sticky top-0 z-30 bg-background">
-        <SpotsHeader
-          tab={spots.tab}
-          onTabChange={spots.setTab}
-          showBranding={!inDashboard}
-        />
+        <SpotsHeader tab={spots.tab} onTabChange={spots.setTab} />
       </div>
 
       <main className="px-3 sm:px-4">
@@ -281,20 +228,5 @@ function SpotsContent({ inDashboard }: { inDashboard: boolean }) {
         Export
       </button>
     </div>
-  );
-}
-
-// Signed-in users get the dashboard sidebar; everyone else sees the bare page.
-export default function SpotsPageClient() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) return <div className="min-h-screen bg-background" />;
-
-  if (!isAuthenticated) return <SpotsContent inDashboard={false} />;
-
-  return (
-    <DashboardLayoutClient requireAuth={false}>
-      <SpotsContent inDashboard />
-    </DashboardLayoutClient>
   );
 }
