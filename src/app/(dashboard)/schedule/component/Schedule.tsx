@@ -96,6 +96,7 @@ const Schedule: React.FC<ScheduleProps> = ({
     pendingDrops,
     setPendingDrops,
     canDeleteEvent,
+    canEditEvent,
     eventCampaignTitle,
     requestDeleteEvent,
     openEventProject,
@@ -194,6 +195,7 @@ const Schedule: React.FC<ScheduleProps> = ({
         pendingDrops={pendingDrops}
         onPendingDropsChange={setPendingDrops}
         canDelete={canDeleteEvent}
+        canEdit={canEditEvent}
         campaignTitle={eventCampaignTitle}
         onDelete={requestDeleteEvent}
         onShare={exportICS}

@@ -34,6 +34,7 @@ import { DropCombobox, LinkedDropList } from "./event-drops";
 export interface EventDetailsActions {
   campaignTitle?: string;
   canDelete: boolean;
+  canEdit: boolean;
   onDelete: () => void;
   onEdit: () => void;
   onShare: () => void;
@@ -116,6 +117,7 @@ const EventDetailsCard = ({
   onClose,
   campaignTitle,
   canDelete,
+  canEdit,
   onDelete,
   onEdit,
   onShare,
@@ -134,7 +136,9 @@ const EventDetailsCard = ({
         isDialogTitle
         actions={
           <>
-            <HeaderAction label="Edit event" icon={Pencil} onClick={onEdit} />
+            {canEdit && (
+              <HeaderAction label="Edit event" icon={Pencil} onClick={onEdit} />
+            )}
             <HeaderAction label="Share" icon={Share2} onClick={onShare} />
             {canDelete && (
               <HeaderAction

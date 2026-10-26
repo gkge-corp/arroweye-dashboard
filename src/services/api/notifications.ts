@@ -3,6 +3,7 @@ import { isApiNotification } from "@/types/notifications";
 import type {
   ApiNotification,
   MarkNotificationsReadInput,
+  NotificationType,
 } from "@/types/notifications";
 import type { NotificationPage } from "@/types/api";
 import ls from "localstorage-slim";
@@ -62,11 +63,15 @@ const normalizeNotifications = (value: unknown): ApiNotification[] => {
   return [];
 };
 
-export const getNotifications = async (): Promise<ApiNotification[]> => {
+export const getNotifications = async (
+  type?: NotificationType,
+): Promise<ApiNotification[]> => {
   try {
     const response = await apiRequest<NotificationApiResponse>({
       method: "GET",
-      url: `/api/v1/notification/notification/`,
+      url: type
+        ? `/api/v1/notification/notification/?type=${type}`
+        : `/api/v1/notification/notification/`,
       data: null,
       requireToken: true,
       silent: true,
@@ -84,7 +89,9 @@ export const getNotifications = async (): Promise<ApiNotification[]> => {
       requireToken: true,
     });
 
-    const notifications = normalizeNotifications(user);
+    const notifications = normalizeNotifications(user).filter(
+      (notification) => !type || notification.type === type,
+    );
     ls.set("Notifications", notifications, { encrypt: true });
     return notifications;
   }
