@@ -101,6 +101,8 @@ const ProjectDetails = () => {
     deleteModal,
     setDeleteModal,
     isAddUserLoading,
+    isResendingInvite,
+    resendInvite,
     addUserFormData,
     addUserErrors,
     setUseWatchersEndpoint,
@@ -217,6 +219,8 @@ const ProjectDetails = () => {
             }}
             onRemoveClick={() => setDeleteModal(true)}
             onAccessClick={() => setAdjustmentModalVisible(true)}
+            onResendInviteClick={resendInvite}
+            isResendingInvite={isResendingInvite}
           />
 
           <MemberAccessDialog

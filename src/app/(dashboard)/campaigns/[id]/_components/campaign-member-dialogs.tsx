@@ -2,6 +2,7 @@ import React from "react";
 import {
   CirclePlus,
   LoaderCircle,
+  Mail,
   Plus,
   SlidersHorizontal,
   UserMinus,
@@ -197,6 +198,8 @@ interface MemberInfoDialogProps {
   onOpenChange: (open: boolean) => void;
   onRemoveClick: () => void;
   onAccessClick: () => void;
+  onResendInviteClick: () => void;
+  isResendingInvite: boolean;
 }
 
 export function MemberInfoDialog({
@@ -205,6 +208,8 @@ export function MemberInfoDialog({
   onOpenChange,
   onRemoveClick,
   onAccessClick,
+  onResendInviteClick,
+  isResendingInvite,
 }: MemberInfoDialogProps) {
   return (
     <Dialog
@@ -250,11 +255,11 @@ export function MemberInfoDialog({
             </div>
 
             {hasAccess(userLoggedInProfile, ["Manager"]) && (
-              <div>
+              <div className="flex items-center gap-1">
                 <Button
                   type="button"
                   size="icon"
-                  className="mr-2 rounded bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  className="mr-1 rounded bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
                   onClick={onRemoveClick}
                 >
                   <UserMinus />
@@ -270,6 +275,24 @@ export function MemberInfoDialog({
                 >
                   <SlidersHorizontal />
                   <span className="sr-only">Adjust member access</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="group w-auto gap-0 px-[7px] text-zinc-900 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  disabled={isResendingInvite}
+                  onClick={onResendInviteClick}
+                >
+                  {isResendingInvite ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <Mail />
+                  )}
+                  <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover:ml-1.5 group-hover:max-w-[120px] group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-[120px] group-focus-visible:opacity-100">
+                    Resend invite
+                  </span>
                 </Button>
               </div>
             )}

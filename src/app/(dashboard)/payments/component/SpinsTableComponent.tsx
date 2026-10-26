@@ -555,9 +555,9 @@ const SpinsTableComponent: React.FC = () => {
       url: "https://studio.arroweye.pro/",
     },
     {
-      name: "Recipes",
-      img: "https://res.cloudinary.com/dyueswnzk/image/upload/v1758701298/asasas_xtjuvt_vvmlne.svg",
-      url: "https://pinegingr.com/services",
+      name: "Spots",
+      img: "https://res.cloudinary.com/dyueswnzk/image/upload/v1758701294/21_elj38n_jljfio.svg",
+      url: "https://spots.arroweye.pro/",
     },
     {
       name: "Showtime",

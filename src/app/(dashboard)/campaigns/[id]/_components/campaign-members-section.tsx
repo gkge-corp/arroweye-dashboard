@@ -41,6 +41,8 @@ export function CampaignMembersSection({
     deleteModal,
     setDeleteModal,
     isAddUserLoading,
+    isResendingInvite,
+    resendInvite,
     addUserFormData,
     addUserErrors,
     setUseWatchersEndpoint,
@@ -95,6 +97,8 @@ export function CampaignMembersSection({
         }}
         onRemoveClick={() => setDeleteModal(true)}
         onAccessClick={() => setAdjustmentModalVisible(true)}
+        onResendInviteClick={resendInvite}
+        isResendingInvite={isResendingInvite}
       />
 
       <MemberAccessDialog

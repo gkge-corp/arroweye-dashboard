@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getNotifications, notificationQueryKey } from "@/services";
-import { groupNotifications, isApiNotification } from "@/types/notifications";
+import {
+  groupNotifications,
+  isApiNotification,
+  type NotificationType,
+} from "@/types/notifications";
 import { useAuth } from "@/context/auth-session";
 
 export type NotificationMainTab = "updates" | "drops";
@@ -26,38 +30,21 @@ const isInnerTab = (value: string): value is NotificationInnerTab =>
     "payment",
   ].includes(value);
 
+// Drop assets come from drop zones, so that tab has no notification type.
+const innerTabTypes: Partial<Record<NotificationInnerTab, NotificationType>> = {
+  campaign: "Campaigns",
+  milestones: "Milestones",
+  security: "Security",
+  others: "Others",
+  payment: "Payments",
+};
+
 // When a campaign page supplies the notifications embedded in its project
 // payload, those take precedence over the global feed so the menu matches the
 // bottom dock.
 export const useTopNav = (projectNotifications?: unknown) => {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const hasProjectNotifications = Array.isArray(projectNotifications);
-  const {
-    data: globalNotificationItems = [],
-    isLoading,
-    isError: globalNotificationError,
-    refetch: refetchNotifications,
-  } = useQuery({
-    queryKey: notificationQueryKey,
-    queryFn: getNotifications,
-    enabled: isAuthenticated && !isAuthLoading && !hasProjectNotifications,
-    staleTime: 60_000,
-  });
-  const notificationItems = useMemo(
-    () =>
-      hasProjectNotifications
-        ? projectNotifications.filter(isApiNotification)
-        : globalNotificationItems,
-    [hasProjectNotifications, projectNotifications, globalNotificationItems],
-  );
-  const notificationLoading =
-    !hasProjectNotifications && (isAuthLoading || isLoading);
-
-  const notificationError = !hasProjectNotifications && globalNotificationError;
-
-  const retryNotifications = useCallback(() => {
-    void refetchNotifications();
-  }, [refetchNotifications]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeMainTab, setActiveMainTab] =
     useState<NotificationMainTab>("updates");
@@ -65,15 +52,60 @@ export const useTopNav = (projectNotifications?: unknown) => {
     useState<NotificationInnerTab>("campaign");
   const [hasOpenedNotifications, setHasOpenedNotifications] = useState(false);
   const knownUnreadIds = useRef<Set<number>>(new Set());
+  const canFetchGlobal =
+    isAuthenticated && !isAuthLoading && !hasProjectNotifications;
+  const activeType = innerTabTypes[activeInnerTab];
+
+  // The untyped feed only drives the unread badge; each tab loads its own type.
+  const { data: globalNotificationItems = [] } = useQuery({
+    queryKey: notificationQueryKey,
+    queryFn: () => getNotifications(),
+    enabled: canFetchGlobal,
+    staleTime: 60_000,
+  });
+  const {
+    data: tabNotificationItems = [],
+    isLoading,
+    isError: tabNotificationError,
+    refetch: refetchTabNotifications,
+  } = useQuery({
+    queryKey: [...notificationQueryKey, activeType],
+    queryFn: () => getNotifications(activeType),
+    enabled: canFetchGlobal && isSidebarOpen && Boolean(activeType),
+    staleTime: 60_000,
+  });
+  const projectNotificationItems = useMemo(
+    () =>
+      hasProjectNotifications
+        ? projectNotifications.filter(isApiNotification)
+        : [],
+    [hasProjectNotifications, projectNotifications],
+  );
+  const notificationLoading =
+    !hasProjectNotifications && (isAuthLoading || isLoading);
+
+  const notificationError = !hasProjectNotifications && tabNotificationError;
+
+  const retryNotifications = useCallback(() => {
+    void refetchTabNotifications();
+  }, [refetchTabNotifications]);
 
   const notifications = useMemo(
-    () => groupNotifications(notificationItems),
-    [notificationItems],
+    () =>
+      groupNotifications(
+        hasProjectNotifications
+          ? projectNotificationItems
+          : tabNotificationItems,
+      ),
+    [hasProjectNotifications, projectNotificationItems, tabNotificationItems],
   );
 
   const allNotifications = useMemo(
-    () => Object.values(notifications).flat(),
-    [notifications],
+    () =>
+      hasProjectNotifications
+        ? projectNotificationItems
+        : globalNotificationItems,
+    [hasProjectNotifications, projectNotificationItems, globalNotificationItems],
   );
 
   const allNotificationsRead = allNotifications.every(

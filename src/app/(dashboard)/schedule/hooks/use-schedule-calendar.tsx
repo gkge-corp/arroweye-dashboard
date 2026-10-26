@@ -112,6 +112,12 @@ export const useScheduleCalendar = ({
     new Date(formData.start_dte) >= new Date(new Date().setHours(0, 0, 0, 0)),
   );
 
+  // An event is in the past once it has ended, so it can no longer be edited.
+  const canEditEvent = Boolean(
+    (formData.end_dte || formData.start_dte) &&
+    new Date(formData.end_dte || formData.start_dte) > new Date(),
+  );
+
   const eventCampaign = schedule.campaignOptions.find(
     (option) =>
       (formData.project && String(option.id) === String(formData.project)) ||
@@ -135,6 +141,7 @@ export const useScheduleCalendar = ({
   return {
     ...schedule,
     canDeleteEvent,
+    canEditEvent,
     eventCampaignTitle: eventCampaign?.label,
     requestDeleteEvent,
     openEventProject,

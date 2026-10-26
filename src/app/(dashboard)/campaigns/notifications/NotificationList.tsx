@@ -30,8 +30,8 @@ export function NotificationList({
         return;
       }
 
-      queryClient.setQueryData<ApiNotification[]>(
-        notificationQueryKey,
+      queryClient.setQueriesData<ApiNotification[]>(
+        { queryKey: notificationQueryKey },
         (current = []) =>
           current.map((item) =>
             item.id === id ? { ...item, read: true } : item,

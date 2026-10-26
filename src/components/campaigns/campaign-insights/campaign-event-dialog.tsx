@@ -33,6 +33,7 @@ export function CampaignEventDialog({
       pendingDrops={schedule.pendingDrops}
       onPendingDropsChange={schedule.setPendingDrops}
       canDelete={schedule.canDeleteEvent}
+      canEdit={schedule.canEditEvent}
       campaignTitle={schedule.eventCampaignTitle}
       onDelete={schedule.requestDeleteEvent}
       onShare={schedule.exportICS}

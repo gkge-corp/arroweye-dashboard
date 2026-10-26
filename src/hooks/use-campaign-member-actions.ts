@@ -37,6 +37,7 @@ export function useCampaignMemberActions({
   const [adjustmentModalVisible, setAdjustmentModalVisible] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [isAddUserLoading, setIsAddUserLoading] = useState(false);
+  const [isResendingInvite, setIsResendingInvite] = useState(false);
   const [addUserFormData, setAddUserFormData] =
     useState<AddCampaignUserFormData>({
       email: "",
@@ -69,6 +70,29 @@ export function useCampaignMemberActions({
       console.error("Welcome email failed:", error);
     }
     toast.warning("Member added, but the welcome email could not be sent.");
+  };
+
+  const resendInvite = async () => {
+    if (!id || !selectedUser?.staff_email) return;
+
+    setIsResendingInvite(true);
+    try {
+      const result = await sendCampaignWelcome({
+        campaignId: id,
+        recipient: selectedUser.staff_email,
+      });
+      if (result.success) {
+        toast.success("Invite resent.");
+      } else {
+        console.error("Resend invite failed:", result.message);
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error("Resend invite failed:", error);
+      toast.error("The invite could not be resent.");
+    } finally {
+      setIsResendingInvite(false);
+    }
   };
 
   const handleAddUserInputChange = (
@@ -254,6 +278,8 @@ export function useCampaignMemberActions({
     deleteModal,
     setDeleteModal,
     isAddUserLoading,
+    isResendingInvite,
+    resendInvite,
     addUserFormData,
     addUserErrors,
     setUseWatchersEndpoint,
