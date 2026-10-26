@@ -99,11 +99,16 @@ interface SoundchartsErrorBody {
   errors?: { message?: string }[];
 }
 
-const fetchFromSoundcharts = async <T>(path: string) => {
+const fetchFromSoundcharts = async <T>(path: string, body?: unknown) => {
   const token = await getAccessToken();
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    method: body ? "POST" : "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
   });
 
@@ -124,13 +129,16 @@ const fetchFromSoundcharts = async <T>(path: string) => {
 
 export const soundchartsRequest = <T>(
   path: string,
-  options: { ttlMs?: number; skipCache?: boolean } = {},
+  {
+    body,
+    ...options
+  }: { ttlMs?: number; skipCache?: boolean; body?: unknown } = {},
 ) =>
-  // Keyed on the path alone: the bearer token rotates hourly and must not
-  // fragment the cache.
+  // Keyed on the path (plus any POST body) alone: the bearer token rotates
+  // hourly and must not fragment the cache.
   cachedRequest({
     provider: "soundcharts",
-    path,
-    fetcher: () => fetchFromSoundcharts<T>(path),
+    path: body ? `POST ${path} ${JSON.stringify(body)}` : path,
+    fetcher: () => fetchFromSoundcharts<T>(path, body),
     ...options,
   });

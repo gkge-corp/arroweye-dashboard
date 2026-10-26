@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const SPINS_PATH = "/spins";
+// Public subdomains served from a route of this app.
+const SUBDOMAIN_PATHS: Record<string, string> = {
+  spins: "/spins",
+  spots: "/spots",
+};
 // Top-level dashboard routes that must not be treated as spin ids on the spins subdomain.
 const APP_ROUTE_PREFIXES = [
   "/login",
@@ -13,9 +17,9 @@ const APP_ROUTE_PREFIXES = [
   "/settings",
 ];
 
-function isSpinsHost(request: NextRequest) {
-  const host = request.headers.get("host") ?? "";
-  return host.startsWith("spins.");
+function getSubdomainPath(request: NextRequest) {
+  const subdomain = (request.headers.get("host") ?? "").split(".")[0];
+  return SUBDOMAIN_PATHS[subdomain];
 }
 
 function isAppRoute(pathname: string) {
@@ -27,12 +31,13 @@ function isAppRoute(pathname: string) {
 // spins.arroweye.pro/        -> /spins
 // spins.arroweye.pro/:id     -> /spins/:id
 // spins.arroweye.pro/spins/* -> redirect to the prefix-less URL
-function handleSpinsHost(request: NextRequest) {
+// spots.arroweye.pro follows the same rules with /spots.
+function handleSubdomainHost(request: NextRequest, basePath: string) {
   const { pathname } = request.nextUrl;
   const url = request.nextUrl.clone();
 
-  if (pathname === SPINS_PATH || pathname.startsWith(`${SPINS_PATH}/`)) {
-    url.pathname = pathname.slice(SPINS_PATH.length) || "/";
+  if (pathname === basePath || pathname.startsWith(`${basePath}/`)) {
+    url.pathname = pathname.slice(basePath.length) || "/";
     return NextResponse.redirect(url, 308);
   }
 
@@ -40,28 +45,31 @@ function handleSpinsHost(request: NextRequest) {
     return null;
   }
 
-  url.pathname = pathname === "/" ? SPINS_PATH : `${SPINS_PATH}${pathname}`;
+  url.pathname = pathname === "/" ? basePath : `${basePath}${pathname}`;
   return NextResponse.rewrite(url);
 }
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (isSpinsHost(request)) {
-    const spinsResponse = handleSpinsHost(request);
-    if (spinsResponse) {
-      return spinsResponse;
+  const subdomainPath = getSubdomainPath(request);
+  if (subdomainPath) {
+    const subdomainResponse = handleSubdomainHost(request, subdomainPath);
+    if (subdomainResponse) {
+      return subdomainResponse;
     }
   }
 
   const token = request.cookies.get("auth_token")?.value;
-  const isPublicSpinsRoute =
-    pathname === "/spins" || pathname.startsWith("/spins/");
+  const isPublicChartRoute =
+    pathname === "/spins" ||
+    pathname.startsWith("/spins/") ||
+    pathname === "/spots";
   const isPublicSetupRoute = pathname === "/campaigns/setup";
 
-  // The Spins shares and campaign setup landing page are public.
+  // The Spins shares, Spots rankings and campaign setup landing page are public.
   // Setup sub-routes remain protected because they create or fund campaigns.
-  if (isPublicSpinsRoute || isPublicSetupRoute) {
+  if (isPublicChartRoute || isPublicSetupRoute) {
     return NextResponse.next();
   }
 
