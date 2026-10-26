@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import { Grip, RotateCw } from "lucide-react";
 
+import DashboardLayoutClient from "@/app/(dashboard)/dashboard-layout-client";
 import { ToolsMenuItems } from "@/components/tools-menu-items";
 import {
   DropdownMenu,
@@ -11,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/auth-session";
 import { useElementHeight } from "@/hooks/use-element-height";
 import { cn } from "@/lib/utils";
 import {
@@ -35,20 +37,27 @@ const cellClassName =
 function SpotsHeader({
   tab,
   onTabChange,
+  showBranding,
 }: {
   tab: SpotsTab;
   onTabChange: (tab: SpotsTab) => void;
+  /** The dashboard sidebar already shows the logo and tools menu. */
+  showBranding: boolean;
 }) {
   return (
     <header className="grid grid-cols-[1fr_auto_1fr] items-center px-5 py-8 sm:px-8">
-      <Image
-        src={LOGO_URL}
-        alt="Arroweye"
-        width={50}
-        height={28}
-        priority
-        className="h-auto w-[50px]"
-      />
+      {showBranding ? (
+        <Image
+          src={LOGO_URL}
+          alt="Arroweye"
+          width={50}
+          height={28}
+          priority
+          className="h-auto w-[50px]"
+        />
+      ) : (
+        <span />
+      )}
 
       <nav aria-label="Media type" className="flex items-center gap-6 sm:gap-9">
         {TABS.map((item) => (
@@ -69,25 +78,27 @@ function SpotsHeader({
         ))}
       </nav>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label="Open tools"
-            className="justify-self-end rounded-md p-1 text-foreground/70 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+      {showBranding && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Open tools"
+              className="justify-self-end rounded-md p-1 text-foreground/70 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <Grip className="size-6" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={10}
+            collisionPadding={16}
+            className="w-[360px] max-w-[calc(100vw-2rem)] border border-neutral-100 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950"
           >
-            <Grip className="size-6" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          sideOffset={10}
-          collisionPadding={16}
-          className="w-[360px] max-w-[calc(100vw-2rem)] border border-neutral-100 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950"
-        >
-          <ToolsMenuItems />
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <ToolsMenuItems />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </header>
   );
 }
@@ -176,7 +187,7 @@ function RadioRows({ spots }: { spots: ReturnType<typeof useSpots> }) {
   ));
 }
 
-export default function SpotsPageClient() {
+function SpotsContent({ inDashboard }: { inDashboard: boolean }) {
   const spots = useSpots();
   const header = useElementHeight<HTMLDivElement>();
 
@@ -187,7 +198,11 @@ export default function SpotsPageClient() {
     >
       {/* Table headers stick just below this bar. */}
       <div ref={header.ref} className="sticky top-0 z-30 bg-background">
-        <SpotsHeader tab={spots.tab} onTabChange={spots.setTab} />
+        <SpotsHeader
+          tab={spots.tab}
+          onTabChange={spots.setTab}
+          showBranding={!inDashboard}
+        />
       </div>
 
       <main className="px-3 sm:px-4">
@@ -266,5 +281,20 @@ export default function SpotsPageClient() {
         Export
       </button>
     </div>
+  );
+}
+
+// Signed-in users get the dashboard sidebar; everyone else sees the bare page.
+export default function SpotsPageClient() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) return <div className="min-h-screen bg-background" />;
+
+  if (!isAuthenticated) return <SpotsContent inDashboard={false} />;
+
+  return (
+    <DashboardLayoutClient requireAuth={false}>
+      <SpotsContent inDashboard />
+    </DashboardLayoutClient>
   );
 }
