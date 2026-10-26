@@ -79,9 +79,7 @@ const validateEventDetails = (formData: any) => {
     errors.location = "Location is required.";
   }
 
-  if (!formData.description?.trim()) {
-    errors.description = "Description is required.";
-  } else if (formData.description.length > EVENT_DESCRIPTION_MAX_LENGTH) {
+  if (formData.description?.length > EVENT_DESCRIPTION_MAX_LENGTH) {
     errors.description = `Description must be ${EVENT_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
   }
 

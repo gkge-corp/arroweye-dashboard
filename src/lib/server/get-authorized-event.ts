@@ -29,4 +29,6 @@ export const getAuthorizedEvent = async (
     throw new Error(forbiddenMessage);
   }
   if (!response.ok) throw new Error("The event could not be verified.");
+
+  return (await response.json()) as Record<string, unknown>;
 };
