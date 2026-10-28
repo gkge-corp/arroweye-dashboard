@@ -1,30 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "react-toastify";
-import { sendEventInvite } from "@/actions/event-invite";
+import { toast } from "sonner";
+import { SendEventEmail } from "@/services/api/schedule";
+import type { EventEmailType } from "../utils/event-email-types";
 
 export const useEventInvite = (eventId?: number | string) => {
   const [isSendingInvite, setIsSendingInvite] = useState(false);
 
-  const sendInvite = async () => {
+  const sendInvite = async (emailType: EventEmailType) => {
     if (!eventId) return;
 
     setIsSendingInvite(true);
     try {
-      const result = await sendEventInvite({
-        eventId,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
-      if (result.success) {
-        toast.success(result.message);
-      } else {
-        console.error("Send event invite failed:", result.message);
-        toast.error(result.message);
-      }
+      await SendEventEmail({ id: eventId, emailType });
+      toast.success("Email sent to campaign members.");
     } catch (error) {
-      console.error("Send event invite failed:", error);
-      toast.error("The invites could not be sent.");
+      console.error("Send event email failed:", error);
+      toast.error("The email could not be sent.");
     } finally {
       setIsSendingInvite(false);
     }
