@@ -32,6 +32,16 @@ import type { EventDropsState } from "../hooks/use-event-drops";
 import { copyToClipboard } from "../utils/copy-to-clipboard";
 import EventHeader from "./event-header";
 import { DropCombobox, LinkedDropList } from "./event-drops";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  EVENT_EMAIL_TYPES,
+  type EventEmailType,
+} from "../utils/event-email-types";
 
 export interface EventDetailsActions {
   campaignTitle?: string;
@@ -49,7 +59,7 @@ interface EventDetailsCardProps extends EventDetailsActions {
   onClose: () => void;
   linkedDrops: EventDropsState;
   isSendingInvite: boolean;
-  onSendInvite: () => void;
+  onSendInvite: (emailType: EventEmailType) => void;
 }
 
 const DetailRow = ({
@@ -252,20 +262,33 @@ const EventDetailsCard = ({
 
       <div className="flex shrink-0 gap-2">
         {canEdit && formData.project && (
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-10 flex-1 rounded-xl bg-zinc-100 text-[14px] font-medium text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100"
-            disabled={isSendingInvite}
-            onClick={onSendInvite}
-          >
-            {isSendingInvite ? (
-              <LoaderCircle className="animate-spin" />
-            ) : (
-              <Mail />
-            )}
-            Resend invite
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 flex-1 rounded-xl bg-zinc-100 text-[14px] font-medium text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100"
+                disabled={isSendingInvite}
+              >
+                {isSendingInvite ? (
+                  <LoaderCircle className="animate-spin" />
+                ) : (
+                  <Mail />
+                )}
+                Resend email
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {EVENT_EMAIL_TYPES.map((type) => (
+                <DropdownMenuItem
+                  key={type.value}
+                  onSelect={() => onSendInvite(type.value)}
+                >
+                  {type.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         <Button
           type="button"

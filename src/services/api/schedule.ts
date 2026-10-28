@@ -56,6 +56,22 @@ export const UpdateEvent = async ({
   return response;
 };
 
+export const SendEventEmail = async ({
+  id,
+  emailType,
+}: {
+  id: number | string;
+  emailType: string;
+}): Promise<void> => {
+  await apiRequest<void>({
+    method: "POST",
+    url: `/api/v1/projects/schedule/events/${id}/resend-email/`,
+    data: { email_type: emailType },
+    requireToken: true,
+    skipErrorHandling: true,
+  });
+};
+
 export const getEvents = async (): Promise<Event[]> => {
   const response = await apiRequest<Event[]>({
     method: "GET",

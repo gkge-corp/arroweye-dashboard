@@ -2,7 +2,7 @@
 
 import React, { useCallback } from "react";
 import type { EventClickArg, EventContentArg } from "@fullcalendar/core";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { useSchedule } from "@/hooks/use-schedule";
 import ScheduleEventBadge from "../component/schedule-event-badge";
 
