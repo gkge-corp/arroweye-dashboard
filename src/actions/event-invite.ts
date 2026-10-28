@@ -5,6 +5,7 @@ import { asArray, asRecord, asString } from "@/lib/email/campaign-report/utils";
 import { sendZeptoMail } from "@/lib/email/zeptomail";
 import { getAuthorizedEvent } from "@/lib/server/get-authorized-event";
 import { getAuthorizedProject } from "@/lib/server/get-authorized-project";
+import { readEventDrops } from "@/lib/storage/r2";
 import type { SendCampaignReportResult } from "@/types/campaign-report";
 
 interface SendEventInviteInput {
@@ -25,6 +26,16 @@ const getMemberEmails = (project: Record<string, unknown>) => {
     .filter((email) => emailPattern.test(email));
 
   return [...new Set(emails)];
+};
+
+// Drops are a nice-to-have in the email, so a storage failure shouldn't block the invite.
+const loadEventDrops = async (eventId: number) => {
+  try {
+    return await readEventDrops(eventId);
+  } catch (error) {
+    console.error("Event invite drops could not be loaded:", error);
+    return [];
+  }
 };
 
 const toTimeZone = (value: unknown) => {
@@ -68,7 +79,7 @@ export async function sendEventInvite(
     const { html, text, subject } = renderEventInviteEmail({
       event,
       project,
-      campaignId,
+      drops: await loadEventDrops(eventId),
       timeZone: toTimeZone(input?.timeZone),
     });
     const sentAt = Date.now();
