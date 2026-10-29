@@ -1,7 +1,7 @@
 import { mdiArrowDown } from "@mdi/js";
 import Icon from "@mdi/react";
 import { formatDistanceToNow } from "date-fns";
-import type { Ref } from "react";
+import type { CSSProperties, Ref } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,29 +13,16 @@ import type {
 } from "@/types/notifications";
 import { normalizeNotificationType } from "@/types/notifications";
 import {
-  getCampaignIconConfig,
+  getFallbackNotificationIcon,
   getMdiNotificationIcon,
   hasMdiNotificationIcon,
   isNotificationIconUrl,
-  notificationIconConfig,
-  type NotificationIconConfig,
 } from "./notification-icon-config";
 
 interface NotificationCardProps {
   notification: ApiNotification;
   elementRef?: Ref<HTMLElement>;
 }
-
-const iconKeyByType = {
-  Security: "security",
-  Milestones: "milestones",
-  Assets: "assets",
-  Payments: "payments",
-  Others: "others",
-} as const satisfies Record<
-  Exclude<NotificationType, "Campaigns">,
-  keyof typeof notificationIconConfig
->;
 
 const disabledActionsByType: Partial<
   Record<NotificationType, NotificationAction["type"][]>
@@ -53,14 +40,6 @@ const formatRelativeDate = (dateString: string | null) => {
     ? "Recently"
     : formatDistanceToNow(date, { addSuffix: true });
 };
-
-const getIconConfig = (
-  type: NotificationType,
-  message: string,
-): NotificationIconConfig =>
-  type === "Campaigns"
-    ? getCampaignIconConfig(message)
-    : notificationIconConfig[iconKeyByType[type]];
 
 const getSpinUrl = (url: string) =>
   url.replace(/\/spins\/spin\/([^/?#]+)/, "/spins/$1");
@@ -85,14 +64,9 @@ export function NotificationCard({
   const type = normalizeNotificationType(notification.type);
   const message = notification.content ?? "";
   const timeAgo = formatRelativeDate(notification.created);
-  const iconConfig = getIconConfig(type, message);
-  const {
-    Icon: NotificationIcon,
-    containerClassName,
-    ignoreApiIcon,
-  } = iconConfig;
-  const iconValue = ignoreApiIcon ? undefined : notification.icon;
+  const iconValue = notification.icon;
   const mdiIcon = getMdiNotificationIcon(iconValue);
+  const icon = mdiIcon ?? getFallbackNotificationIcon(type, message);
   const isIconUrl = isNotificationIconUrl(iconValue);
   const isArtwork = type === "Assets" && isIconUrl;
   const isSpinNotification =
@@ -150,19 +124,19 @@ export function NotificationCard({
         <div
           className={cn(
             "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl",
-            containerClassName,
+            icon.className,
+            // The API's color is for light mode; dark mode keeps the template tile.
+            mdiIcon?.backgroundColor && "bg-(--notification-icon-bg)",
           )}
           style={
             mdiIcon?.backgroundColor
-              ? { backgroundColor: mdiIcon.backgroundColor }
+              ? ({
+                  "--notification-icon-bg": mdiIcon.backgroundColor,
+                } as CSSProperties)
               : undefined
           }
         >
-          {mdiIcon ? (
-            <Icon path={mdiIcon.path} size={0.9} />
-          ) : (
-            <NotificationIcon className="size-4" />
-          )}
+          <Icon path={icon.path} size={0.9} />
         </div>
       )}
 

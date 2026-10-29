@@ -13,7 +13,7 @@ const menuItems = [
   {
     name: "Spots",
     img: "https://res.cloudinary.com/dyueswnzk/image/upload/v1758701294/21_elj38n_jljfio.svg",
-    url: "https://spots.arroweye.pro/",
+    url: "/spots",
   },
   {
     name: "Showtime",
@@ -28,7 +28,7 @@ const menuItems = [
   {
     name: "Spins",
     img: "https://res.cloudinary.com/dyueswnzk/image/upload/v1758701301/qkpawzztfn7c6osevfmm_1_4_x8h1iz_i2uebl.svg",
-    url: "https://spins.arroweye.pro/",
+    url: "/spins",
   },
   {
     name: "Tools",
@@ -36,6 +36,8 @@ const menuItems = [
     url: "https://cocoa.house/tools",
   },
 ];
+
+const isInternal = (url: string) => url.startsWith("/");
 
 /** Arroweye app switcher; render inside a DropdownMenuContent. */
 export function ToolsMenuItems() {
@@ -46,8 +48,8 @@ export function ToolsMenuItems() {
           <DropdownMenuItem key={item.name} asChild>
             <a
               href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
+              target={isInternal(item.url) ? undefined : "_blank"}
+              rel={isInternal(item.url) ? undefined : "noopener noreferrer"}
               className="group flex cursor-pointer flex-col items-center rounded-[10px] text-center outline-none focus:bg-transparent"
             >
               <div className="flex size-14 items-center justify-center rounded-[12px] bg-neutral-50 transition-colors duration-150 group-hover:bg-neutral-100 dark:bg-zinc-900 dark:group-hover:bg-zinc-800">

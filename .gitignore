@@ -49,4 +49,4 @@ pnpm-workspace.yaml
 
 /src/product-copy
 /templates
-
+launch.json

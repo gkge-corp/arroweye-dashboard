@@ -1,5 +1,8 @@
 import apiRequest from "@/Server/Api";
-import { isApiNotification } from "@/types/notifications";
+import {
+  isApiNotification,
+  normalizeNotificationType,
+} from "@/types/notifications";
 import type {
   ApiNotification,
   MarkNotificationsReadInput,
@@ -63,23 +66,62 @@ const normalizeNotifications = (value: unknown): ApiNotification[] => {
   return [];
 };
 
-export const getNotifications = async (
+const NOTIFICATION_PAGE_SIZE = 100;
+// Guards against a backend that keeps returning a `next` link.
+const MAX_NOTIFICATION_PAGES = 20;
+
+const hasNextPage = (response: NotificationApiResponse) =>
+  !Array.isArray(response) && "next" in response && Boolean(response.next);
+
+const filterByType = (
+  notifications: ApiNotification[],
   type?: NotificationType,
-): Promise<ApiNotification[]> => {
-  try {
+) =>
+  type
+    ? notifications.filter(
+        (notification) => normalizeNotificationType(notification.type) === type,
+      )
+    : notifications;
+
+// The list is paginated and `type` is not a documented filter, so read every
+// page and filter here; otherwise older types (e.g. milestones) never load.
+const fetchAllNotificationPages = async (type?: NotificationType) => {
+  const notifications: ApiNotification[] = [];
+
+  for (let page = 1; page <= MAX_NOTIFICATION_PAGES; page++) {
+    const params = new URLSearchParams({
+      page: String(page),
+      page_size: String(NOTIFICATION_PAGE_SIZE),
+    });
+    if (type) params.set("type", type);
+
     const response = await apiRequest<NotificationApiResponse>({
       method: "GET",
-      url: type
-        ? `/api/v1/notification/notification/?type=${type}`
-        : `/api/v1/notification/notification/`,
+      url: `/api/v1/notification/notification/?${params}`,
       data: null,
       requireToken: true,
       silent: true,
       skipErrorHandling: true,
     });
 
-    ls.set("Notifications", response, { encrypt: true });
-    return normalizeNotifications(response);
+    notifications.push(...normalizeNotifications(response));
+    if (!hasNextPage(response)) break;
+  }
+
+  return notifications;
+};
+
+export const getNotifications = async (
+  type?: NotificationType,
+): Promise<ApiNotification[]> => {
+  try {
+    const notifications = filterByType(
+      await fetchAllNotificationPages(type),
+      type,
+    );
+
+    ls.set("Notifications", notifications, { encrypt: true });
+    return notifications;
   } catch {
     // The deployed notifications list endpoint currently returns HTTP 500 for
     // some accounts. /ums/me/ exposes the same collection at runtime.
@@ -89,9 +131,7 @@ export const getNotifications = async (
       requireToken: true,
     });
 
-    const notifications = normalizeNotifications(user).filter(
-      (notification) => !type || notification.type === type,
-    );
+    const notifications = filterByType(normalizeNotifications(user), type);
     ls.set("Notifications", notifications, { encrypt: true });
     return notifications;
   }
