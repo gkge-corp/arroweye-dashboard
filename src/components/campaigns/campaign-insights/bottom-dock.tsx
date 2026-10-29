@@ -37,15 +37,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRadioMonitorDownload } from "@/hooks/use-radio-monitor-download";
-import { getProjectDropZone } from "@/services";
+import {
+  getDropZones,
+  getNotifications,
+  notificationQueryKey,
+} from "@/services";
 import type {
   CampaignReportMetrics,
   SendCampaignReportResult,
 } from "@/types/campaign-report";
-import {
-  isApiNotification,
-  type NotificationByType,
-} from "@/types/notifications";
+import type { NotificationByType } from "@/types/notifications";
 import type { PublicationMedia } from "@/hooks/use-publication-form";
 import { DeletePublicationDialog } from "./delete-publication-dialog";
 import { PublicationDialog } from "./publication-dialog";
@@ -58,7 +59,6 @@ type DockPanel = "updates" | "drops" | "publications" | "schedule" | "send";
 
 export interface BottomDockProps {
   contentId?: number | string;
-  notifications?: unknown;
   media?: unknown;
   reportMetrics?: CampaignReportMetrics;
   reportLoading?: boolean;
@@ -77,7 +77,6 @@ const panelTitle: Record<DockPanel, string> = {
 
 export function BottomDock({
   contentId,
-  notifications,
   media,
   reportMetrics,
   reportLoading = false,
@@ -113,12 +112,12 @@ export function BottomDock({
     isError: dropZonesError,
     refetch: refetchDropZones,
   } = useQuery({
-    queryKey: ["project-dropzones", String(contentId)],
+    queryKey: ["notification-dropzones", "all"],
     queryFn: async () => {
-      const dropZone = await getProjectDropZone(contentId!);
-      return dropZone ? [dropZone] : [];
+      const response = await getDropZones({ page: 1 });
+      return response.results;
     },
-    enabled: isDropsPanelOpen && Boolean(contentId),
+    enabled: isDropsPanelOpen,
     staleTime: 60_000,
   });
 
@@ -146,13 +145,11 @@ export function BottomDock({
     [dropZones],
   );
 
-  const updateNotifications = useMemo(
-    () =>
-      Array.isArray(notifications)
-        ? notifications.filter(isApiNotification)
-        : [],
-    [notifications],
-  );
+  const { data: updateNotifications = [] } = useQuery({
+    queryKey: notificationQueryKey,
+    queryFn: () => getNotifications(),
+    staleTime: 60_000,
+  });
 
   const publications = useMemo<PublicationMedia[]>(
     () =>

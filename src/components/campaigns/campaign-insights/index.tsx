@@ -743,7 +743,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
 
       <BottomDock
         contentId={content?.id}
-        notifications={content?.notifications}
         media={content?.media}
         reportMetrics={reportMetrics}
         reportLoading={reportLoading}

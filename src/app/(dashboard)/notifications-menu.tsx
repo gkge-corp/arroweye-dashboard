@@ -18,7 +18,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationList } from "./campaigns/notifications/NotificationList";
 import { DropzoneUploadDialog } from "./campaigns/notifications/dropzone-upload-dialog";
 import { useTopNav } from "@/hooks/use-top-nav";
-import { getDropZones, getProjectDropZone } from "@/services";
+import { getDropZones } from "@/services";
 import type { NotificationByType } from "@/types/notifications";
 
 type NotificationsMenuProps = {
@@ -58,15 +58,8 @@ const NotificationsMenu = ({
     isError: dropZonesError,
     refetch: refetchDropZones,
   } = useQuery({
-    queryKey: activeProjectId
-      ? ["project-dropzones", String(activeProjectId)]
-      : ["notification-dropzones", "all"],
+    queryKey: ["notification-dropzones", "all"],
     queryFn: async () => {
-      if (activeProjectId) {
-        const dropZone = await getProjectDropZone(activeProjectId);
-        return dropZone ? [dropZone] : [];
-      }
-
       const response = await getDropZones({ page: 1 });
       return response.results;
     },

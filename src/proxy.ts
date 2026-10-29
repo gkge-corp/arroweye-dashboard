@@ -1,63 +1,36 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Public subdomains served from a route of this app.
+const APP_ORIGIN = "https://studio.arroweye.pro";
+
+// Old standalone domains, now pages of this app.
 const SUBDOMAIN_PATHS: Record<string, string> = {
   spins: "/spins",
   spots: "/spots",
 };
-// Top-level dashboard routes that must not be treated as spin ids on the spins subdomain.
-const APP_ROUTE_PREFIXES = [
-  "/login",
-  "/campaigns",
-  "/drops",
-  "/radio-monitor",
-  "/payments",
-  "/schedule",
-  "/settings",
-];
 
-function getSubdomainPath(request: NextRequest) {
+// spins.arroweye.pro/:path -> studio.arroweye.pro/spins/:path (same for spots).
+function getSubdomainRedirect(request: NextRequest) {
   const subdomain = (request.headers.get("host") ?? "").split(".")[0];
-  return SUBDOMAIN_PATHS[subdomain];
-}
+  const basePath = SUBDOMAIN_PATHS[subdomain];
+  if (!basePath) return null;
 
-function isAppRoute(pathname: string) {
-  return APP_ROUTE_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
-
-// spins.arroweye.pro/        -> /spins
-// spins.arroweye.pro/:id     -> /spins/:id
-// spins.arroweye.pro/spins/* -> redirect to the prefix-less URL
-// spots.arroweye.pro follows the same rules with /spots.
-function handleSubdomainHost(request: NextRequest, basePath: string) {
-  const { pathname } = request.nextUrl;
-  const url = request.nextUrl.clone();
-
+  const { pathname, search } = request.nextUrl;
+  let path = `${basePath}${pathname}`;
+  if (pathname === "/") path = basePath;
   if (pathname === basePath || pathname.startsWith(`${basePath}/`)) {
-    url.pathname = pathname.slice(basePath.length) || "/";
-    return NextResponse.redirect(url, 308);
+    path = pathname;
   }
 
-  if (isAppRoute(pathname)) {
-    return null;
-  }
-
-  url.pathname = pathname === "/" ? basePath : `${basePath}${pathname}`;
-  return NextResponse.rewrite(url);
+  return NextResponse.redirect(`${APP_ORIGIN}${path}${search}`, 308);
 }
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const subdomainPath = getSubdomainPath(request);
-  if (subdomainPath) {
-    const subdomainResponse = handleSubdomainHost(request, subdomainPath);
-    if (subdomainResponse) {
-      return subdomainResponse;
-    }
+  const subdomainRedirect = getSubdomainRedirect(request);
+  if (subdomainRedirect) {
+    return subdomainRedirect;
   }
 
   const token = request.cookies.get("auth_token")?.value;

@@ -1,83 +1,115 @@
-import type { ComponentType } from "react";
 import {
+  mdiAccountCircleOutline,
+  mdiAlbum,
+  mdiBellOutline,
+  mdiCalendarAlertOutline,
+  mdiCalendarOutline,
   mdiCash,
+  mdiFileDocumentOutline,
   mdiFolderOpenOutline,
-  mdiPlayCircleOutline,
+  mdiInbox,
+  mdiMusicCircle,
+  mdiPlaySpeed,
+  mdiPoundBox,
+  mdiRewind,
   mdiShieldCheckOutline,
+  mdiShieldLockOutline,
+  mdiStarShooting,
+  mdiWaveform,
+  mdiWeb,
 } from "@mdi/js";
-import { Bell, FileText } from "lucide-react";
-import { CgProfile } from "react-icons/cg";
-import { FaPlayCircle, FaRegFolderOpen } from "react-icons/fa";
-import { GiMusicalNotes } from "react-icons/gi";
-import { MdStars } from "react-icons/md";
-import type { NotificationGroupKey } from "@/types/notifications";
+import type { NotificationType } from "@/types/notifications";
 
-type NotificationIconComponent = ComponentType<{ className?: string }>;
-
-export type NotificationIconConfig = {
-  Icon: NotificationIconComponent;
-  containerClassName: string;
-  ignoreApiIcon?: boolean;
+export type NotificationIcon = {
+  path: string;
+  className: string;
 };
 
-export type NotificationIconKey = NotificationGroupKey | "airplay";
+// Tile colors from the project_single template (blue-nte, red-nte, ...).
+const colors = {
+  blue: "bg-sky-100 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400",
+  teal: "bg-teal-100 text-teal-600 dark:bg-teal-500/15 dark:text-teal-400",
+  yellow:
+    "bg-amber-200 text-[#947c01] dark:bg-amber-500/15 dark:text-amber-400",
+  red: "bg-[#DD2E49] text-white",
+  black: "bg-slate-200 text-black dark:bg-zinc-800 dark:text-white",
+  green: "bg-[#e6ff99] text-[#01a733] dark:bg-lime-500/15 dark:text-lime-400",
+  purple:
+    "bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400",
+  pink: "bg-pink-100 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400",
+  orange:
+    "bg-orange-100 text-orange-500 dark:bg-orange-500/15 dark:text-orange-400",
+};
 
-// Edit this table to change the default icon and color for each notification kind.
-export const notificationIconConfig = {
-  assets: {
-    Icon: FaRegFolderOpen,
-    containerClassName: "bg-[#e6ff99] text-[#01a733]",
-  },
-  campaigns: {
-    Icon: FaPlayCircle,
-    containerClassName: "bg-amber-200 text-[#947c01]",
-  },
-  airplay: {
-    Icon: GiMusicalNotes,
-    containerClassName: "bg-[#DD2E49] text-white",
-    ignoreApiIcon: true,
-  },
-  security: {
-    Icon: CgProfile,
-    containerClassName: "bg-slate-200 text-black",
-  },
-  milestones: {
-    Icon: MdStars,
-    containerClassName: "bg-orange-100 text-orange-500",
-  },
-  payments: {
-    Icon: FileText,
-    containerClassName: "bg-violet-100 text-violet-600 dark:bg-violet-950",
-  },
-  others: {
-    Icon: Bell,
-    containerClassName: "bg-sky-100 text-sky-600 dark:bg-sky-950",
-  },
-} satisfies Record<NotificationIconKey, NotificationIconConfig>;
-
-// Add content-based exceptions here. The first matching rule wins.
-export const campaignIconRules = [
-  {
-    matches: (message: string) => /\bwas played by\b/i.test(message),
-    config: notificationIconConfig.airplay,
-  },
-];
-
-export const getCampaignIconConfig = (
-  message: string,
-): NotificationIconConfig =>
-  campaignIconRules.find((rule) => rule.matches(message))?.config ??
-  notificationIconConfig.campaigns;
-
-// Maps icon class names returned by the API to icons rendered by this app.
+// Icon class names the API can send, with the template's icon and color.
 export const mdiNotificationIcons = {
-  "mdi-album": mdiPlayCircleOutline,
-  "mdi-cash": mdiCash,
-  "mdi-folder-open-outline": mdiFolderOpenOutline,
-  "mdi-shield-check-outline": mdiShieldCheckOutline,
-};
+  "mdi-album": { path: mdiAlbum, className: colors.blue },
+  "mdi-rewind": { path: mdiRewind, className: colors.teal },
+  "mdi-play-speed": { path: mdiPlaySpeed, className: colors.yellow },
+  "mdi-music-circle": { path: mdiMusicCircle, className: colors.red },
+  "mdi-calendar-outline": { path: mdiCalendarOutline, className: colors.black },
+  "mdi-pound-box": { path: mdiPoundBox, className: colors.green },
+  "mdi-waveform": { path: mdiWaveform, className: colors.purple },
+  "mdi-web": { path: mdiWeb, className: colors.pink },
+  "mdi-star-shooting": { path: mdiStarShooting, className: colors.orange },
+  "mdi-account-circle-outline": {
+    path: mdiAccountCircleOutline,
+    className: colors.black,
+  },
+  "mdi-calendar-alert-outline": {
+    path: mdiCalendarAlertOutline,
+    className: colors.black,
+  },
+  "mdi-inbox": { path: mdiInbox, className: colors.black },
+  "mdi-shield-lock-outline": {
+    path: mdiShieldLockOutline,
+    className: colors.black,
+  },
+  "mdi-shield-check-outline": {
+    path: mdiShieldCheckOutline,
+    className: colors.black,
+  },
+  "mdi-folder-open-outline": {
+    path: mdiFolderOpenOutline,
+    className: colors.green,
+  },
+  "mdi-file-document-outline": {
+    path: mdiFileDocumentOutline,
+    className: colors.purple,
+  },
+  "mdi-cash": { path: mdiCash, className: colors.purple },
+  "mdi-bell-outline": { path: mdiBellOutline, className: colors.blue },
+} satisfies Record<string, NotificationIcon>;
 
 export type MdiNotificationIconName = keyof typeof mdiNotificationIcons;
+
+// Used when the API sends no icon we know. Checked in order; the first match wins.
+const messageIconRules: {
+  matches: RegExp;
+  icon: MdiNotificationIconName;
+}[] = [
+  { matches: /\bplayed by\b/i, icon: "mdi-album" },
+  { matches: /\bhighlights?\b/i, icon: "mdi-rewind" },
+  { matches: /\bfirst play\b/i, icon: "mdi-play-speed" },
+  { matches: /\bairplay\b/i, icon: "mdi-music-circle" },
+  { matches: /\bsocial media\b/i, icon: "mdi-pound-box" },
+  { matches: /\bDSP\b/, icon: "mdi-waveform" },
+  { matches: /\bfeature post\b|\bpublished on\b/i, icon: "mdi-web" },
+  { matches: /\bclocked in\b/i, icon: "mdi-account-circle-outline" },
+  { matches: /\brescheduled\b/i, icon: "mdi-calendar-alert-outline" },
+  { matches: /\barchived\b/i, icon: "mdi-inbox" },
+  { matches: /\baccessed\b/i, icon: "mdi-shield-lock-outline" },
+  { matches: /\bevent\b|\breminder\b/i, icon: "mdi-calendar-outline" },
+];
+
+const iconByType: Record<NotificationType, MdiNotificationIconName> = {
+  Campaigns: "mdi-album",
+  Milestones: "mdi-star-shooting",
+  Security: "mdi-account-circle-outline",
+  Assets: "mdi-folder-open-outline",
+  Payments: "mdi-file-document-outline",
+  Others: "mdi-bell-outline",
+};
 
 const isMdiNotificationIconName = (
   value: string,
@@ -93,9 +125,17 @@ export const getMdiNotificationIcon = (value?: unknown) => {
 
   return {
     name,
-    path: mdiNotificationIcons[name],
+    ...mdiNotificationIcons[name],
     backgroundColor: parts.find((part) => /^#[0-9a-f]{3,8}$/i.test(part)),
   };
+};
+
+export const getFallbackNotificationIcon = (
+  type: NotificationType,
+  message: string,
+): NotificationIcon => {
+  const rule = messageIconRules.find(({ matches }) => matches.test(message));
+  return mdiNotificationIcons[rule?.icon ?? iconByType[type]];
 };
 
 export const hasMdiNotificationIcon = (

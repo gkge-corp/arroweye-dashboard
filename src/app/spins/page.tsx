@@ -4,14 +4,13 @@ import SpinsTableComponent from "../(dashboard)/payments/component/SpinsTableCom
 
 export const metadata: Metadata = {
   title: "Spins - Arroweye",
+  description: "Global Afrobeats DJ Chart.",
 };
 
 const SpinsChart = () => {
   return (
     <DashboardLayoutClient requireAuth={false}>
-      <div className="min-h-screen bg-background text-foreground">
-        <SpinsTableComponent />
-      </div>
+      <SpinsTableComponent />
     </DashboardLayoutClient>
   );
 };

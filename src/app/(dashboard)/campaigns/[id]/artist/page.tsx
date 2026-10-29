@@ -107,7 +107,6 @@ const ArtistAnalyticsPage = () => {
         }
         dockProps={{
           contentId: content?.id,
-          notifications: content?.notifications,
           media: content?.media,
         }}
       />
