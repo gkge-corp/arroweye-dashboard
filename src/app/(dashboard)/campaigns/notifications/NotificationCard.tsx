@@ -67,6 +67,9 @@ export function NotificationCard({
   const iconValue = notification.icon;
   const mdiIcon = getMdiNotificationIcon(iconValue);
   const icon = mdiIcon ?? getFallbackNotificationIcon(type, message);
+  // Security tiles always use the template's gray tile with a black icon.
+  const apiTileColor =
+    type === "Security" ? undefined : mdiIcon?.backgroundColor;
   const isIconUrl = isNotificationIconUrl(iconValue);
   const isArtwork = type === "Assets" && isIconUrl;
   const isSpinNotification =
@@ -126,12 +129,12 @@ export function NotificationCard({
             "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl",
             icon.className,
             // The API's color is for light mode; dark mode keeps the template tile.
-            mdiIcon?.backgroundColor && "bg-(--notification-icon-bg)",
+            apiTileColor && "bg-(--notification-icon-bg) text-white",
           )}
           style={
-            mdiIcon?.backgroundColor
+            apiTileColor
               ? ({
-                  "--notification-icon-bg": mdiIcon.backgroundColor,
+                  "--notification-icon-bg": apiTileColor,
                 } as CSSProperties)
               : undefined
           }

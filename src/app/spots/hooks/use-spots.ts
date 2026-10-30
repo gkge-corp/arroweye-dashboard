@@ -31,8 +31,40 @@ export const engagementLabel = (score: number) =>
 const byAudience = <T extends { audience: number }>(rows: T[]) =>
   [...rows].sort((a, b) => b.audience - a.audience);
 
-const tvChannels = byAudience(TV_CHANNELS);
-const publications = byAudience(PUBLICATIONS);
+const withPosition = <T>(rows: T[]) =>
+  rows.map((row, index) => ({ ...row, position: index + 1 }));
+
+const tvChannels = withPosition(byAudience(TV_CHANNELS));
+const publications = withPosition(byAudience(PUBLICATIONS));
+
+export type SpotsSortColumn =
+  | "position"
+  | "name"
+  | "country"
+  | "seoScore"
+  | "audience"
+  | "engagement"
+  | "topPlatform";
+
+interface SpotsSort {
+  column: SpotsSortColumn | null;
+  direction: "asc" | "desc";
+}
+
+const compareValues = (a: unknown, b: unknown) =>
+  typeof a === "number" && typeof b === "number"
+    ? a - b
+    : String(a ?? "").localeCompare(String(b ?? ""));
+
+const sortRows = <T extends Partial<Record<SpotsSortColumn, unknown>>>(
+  rows: T[],
+  { column, direction }: SpotsSort,
+) => {
+  if (!column) return rows;
+
+  const sorted = [...rows].sort((a, b) => compareValues(a[column], b[column]));
+  return direction === "asc" ? sorted : sorted.reverse();
+};
 
 const fetchRadioRanking = async (): Promise<RadioStationRow[]> => {
   const response = await fetch("/api/music-analytics/radio-ranking");
@@ -63,12 +95,31 @@ const downloadCsv = (fileName: string, rows: (string | number)[][]) => {
 
 export function useSpots() {
   const [tab, setTab] = useState<SpotsTab>("radio");
+  const [sort, setSort] = useState<SpotsSort>({
+    column: null,
+    direction: "asc",
+  });
   const radio = useQuery({
     queryKey: ["spots-radio-ranking"],
     queryFn: fetchRadioRanking,
     staleTime: 60 * 60_000,
   });
   const radioStations = radio.data ?? [];
+
+  const changeTab = (nextTab: SpotsTab) => {
+    setTab(nextTab);
+    setSort({ column: null, direction: "asc" });
+  };
+
+  const toggleSort = (column: SpotsSortColumn) => {
+    setSort((current) => ({
+      column,
+      direction:
+        current.column === column && current.direction === "asc"
+          ? "desc"
+          : "asc",
+    }));
+  };
 
   const exportCsv = () => {
     if (tab === "radio") {
@@ -123,13 +174,18 @@ export function useSpots() {
 
   return {
     tab,
-    setTab,
-    radioStations,
+    setTab: changeTab,
+    sort,
+    toggleSort,
+    radioStations: sortRows(
+      radioStations.map((station) => ({ ...station, audience: station.reach })),
+      sort,
+    ),
     isRadioLoading: radio.isLoading,
     hasRadioError: radio.isError,
     retryRadio: () => void radio.refetch(),
-    tvChannels,
-    publications,
+    tvChannels: sortRows(tvChannels, sort),
+    publications: sortRows(publications, sort),
     exportCsv,
   };
 }

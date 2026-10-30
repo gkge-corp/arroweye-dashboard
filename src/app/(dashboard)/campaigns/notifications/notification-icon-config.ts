@@ -32,7 +32,9 @@ const colors = {
   yellow:
     "bg-amber-200 text-[#947c01] dark:bg-amber-500/15 dark:text-amber-400",
   red: "bg-[#DD2E49] text-white",
-  black: "bg-slate-200 text-black dark:bg-zinc-800 dark:text-white",
+  black: "bg-[#ebebe8] text-black dark:bg-zinc-800 dark:text-white",
+  // Matches the color the API sends on scheduled-event notifications.
+  event: "bg-[#29b0f1] text-white dark:bg-sky-500/15 dark:text-sky-400",
   green: "bg-[#e6ff99] text-[#01a733] dark:bg-lime-500/15 dark:text-lime-400",
   purple:
     "bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400",
@@ -47,7 +49,7 @@ export const mdiNotificationIcons = {
   "mdi-rewind": { path: mdiRewind, className: colors.teal },
   "mdi-play-speed": { path: mdiPlaySpeed, className: colors.yellow },
   "mdi-music-circle": { path: mdiMusicCircle, className: colors.red },
-  "mdi-calendar-outline": { path: mdiCalendarOutline, className: colors.black },
+  "mdi-calendar-outline": { path: mdiCalendarOutline, className: colors.event },
   "mdi-pound-box": { path: mdiPoundBox, className: colors.green },
   "mdi-waveform": { path: mdiWaveform, className: colors.purple },
   "mdi-web": { path: mdiWeb, className: colors.pink },
@@ -99,7 +101,10 @@ const messageIconRules: {
   { matches: /\brescheduled\b/i, icon: "mdi-calendar-alert-outline" },
   { matches: /\barchived\b/i, icon: "mdi-inbox" },
   { matches: /\baccessed\b/i, icon: "mdi-shield-lock-outline" },
-  { matches: /\bevent\b|\breminder\b/i, icon: "mdi-calendar-outline" },
+  {
+    matches: /\bevent\b|\breminder\b|\bis today\b|\bcoming up\b/i,
+    icon: "mdi-calendar-outline",
+  },
 ];
 
 const iconByType: Record<NotificationType, MdiNotificationIconName> = {
