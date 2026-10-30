@@ -14,7 +14,6 @@ import {
 import {
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -23,6 +22,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  activeColumnClassName,
+  SortableTableHeader,
+  sortableCellClassName,
+} from "@/components/sortable-table-header";
+import { useActiveColumn } from "@/hooks/use-active-column";
 import { useElementHeight } from "@/hooks/use-element-height";
 import {
   useSpinsChart,
@@ -52,10 +57,6 @@ const tableHeaders: { label: string; key: SortColumn }[] = [
 
 const cellClassName =
   "border-b border-neutral-200 px-3 py-5 text-center text-sm whitespace-normal text-neutral-800 uppercase dark:border-border dark:text-foreground";
-
-// Column being sorted (or hovered): outlined and tinted from header to last row.
-const activeColumnClassName =
-  "border-x border-x-neutral-600 bg-[#dd6236]/[0.08] dark:border-x-neutral-500 dark:bg-[#dd6236]/[0.12]";
 
 const pillClassName = "rounded-full px-3 py-1.5 text-xs font-black";
 
@@ -189,12 +190,16 @@ function SongCell({ row, className }: { row: ChartData; className: string }) {
 }
 
 function SpinsTable({ chart }: { chart: SpinsChart }) {
-  const [hoveredColumn, setHoveredColumn] = useState<SortColumn | null>(null);
-
-  const activeColumn = hoveredColumn ?? chart.sortConfig.column;
+  const { activeColumn, highlightProps } = useActiveColumn<SortColumn>(
+    chart.sortConfig.column,
+  );
 
   const columnClassName = (key: SortColumn) =>
-    cn(cellClassName, activeColumn === key && activeColumnClassName);
+    cn(
+      cellClassName,
+      sortableCellClassName,
+      activeColumn === key && activeColumnClassName(),
+    );
 
   return (
     <div className="overflow-x-auto lg:overflow-x-clip">
@@ -206,41 +211,19 @@ function SpinsTable({ chart }: { chart: SpinsChart }) {
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             {tableHeaders.map((header) => (
-              <TableHead
+              <SortableTableHeader
                 key={header.key}
-                aria-sort={
+                label={header.label}
+                active={activeColumn === header.key}
+                sortDirection={
                   chart.sortConfig.column === header.key
-                    ? chart.sortConfig.direction === "asc"
-                      ? "ascending"
-                      : "descending"
-                    : undefined
+                    ? chart.sortConfig.direction
+                    : null
                 }
-                className="sticky top-[var(--spins-header-height,0px)] z-10 h-auto bg-background p-0"
-              >
-                {/* Band above the grey header row that holds the "Sorting by" tab. */}
-                <div className="flex h-8 items-end">
-                  {activeColumn === header.key && (
-                    <span className="flex h-full w-full items-center justify-center rounded-t-lg bg-[#dd6236] text-[10px] font-semibold tracking-wide text-white">
-                      SORTING BY
-                    </span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => chart.handleSort(header.key)}
-                  onMouseEnter={() => setHoveredColumn(header.key)}
-                  onMouseLeave={() => setHoveredColumn(null)}
-                  onFocus={() => setHoveredColumn(header.key)}
-                  onBlur={() => setHoveredColumn(null)}
-                  className={cn(
-                    "flex h-14 w-full min-w-20 items-center justify-center border-y border-neutral-200 bg-[#f6f6f6] px-2 text-center text-xs font-bold text-black uppercase outline-none dark:border-border dark:bg-zinc-900 dark:text-foreground",
-                    activeColumn === header.key &&
-                      "border-x border-x-neutral-600 bg-[#f6e8e3] text-[#dd6236] dark:border-x-neutral-500 dark:bg-[#2a1d18] dark:text-[#dd6236]",
-                  )}
-                >
-                  {header.label}
-                </button>
-              </TableHead>
+                onSort={() => chart.handleSort(header.key)}
+                highlightProps={highlightProps(header.key)}
+                className="sticky top-[var(--spins-header-height,0px)]"
+              />
             ))}
           </TableRow>
         </TableHeader>
