@@ -37,7 +37,7 @@ export const renderEvents = (events: unknown[], projectLink: string) => {
       const event = asRecord(entry);
       const border =
         index < shown.length - 1 ? "border-bottom:1px solid #e9e9e9;" : "";
-      return `<tr><td style="font-size:16px;font-weight:600;line-height:2;padding:16px 0;${border}">${escapeHtml(event.title || event.name || "Scheduled event")}</td><td style="font-size:14px;color:#777;text-align:right;padding:16px 0;${border}">${escapeHtml(formatDate(event.start_dte || event.start_date || event.date))}</td></tr>`;
+      return `<tr><td style="font-size:16px;font-weight:500;line-height:2;padding:16px 0;${border}">${escapeHtml(event.title || event.name || "Scheduled event")}</td><td style="font-size:14px;color:#777;text-align:right;padding:16px 0;${border}">${escapeHtml(formatDate(event.start_dte || event.start_date || event.date))}</td></tr>`;
     })
     .join("");
 
@@ -68,7 +68,7 @@ export const renderPublications = (media: unknown[], projectLink: string) => {
         ? `${channel}${date ? ` <span style="color:#999;font-weight:500;">&middot; ${date}</span>` : ""}`
         : date;
 
-      return `<div style="${listItemStyle(index === shown.length - 1)}"><div style="font-size:16px;font-weight:600;line-height:1.5;">${heading}</div>${meta ? `<div style="font-size:12px;color:#555;font-weight:600;margin-top:6px;">${meta}</div>` : ""}</div>`;
+      return `<div style="${listItemStyle(index === shown.length - 1)}"><div style="font-size:16px;font-weight:500;line-height:1.5;">${heading}</div>${meta ? `<div style="font-size:12px;color:#555;font-weight:500;margin-top:6px;">${meta}</div>` : ""}</div>`;
     })
     .join("");
 
@@ -94,10 +94,10 @@ export const renderDrops = (value: unknown, projectLink: string) => {
         drop.folder_name || drop.title || drop.drop_type || "Untitled drop",
       );
       const badge = isNewDrop(created)
-        ? ' <span style="display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;background:#EAF2FF;color:#175CD3;font-size:10px;font-weight:900;line-height:1.2;vertical-align:2px;">NEW</span>'
+        ? ' <span style="display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;background:#EAF2FF;color:#175CD3;font-size:10px;font-weight:bold;line-height:1.2;vertical-align:2px;">NEW</span>'
         : "";
-      const tileHtml = `<div style="width:30px;height:30px;line-height:30px;text-align:center;background:${tile.background};border-radius:7px;font-family:Arial,sans-serif;font-size:9px;font-weight:900;color:${tile.color};">FILE</div>`;
-      const body = `<div style="font-size:15px;font-weight:700;line-height:1.5;color:#000;">${title}${badge}</div><div style="font-size:12px;color:#777;font-weight:500;margin-top:3px;">Uploaded ${escapeHtml(formatDate(created, "recently"))}</div>`;
+      const tileHtml = `<div style="width:30px;height:30px;line-height:30px;text-align:center;background:${tile.background};border-radius:7px;font-family:Arial,sans-serif;font-size:9px;font-weight:bold;color:${tile.color};">FILE</div>`;
+      const body = `<div style="font-size:15px;font-weight:bold;line-height:1.5;color:#000;">${title}${badge}</div><div style="font-size:12px;color:#777;font-weight:500;margin-top:3px;">Uploaded ${escapeHtml(formatDate(created, "recently"))}</div>`;
       const wrap = (content: string) =>
         link
           ? `<a href="${link}" target="_blank" style="display:block;text-decoration:none;color:#000;">${content}</a>`
@@ -105,7 +105,7 @@ export const renderDrops = (value: unknown, projectLink: string) => {
       const border =
         index < shown.length - 1 ? "border-bottom:1px solid #e9e9e9;" : "";
 
-      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;${border}"><tr><td valign="top" width="42" style="width:42px;padding:16px 10px 16px 0;">${wrap(tileHtml)}</td><td valign="top" style="padding:16px 0;">${wrap(body)}</td><td valign="middle" width="24" style="width:24px;text-align:right;padding:16px 0 16px 8px;color:#999;font-size:24px;font-weight:300;line-height:1;">${chevron(link)}</td></tr></table>`;
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;${border}"><tr><td valign="top" width="42" style="width:42px;padding:16px 10px 16px 0;">${wrap(tileHtml)}</td><td valign="top" style="padding:16px 0;">${wrap(body)}</td><td valign="middle" width="24" style="width:24px;text-align:right;padding:16px 0 16px 8px;color:#999;font-size:24px;font-weight:normal;line-height:1;">${chevron(link)}</td></tr></table>`;
     })
     .join("");
 
@@ -140,7 +140,7 @@ export const renderMilestones = (
         "",
       );
 
-      return `<div style="${spacing}"><div style="font-size:16px;font-weight:600;line-height:1.5;">${escapeHtml(milestone.title || milestone.name || milestone.content)}</div>${date ? `<div style="font-size:12px;color:#555;font-weight:500;margin-top:6px;">${escapeHtml(date)}</div>` : ""}</div>`;
+      return `<div style="${spacing}"><div style="font-size:16px;font-weight:500;line-height:1.5;">${escapeHtml(milestone.title || milestone.name || milestone.content)}</div>${date ? `<div style="font-size:12px;color:#555;font-weight:500;margin-top:6px;">${escapeHtml(date)}</div>` : ""}</div>`;
     })
     .join("");
 

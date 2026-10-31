@@ -19,7 +19,7 @@ export interface CampaignAudienceGrowth {
   }[];
 }
 
-const fetchAudienceGrowth = async (
+export const fetchAudienceGrowth = async (
   isrc: string,
   startDate: string,
   endDate?: string,

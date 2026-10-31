@@ -19,12 +19,12 @@ interface SocialTractionResponse {
   error?: string;
 }
 
-const fetchSocialTraction = async (
+export const fetchSocialTraction = async (
   isrc: string,
+  days = 30,
 ): Promise<SocialTractionResponse> => {
-  const response = await fetch(
-    `/api/music-analytics/social-traction?isrc=${encodeURIComponent(isrc)}`,
-  );
+  const query = new URLSearchParams({ isrc, days: String(days) });
+  const response = await fetch(`/api/music-analytics/social-traction?${query}`);
   const payload = (await response
     .json()
     .catch(() => ({}))) as SocialTractionResponse;
