@@ -15,7 +15,7 @@ interface RadioWindow {
   endDate?: string;
 }
 
-const fetchTopRadio = async (
+export const fetchTopRadio = async (
   isrc: string,
   offset: number,
   countries: string[] | null,

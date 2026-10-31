@@ -23,6 +23,24 @@ const PLATFORM_COLORS: Record<string, string> = {
   deezer: "#8A3FFC",
   soundcloud: "#FF5500",
   applemusic: "#FA243C",
+  twitter: "#000000",
+  facebook: "#1877F2",
+};
+
+const PLATFORM_ORDER = [
+  "instagram",
+  "spotify",
+  "tiktok",
+  "youtube",
+  "deezer",
+  "soundcloud",
+  "twitter",
+  "facebook",
+];
+
+const platformRank = (code: string) => {
+  const index = PLATFORM_ORDER.indexOf(code);
+  return index === -1 ? PLATFORM_ORDER.length : index;
 };
 
 const RANK_COLORS = ["#F6D365", "#E9EAEC", "#DDA06F"];
@@ -176,7 +194,7 @@ export const renderPlatformAudience = (platforms: Platform[]) => {
   if (platforms.length === 0) return "";
 
   const sorted = [...platforms].sort(
-    (a, b) => (b.followers ?? -1) - (a.followers ?? -1),
+    (a, b) => platformRank(a.code) - platformRank(b.code),
   );
   const maxFollowers = Math.max(1, ...sorted.map((p) => p.followers ?? 0));
   const grid = twoColumnGrid(

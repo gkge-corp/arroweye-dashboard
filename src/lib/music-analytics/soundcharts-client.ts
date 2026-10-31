@@ -109,7 +109,8 @@ const fetchFromSoundcharts = async <T>(path: string, body?: unknown) => {
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
-    cache: "no-store",
+    // Soundcharts refreshes daily, so a 6-hour cache saves calls without serving stale days.
+    next: { revalidate: 6 * 60 * 60 },
   });
 
   const payload = (await response.json().catch(() => ({}))) as T &

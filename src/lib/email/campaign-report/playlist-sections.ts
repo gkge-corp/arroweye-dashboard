@@ -51,14 +51,14 @@ const renderPlaylistCard = (
   const addedOn = formatDate(playlist.addedAt, "", "long");
   const details = [
     playlist.position
-      ? `<div style="font-size:11px;color:#777;margin-top:8px;">Position &middot; <strong style="font-weight:800;color:#444;">#${playlist.position}</strong></div>`
+      ? `<div style="font-size:11px;color:#777;margin-top:8px;">Position &middot; <strong style="font-weight:bold;color:#444;">#${playlist.position}</strong></div>`
       : "",
     addedOn
       ? `<div style="font-size:10px;color:#777;margin-top:3px;">Added on ${addedOn}</div>`
       : "",
   ].join("");
 
-  return `<td width="33.33%" valign="top" style="padding:${padding};"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:#fff;border:1px solid #e7e7e7;"><tr><td style="padding:7px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr><td height="150" valign="top" style="height:150px;padding:10px;${gradient(index, "135deg")}color:#fff;"><div style="font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;opacity:.82;">${escapeHtml(playlist.platform)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;height:105px;"><tr><td height="105" valign="bottom" style="height:105px;padding:0 0 12px;"><div style="font-size:15px;font-weight:900;line-height:1.1;max-height:34px;overflow:hidden;">${title}</div></td></tr></table></td></tr></table>${details}</td></tr></table></td>`;
+  return `<td width="33.33%" valign="top" style="padding:${padding};"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:#fff;border:1px solid #e7e7e7;"><tr><td style="padding:7px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr><td height="150" valign="top" style="height:150px;padding:10px;${gradient(index, "135deg")}color:#fff;"><div style="font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:.7px;opacity:.82;">${escapeHtml(playlist.platform)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;height:105px;"><tr><td height="105" valign="bottom" style="height:105px;padding:0 0 12px;"><div style="font-size:15px;font-weight:bold;line-height:1.1;max-height:34px;overflow:hidden;">${title}</div></td></tr></table></td></tr></table>${details}</td></tr></table></td>`;
 };
 
 export const renderPlaylistAdditions = (
@@ -109,9 +109,9 @@ export const renderPlaylistBreakdown = (
         .filter(Boolean)
         .join(" &middot; ");
 
-      return `<div style="${index < entries.length - 1 ? "margin-bottom:14px;" : ""}"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;"><tr><td style="font-size:10px;color:#444;font-weight:900;padding-bottom:6px;text-transform:uppercase;">${escapeHtml(platform)}</td><td style="font-size:10px;color:#777;text-align:right;padding-bottom:6px;">${detail}</td></tr><tr><td colspan="2" style="height:8px;padding:0;background:#eee;border-radius:5px;"><span style="display:block;height:8px;width:${Math.max(1, share)}%;${gradient(index, "90deg")}border-radius:5px;"></span></td></tr></table></div>`;
+      return `<div style="${index < entries.length - 1 ? "margin-bottom:14px;" : ""}"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;"><tr><td style="font-size:10px;color:#444;font-weight:bold;padding-bottom:6px;text-transform:uppercase;">${escapeHtml(platform)}</td><td style="font-size:10px;color:#777;text-align:right;padding-bottom:6px;">${detail}</td></tr><tr><td colspan="2" style="height:8px;padding:0;background:#eee;border-radius:5px;"><span style="display:block;height:8px;width:${Math.max(1, share)}%;${gradient(index, "90deg")}border-radius:5px;"></span></td></tr></table></div>`;
     })
     .join("");
 
-  return `<div style="margin-top:24px;">${sectionTitle("Playlisting Breakdown")}<div style="margin-top:14px;background:#f9f9f9;padding:16px;border-radius:7px;border:1px solid #e5e5e5;"><div style="font-size:10px;letter-spacing:1px;font-weight:900;text-transform:uppercase;color:#666;">Placements</div><div style="font-size:24px;line-height:1;font-weight:900;margin:8px 0 4px;color:#222;">${formatNumber(placements)}</div><div style="font-size:11px;color:#777;margin-bottom:16px;">Playlists the song is currently on, by platform</div>${bars}<p style="font-size:11px;color:#777;margin:14px 0 0;line-height:1.45;"><strong>&#9432;</strong> Followers show the combined audience of those playlists where the platform reports it.</p></div></div>`;
+  return `<div style="margin-top:24px;">${sectionTitle("Playlisting Breakdown")}<div style="margin-top:14px;background:#f9f9f9;padding:16px;border-radius:7px;border:1px solid #e5e5e5;"><div style="font-size:10px;letter-spacing:1px;font-weight:bold;text-transform:uppercase;color:#666;">Placements</div><div style="font-size:24px;line-height:1;font-weight:bold;margin:8px 0 4px;color:#222;">${formatNumber(placements)}</div><div style="font-size:11px;color:#777;margin-bottom:16px;">Playlists the song is currently on, by platform</div>${bars}<p style="font-size:11px;color:#777;margin:14px 0 0;line-height:1.45;"><strong>&#9432;</strong> Followers show the combined audience of those playlists where the platform reports it.</p></div></div>`;
 };

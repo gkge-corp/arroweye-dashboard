@@ -107,16 +107,16 @@ export const detailRow = (label: string, value: unknown, primary = false) => {
   if (!text) return "";
 
   const labelStyle = primary
-    ? "padding:6px 0;color:#555;font-weight:800;width:140px;"
-    : "padding:5px 0;color:#666;font-weight:700;width:140px;";
+    ? "padding:6px 0;color:#555;font-weight:bold;width:140px;"
+    : "padding:5px 0;color:#666;font-weight:bold;width:140px;";
   return `<tr><td style="${labelStyle}">${escapeHtml(label)}</td><td style="padding:6px 0;color:#555;">${escapeHtml(text)}</td></tr>`;
 };
 
 export const sectionHeading = (icon: string, title: string, iconSize = 35) =>
-  `<div style="font-size:18px;font-weight:900;color:#222;line-height:30px;"><img style="width:${iconSize}px;height:${iconSize}px;object-fit:contain;vertical-align:middle;" src="${icon}" alt=""> ${escapeHtml(title)}</div>`;
+  `<div style="font-size:18px;font-weight:bold;color:#222;line-height:30px;"><img style="width:${iconSize}px;height:${iconSize}px;object-fit:contain;vertical-align:middle;" src="${icon}" alt=""> ${escapeHtml(title)}</div>`;
 
 export const sectionTitle = (title: string, letterSpacing = "1.25px") =>
-  `<div style="font-size:11px;letter-spacing:${letterSpacing};font-weight:900;text-transform:uppercase;color:#777;margin-bottom:10px;">${escapeHtml(title)}</div>`;
+  `<div style="font-size:11px;letter-spacing:${letterSpacing};font-weight:bold;text-transform:uppercase;color:#777;margin-bottom:10px;">${escapeHtml(title)}</div>`;
 
 export const sectionLabel = (title: string, description: string) =>
   `${sectionTitle(title)}<div style="font-size:12px;color:#888;line-height:1.45;margin-bottom:12px;">${escapeHtml(description)}</div>`;
@@ -132,4 +132,4 @@ export const listItemStyle = (isLast: boolean) =>
   `padding:16px 0;${isLast ? "" : "border-bottom:1px solid #e9e9e9;"}`;
 
 export const viewAll = (projectLink: string, marginTop = 20) =>
-  `<div style="text-align:right;margin-top:${marginTop}px;"><a href="${projectLink}" style="display:inline-block;font-size:13px;font-weight:800;color:#147aff;border:1px solid #147aff;padding:8px 18px;text-decoration:none;border-radius:999px;">View all</a></div>`;
+  `<div style="text-align:right;margin-top:${marginTop}px;"><a href="${projectLink}" style="display:inline-block;font-size:13px;font-weight:bold;color:#147aff;border:1px solid #147aff;padding:8px 18px;text-decoration:none;border-radius:999px;">View all</a></div>`;

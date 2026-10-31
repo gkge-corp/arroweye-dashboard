@@ -38,6 +38,13 @@ export interface CampaignReportAudienceGrowth {
   topPlatform?: string;
 }
 
+/** Gains over the last 7 days of the campaign trend. */
+export interface CampaignReportWeekly {
+  airplay: number;
+  streaming: number;
+  social: number;
+}
+
 /**
  * The resolved values shown on the campaign insights page. Songstats has
  * already overridden the eligible sections and the remaining sections have
@@ -53,6 +60,7 @@ export interface CampaignReportMetrics {
   /** Follower reach of current playlist placements, per platform. */
   performanceReach: CampaignReportStats;
   spinCount: number;
+  weekly: CampaignReportWeekly;
   topRadio?: string;
   /** Same ranking as the Top Radio card on the campaign page. */
   topRadioStations: CampaignReportRadioStation[];

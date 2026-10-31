@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { addDays } from "@/lib/music-analytics/channel-trend/dates";
 import { withRetry } from "@/lib/music-analytics/fan-out";
 import {
   normalizeIsrc,
@@ -10,7 +11,14 @@ import { songstatsErrorResponse } from "@/lib/music-analytics/songstats-track-st
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PERIOD_DAYS = 30;
+const DEFAULT_PERIOD_DAYS = 30;
+// The weekly report reads growth over 7 days; the insights page keeps 30.
+const ALLOWED_PERIOD_DAYS = new Set([7, 30]);
+
+const readPeriodDays = (raw: string | null) => {
+  const days = Number(raw);
+  return ALLOWED_PERIOD_DAYS.has(days) ? days : DEFAULT_PERIOD_DAYS;
+};
 
 const platforms = [
   {
@@ -73,26 +81,36 @@ const daysAgo = (days: number) => {
 
 /**
  * Songstats totals are cumulative, so growth over the period is the gap
- * between the first and last daily point that carry the field.
+ * between the latest point and the last point at least `periodDays` older.
+ * History reaches back a second period so sources that skip days still have
+ * a baseline. A point below an earlier one is a provider glitch (a stray low
+ * YouTube total once read as +486% over 7 days), so it is skipped.
  */
 const readEvolution = (
   history: (StatData & { date?: string })[],
   field: string,
+  periodDays: number,
 ) => {
-  const points = history
-    .map((point) => ({ date: point.date, value: finiteNumber(point[field]) }))
-    .filter((point) => point.value !== null) as {
-    date?: string;
-    value: number;
-  }[];
+  const points: { date: string; value: number }[] = [];
+  for (const point of history) {
+    const value = finiteNumber(point[field]);
+    if (value === null || !point.date) continue;
+    const previous = points[points.length - 1];
+    if (previous && value < previous.value) continue;
+    points.push({ date: point.date, value });
+  }
 
   if (points.length < 2) return { evolution: null, percentEvolution: null };
 
-  const first = points[0].value;
-  const evolution = points[points.length - 1].value - first;
+  const latest = points[points.length - 1];
+  const cutoff = addDays(latest.date, -periodDays);
+  const baseline =
+    points.filter((point) => point.date <= cutoff).at(-1) ?? points[0];
+  const evolution = latest.value - baseline.value;
   return {
     evolution,
-    percentEvolution: first > 0 ? (evolution / first) * 100 : null,
+    percentEvolution:
+      baseline.value > 0 ? (evolution / baseline.value) * 100 : null,
   };
 };
 
@@ -111,6 +129,7 @@ const readShazamTopMarket = (charts: ShazamChart[] = []) =>
 
 export async function GET(request: NextRequest) {
   const isrc = request.nextUrl.searchParams.get("isrc")?.trim();
+  const periodDays = readPeriodDays(request.nextUrl.searchParams.get("days"));
 
   if (!isrc) {
     return NextResponse.json(
@@ -138,7 +157,7 @@ export async function GET(request: NextRequest) {
           {
             ...track,
             source: SOURCES,
-            start_date: daysAgo(PERIOD_DAYS),
+            start_date: daysAgo(periodDays * 2),
             end_date: daysAgo(0),
           },
         ),
@@ -171,7 +190,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({
-      periodDays: PERIOD_DAYS,
+      periodDays,
       items: platforms.map((platform) => {
         const data = stats.get(platform.code);
         const history = histories.get(platform.code) ?? [];
@@ -181,7 +200,7 @@ export async function GET(request: NextRequest) {
           platform: platform.label,
           metric: platform.metric,
           value: finiteNumber(data?.[platform.field]),
-          ...readEvolution(history, platform.field),
+          ...readEvolution(history, platform.field, periodDays),
           updatedAt: history[history.length - 1]?.date ?? null,
           topMarket:
             platform.code === "shazam"

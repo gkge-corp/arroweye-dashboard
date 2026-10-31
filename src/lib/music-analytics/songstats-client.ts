@@ -56,7 +56,8 @@ const fetchFromSongstats = async <T>(path: string) => {
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: { apikey: apiKey, accept: "application/json" },
-    cache: "no-store",
+    // Songstats refreshes daily, so a 6-hour cache saves calls without serving stale days.
+    next: { revalidate: 6 * 60 * 60 },
   });
 
   const payload = (await response.json().catch(() => ({}))) as T &
