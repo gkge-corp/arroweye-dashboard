@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 
 import {
+  DEFAULT_FOLLOWER_RANGE,
   isFollowerRange,
-  type FollowerRange,
 } from "@/lib/music-analytics/artist/follower-growth";
 import { loadFollowerHistory } from "@/lib/music-analytics/artist/load-follower-history";
 import { withArtist } from "@/lib/music-analytics/songstats-artist";
@@ -10,11 +10,9 @@ import { withArtist } from "@/lib/music-analytics/songstats-artist";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_DAYS: FollowerRange = 90;
-
 const parseDays = (raw: string | null) => {
   const days = Number(raw);
-  return isFollowerRange(days) ? days : DEFAULT_DAYS;
+  return isFollowerRange(days) ? days : DEFAULT_FOLLOWER_RANGE;
 };
 
 export async function GET(request: NextRequest) {

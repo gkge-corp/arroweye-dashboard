@@ -38,8 +38,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useRadioMonitorDownload } from "@/hooks/use-radio-monitor-download";
 import {
-  getDropZones,
-  getNotifications,
+  getCampaignDropZones,
+  getProjectNotifications,
   notificationQueryKey,
 } from "@/services";
 import type {
@@ -112,12 +112,9 @@ export function BottomDock({
     isError: dropZonesError,
     refetch: refetchDropZones,
   } = useQuery({
-    queryKey: ["notification-dropzones", "all"],
-    queryFn: async () => {
-      const response = await getDropZones({ page: 1 });
-      return response.results;
-    },
-    enabled: isDropsPanelOpen,
+    queryKey: ["dropzones", "campaign", String(projectId)],
+    queryFn: () => getCampaignDropZones(projectId!),
+    enabled: isDropsPanelOpen && Boolean(projectId),
     staleTime: 60_000,
   });
 
@@ -146,8 +143,9 @@ export function BottomDock({
   );
 
   const { data: updateNotifications = [] } = useQuery({
-    queryKey: notificationQueryKey,
-    queryFn: () => getNotifications(),
+    queryKey: [...notificationQueryKey, "campaign", String(projectId)],
+    queryFn: () => getProjectNotifications(projectId!),
+    enabled: Boolean(projectId),
     staleTime: 60_000,
   });
 
@@ -263,7 +261,7 @@ export function BottomDock({
   const visibleDockItems = dockItems.filter(
     (item) =>
       (item.id !== "send" || canSendReport) &&
-      (item.id !== "schedule" || projectId),
+      (!["updates", "drops", "schedule"].includes(item.id) || projectId),
   );
 
   return (

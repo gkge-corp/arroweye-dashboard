@@ -32,9 +32,9 @@ const PLATFORM_ORDER = [
   "spotify",
   "tiktok",
   "youtube",
+  "twitter",
   "deezer",
   "soundcloud",
-  "twitter",
   "facebook",
 ];
 
@@ -93,8 +93,8 @@ const twoColumnGrid = (cells: string[], cellClass: string) => {
   return `<table ${TABLE} style="width:100%;margin-top:14px;border-collapse:collapse;">${rows.join("")}</table>`;
 };
 
-export const renderReportHeader = () =>
-  `<table ${TABLE}><tr><td valign="middle"><img src="https://res.cloudinary.com/dyueswnzk/image/upload/v1759783466/studio_2_hajzkn.png" alt="Arroweye" width="116" style="display:block;border:0;width:116px;height:auto;"></td><td align="right" valign="middle"><span style="display:inline-block;background:#FFF1E4;border:1px solid #FFD6B0;border-radius:999px;padding:6px 9px;font-size:9px;letter-spacing:.8px;font-weight:900;color:#B95300;">14-DAY READOUT</span></td></tr></table><div style="font-size:24px;line-height:1.15;font-weight:900;color:#17191C;margin-top:23px;">Artist Analytics</div><div style="font-size:12px;line-height:1.5;color:#787F88;margin-top:6px;">Audience scale, platform momentum and listener geography</div>`;
+export const renderReportHeader = (days: number) =>
+  `<table ${TABLE}><tr><td valign="middle"><img src="https://res.cloudinary.com/dyueswnzk/image/upload/v1792488900/studio_pcyhb7.png" alt="Arroweye" width="170" style="display:block;border:0;width:170px;height:auto;"></td><td align="right" valign="middle"><span style="display:inline-block;background:#FFF1E4;border:1px solid #FFD6B0;border-radius:999px;padding:6px 9px;font-size:9px;letter-spacing:.8px;font-weight:900;color:#B95300;">${days}-DAY READOUT</span></td></tr></table><div style="font-size:24px;line-height:1.15;font-weight:900;color:#17191C;margin-top:23px;">Artist Analytics</div><div style="font-size:12px;line-height:1.5;color:#787F88;margin-top:6px;">Audience scale, platform momentum and listener geography</div>`;
 
 const renderAvatar = (name: string, avatar: string | null) => {
   const src = safeUrl(avatar);

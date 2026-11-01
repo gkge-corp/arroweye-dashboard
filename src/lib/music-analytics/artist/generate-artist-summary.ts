@@ -10,9 +10,9 @@ import type { FollowerRange } from "./follower-growth";
 const MAX_SUMMARY_LENGTH = 500;
 
 const RANGE_LABELS: Record<FollowerRange, string> = {
+  7: "the last week",
+  14: "the last two weeks",
   30: "the last month",
-  90: "the last three months",
-  365: "the last year",
 };
 
 const INSTRUCTIONS = [

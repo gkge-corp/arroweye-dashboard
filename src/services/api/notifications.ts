@@ -16,24 +16,16 @@ if (typeof window !== "undefined" && window?.localStorage)
 
 export const getProjectNotifications = async (
   id: number,
-): Promise<any | null> => {
-  try {
-    const response = await apiRequest<any>({
-      method: "GET",
-      url: `/api/v1/projects/${id}/notifications/`,
-      data: null,
-      requireToken: true,
-    });
+): Promise<ApiNotification[]> => {
+  const response = await apiRequest<unknown>({
+    method: "GET",
+    url: `/api/v1/projects/${id}/notifications/`,
+    data: null,
+    requireToken: true,
+    silent: true,
+  });
 
-    if (response && typeof response === "object") {
-      return response;
-    } else {
-      console.error("Invalid DSP stats response structure:", response);
-      return null;
-    }
-  } catch (error: unknown) {
-    return null;
-  }
+  return normalizeNotifications(response);
 };
 
 type NotificationApiResponse =

@@ -40,7 +40,7 @@ export function renderArtistReportEmail({
     "Artist";
   const campaignName = asString(project.title || project.song_title);
   const sections = [
-    renderReportHeader(),
+    renderReportHeader(report.days),
     renderArtistIdentity(artistName, report.profile.artist),
     renderInsights(report),
     renderPlatformAudience(report.profile.platforms),

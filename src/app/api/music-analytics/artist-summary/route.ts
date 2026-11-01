@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { isFollowerRange } from "@/lib/music-analytics/artist/follower-growth";
+import {
+  DEFAULT_FOLLOWER_RANGE,
+  isFollowerRange,
+} from "@/lib/music-analytics/artist/follower-growth";
 import { loadArtistSummary } from "@/lib/music-analytics/artist/load-artist-summary";
 import { getAuthorizedProject } from "@/lib/server/get-authorized-project";
 
@@ -9,7 +12,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const campaignId = request.nextUrl.searchParams.get("campaignId")?.trim();
-  const days = Number(request.nextUrl.searchParams.get("days") ?? 90);
+  const days = Number(
+    request.nextUrl.searchParams.get("days") ?? DEFAULT_FOLLOWER_RANGE,
+  );
 
   if (!campaignId || !/^\d+$/.test(campaignId) || !isFollowerRange(days)) {
     return NextResponse.json(
