@@ -1,6 +1,8 @@
-export type FollowerRange = 30 | 90 | 365;
+export type FollowerRange = 7 | 14 | 30;
 
-export const FOLLOWER_RANGES: FollowerRange[] = [30, 90, 365];
+export const FOLLOWER_RANGES: FollowerRange[] = [7, 14, 30];
+
+export const DEFAULT_FOLLOWER_RANGE: FollowerRange = 30;
 
 export type FollowerPoint = { date: string } & Record<string, number | string>;
 

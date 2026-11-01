@@ -2,7 +2,10 @@
 
 import React from "react";
 
-import { summarizeFollowerGrowth } from "@/lib/music-analytics/artist/follower-growth";
+import {
+  DEFAULT_FOLLOWER_RANGE,
+  summarizeFollowerGrowth,
+} from "@/lib/music-analytics/artist/follower-growth";
 
 import type { ArtistQuery } from "./fetch-artist-analytics";
 import { useArtistAudience } from "./use-artist-audience";
@@ -16,7 +19,9 @@ import { useArtistTopTracks } from "./use-artist-top-tracks";
 
 /** Every artist section, keyed off the campaign's linked song. */
 export function useArtistAnalytics(campaignId: string, query: ArtistQuery) {
-  const [followerRange, setFollowerRange] = React.useState<FollowerRange>(90);
+  const [followerRange, setFollowerRange] = React.useState<FollowerRange>(
+    DEFAULT_FOLLOWER_RANGE,
+  );
   const followerHistory = useArtistFollowerHistory(query, followerRange);
   const { followerPlatforms, followerPoints } = followerHistory;
   // Keyed by platform code so each stat tile can show its period growth.
