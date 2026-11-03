@@ -19,6 +19,41 @@ export interface Publication {
   social: string;
 }
 
+export interface HandKeptRadio {
+  id: string;
+  name: string;
+  city: string;
+  countryCode: string;
+  reach: number;
+  imageUrl?: string;
+}
+
+// Soundcharts has no Tanzanian stations. These audience figures are
+// placeholders until real ones are supplied.
+export const HAND_KEPT_RADIOS: HandKeptRadio[] = [
+  {
+    id: "wasafi-fm-tz",
+    name: "Wasafi FM",
+    city: "Dar es Salaam",
+    countryCode: "TZ",
+    reach: 2_000_000,
+  },
+  {
+    id: "clouds-fm-tz",
+    name: "Clouds FM",
+    city: "Dar es Salaam",
+    countryCode: "TZ",
+    reach: 1_800_000,
+  },
+  {
+    id: "e-fm-tz",
+    name: "E FM",
+    city: "Dar es Salaam",
+    countryCode: "TZ",
+    reach: 1_200_000,
+  },
+];
+
 export const TV_CHANNELS: TvChannel[] = [
   { name: "MTV Base", country: "Nigeria", audience: 15_200_000 },
   { name: "Trace TV", country: "Nigeria", audience: 12_500_000 },
