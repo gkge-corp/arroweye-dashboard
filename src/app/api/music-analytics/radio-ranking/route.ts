@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { HAND_KEPT_RADIOS } from "@/app/spots/spots-data";
 import { readCountryName } from "@/lib/music-analytics/country-names";
 import { fetchTopRadios } from "@/lib/music-analytics/soundcharts-radio-ranking";
 import { soundchartsErrorResponse } from "@/lib/music-analytics/soundcharts-radio";
@@ -7,8 +8,8 @@ import { soundchartsErrorResponse } from "@/lib/music-analytics/soundcharts-radi
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_COUNTRIES = ["NG", "GB", "GH"];
-const RANKING_SIZE = 50;
+const DEFAULT_COUNTRIES = ["NG", "ZA", "KE", "UG", "TZ", "GB", "GH"];
+const STATIONS_PER_COUNTRY = 50;
 
 const readCountries = (value: string | null) => {
   const codes = (value ?? "")
@@ -24,9 +25,16 @@ export async function GET(request: NextRequest) {
   );
 
   try {
-    const stations = await fetchTopRadios(countries, RANKING_SIZE);
+    // One request per country: a combined request shares a single limit,
+    // and the UK alone fills it.
+    const rankings = await Promise.all(
+      countries.map((code) => fetchTopRadios([code], STATIONS_PER_COUNTRY)),
+    );
+    const handKept = HAND_KEPT_RADIOS.filter((station) =>
+      countries.includes(station.countryCode),
+    );
 
-    const items = stations
+    const items = [...rankings.flat(), ...handKept]
       .filter((station) => station.reach > 0)
       // The provider sorts on its own reach metric, which can lag the
       // station's current figure, so re-rank on the value we display.

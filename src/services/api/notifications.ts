@@ -14,20 +14,6 @@ import ls from "localstorage-slim";
 if (typeof window !== "undefined" && window?.localStorage)
   ls.config.storage = localStorage;
 
-export const getProjectNotifications = async (
-  id: number,
-): Promise<ApiNotification[]> => {
-  const response = await apiRequest<unknown>({
-    method: "GET",
-    url: `/api/v1/projects/${id}/notifications/`,
-    data: null,
-    requireToken: true,
-    silent: true,
-  });
-
-  return normalizeNotifications(response);
-};
-
 type NotificationApiResponse =
   | NotificationPage
   | ApiNotification[]
@@ -75,9 +61,24 @@ const filterByType = (
       )
     : notifications;
 
-// The list is paginated and `type` is not a documented filter, so read every
-// page and filter here; otherwise older types (e.g. milestones) never load.
-const fetchAllNotificationPages = async (type?: NotificationType) => {
+const NOTIFICATION_CATEGORIES: Record<NotificationType, string> = {
+  Campaigns: "campaign",
+  Milestones: "milestone",
+  Security: "security",
+  Assets: "drop",
+  Payments: "payment",
+  Others: "other",
+};
+
+interface NotificationFilters {
+  type?: NotificationType;
+  projectId?: number;
+}
+
+const fetchAllNotificationPages = async ({
+  type,
+  projectId,
+}: NotificationFilters) => {
   const notifications: ApiNotification[] = [];
 
   for (let page = 1; page <= MAX_NOTIFICATION_PAGES; page++) {
@@ -85,7 +86,8 @@ const fetchAllNotificationPages = async (type?: NotificationType) => {
       page: String(page),
       page_size: String(NOTIFICATION_PAGE_SIZE),
     });
-    if (type) params.set("type", type);
+    if (type) params.set("category", NOTIFICATION_CATEGORIES[type]);
+    if (projectId) params.set("project_id", String(projectId));
 
     const response = await apiRequest<NotificationApiResponse>({
       method: "GET",
@@ -108,7 +110,7 @@ export const getNotifications = async (
 ): Promise<ApiNotification[]> => {
   try {
     const notifications = filterByType(
-      await fetchAllNotificationPages(type),
+      await fetchAllNotificationPages({ type }),
       type,
     );
 
@@ -128,6 +130,12 @@ export const getNotifications = async (
     return notifications;
   }
 };
+
+export const getProjectNotifications = async (
+  projectId: number,
+  type?: NotificationType,
+): Promise<ApiNotification[]> =>
+  filterByType(await fetchAllNotificationPages({ type, projectId }), type);
 
 /** @deprecated Use getNotifications for the normalized notification array. */
 export const getNotification = getNotifications;

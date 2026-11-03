@@ -3,8 +3,8 @@ import "server-only";
 import { withRetry } from "./fan-out";
 import { soundchartsRequest } from "./soundcharts-client";
 
-// Station reach moves slowly, so a ranking is kept for a week.
-const RADIO_RANKING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Station reach is only updated quarterly, so a ranking is kept for 90 days.
+const RADIO_RANKING_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 interface TopRadioItem {
   radio?: {

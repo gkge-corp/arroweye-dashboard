@@ -37,16 +37,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRadioMonitorDownload } from "@/hooks/use-radio-monitor-download";
-import {
-  getCampaignDropZones,
-  getProjectNotifications,
-  notificationQueryKey,
-} from "@/services";
+import { getProjectNotifications, notificationQueryKey } from "@/services";
 import type {
   CampaignReportMetrics,
   SendCampaignReportResult,
 } from "@/types/campaign-report";
-import type { NotificationByType } from "@/types/notifications";
 import type { PublicationMedia } from "@/hooks/use-publication-form";
 import { DeletePublicationDialog } from "./delete-publication-dialog";
 import { PublicationDialog } from "./publication-dialog";
@@ -107,40 +102,21 @@ export function BottomDock({
 
   const isDropsPanelOpen = popoverOpen && activePanel === "drops";
   const {
-    data: dropZones = [],
-    isLoading: dropZonesLoading,
-    isError: dropZonesError,
-    refetch: refetchDropZones,
+    data: dropNotifications = [],
+    isLoading: dropsLoading,
+    isError: dropsError,
+    refetch: refetchDrops,
   } = useQuery({
-    queryKey: ["dropzones", "campaign", String(projectId)],
-    queryFn: () => getCampaignDropZones(projectId!),
+    queryKey: [
+      ...notificationQueryKey,
+      "campaign",
+      String(projectId),
+      "Assets",
+    ],
+    queryFn: () => getProjectNotifications(projectId!, "Assets"),
     enabled: isDropsPanelOpen && Boolean(projectId),
     staleTime: 60_000,
   });
-
-  const dropNotifications = useMemo<NotificationByType<"Assets">[]>(
-    () =>
-      dropZones.map((drop) => {
-        const uploader =
-          [drop.first_name, drop.last_name].filter(Boolean).join(" ") ||
-          drop.user?.user_profile?.fullname ||
-          "Unknown user";
-
-        return {
-          id: drop.id,
-          type: "Assets",
-          icon: "",
-          content: `New drop from ${uploader}: ${drop.folder_name || "Untitled folder"}`,
-          actions: [
-            { type: "Download", url: drop.link },
-            { type: "Share", url: drop.link },
-          ],
-          created: drop.created,
-          read: true,
-        };
-      }),
-    [dropZones],
-  );
 
   const { data: updateNotifications = [] } = useQuery({
     queryKey: [...notificationQueryKey, "campaign", String(projectId)],
@@ -370,18 +346,18 @@ export function BottomDock({
             <div className="flex min-h-0 flex-col">
               <ScrollArea className="h-[min(46vh,360px)] min-h-48">
                 <div className="text-sm text-muted-foreground">
-                  {dropZonesLoading && (
+                  {dropsLoading && (
                     <p className="p-6 text-center text-neutral-500">
                       Loading drops…
                     </p>
                   )}
-                  {dropZonesError && !dropZonesLoading && (
+                  {dropsError && !dropsLoading && (
                     <div className="flex items-center justify-center gap-2 p-6 text-red-600">
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => void refetchDropZones()}
+                        onClick={() => void refetchDrops()}
                         aria-label="Reload drops"
                         title="Reload drops"
                         className="size-7 rounded-full text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
@@ -391,7 +367,7 @@ export function BottomDock({
                       <p>Drops could not be loaded.</p>
                     </div>
                   )}
-                  {!dropZonesLoading && !dropZonesError && (
+                  {!dropsLoading && !dropsError && (
                     <NotificationList
                       notifications={dropNotifications}
                       emptyCategory="asset"
@@ -681,7 +657,7 @@ export function BottomDock({
           open={dropzoneDialogOpen}
           projectId={contentId}
           onOpenChange={setDropzoneDialogOpen}
-          onUploaded={() => void refetchDropZones()}
+          onUploaded={() => void refetchDrops()}
         />
       )}
 
