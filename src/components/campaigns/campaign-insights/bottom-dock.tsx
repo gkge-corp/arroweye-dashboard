@@ -125,22 +125,27 @@ export function BottomDock({
     staleTime: 60_000,
   });
 
-  const publications = useMemo<PublicationMedia[]>(
-    () =>
-      Array.isArray(media)
-        ? media.filter((item): item is PublicationMedia =>
-            Boolean(
-              item &&
-              typeof item === "object" &&
-              "id" in item &&
-              typeof item.id === "number" &&
-              "type" in item &&
-              item.type === "Editorial",
-            ),
-          )
-        : [],
-    [media],
-  );
+  const publications = useMemo<PublicationMedia[]>(() => {
+    if (!Array.isArray(media)) return [];
+
+    const editorials = media.filter((item): item is PublicationMedia =>
+      Boolean(
+        item &&
+        typeof item === "object" &&
+        "id" in item &&
+        typeof item.id === "number" &&
+        "type" in item &&
+        item.type === "Editorial",
+      ),
+    );
+
+    // Items without a `created` date fall back to id order (higher id = newer).
+    return editorials.sort((a, b) => {
+      const aTime = a.created ? new Date(a.created).getTime() : 0;
+      const bTime = b.created ? new Date(b.created).getTime() : 0;
+      return bTime - aTime || b.id - a.id;
+    });
+  }, [media]);
 
   const selectPanel = (panel: DockPanel) => {
     if (popoverOpen && activePanel === panel) {
