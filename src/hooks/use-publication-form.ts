@@ -11,6 +11,7 @@ export interface PublicationMedia {
   publication?: string | null;
   channel?: string | null;
   editorial_link?: string | null;
+  created?: string | null;
 }
 
 export const publicationChannels = [

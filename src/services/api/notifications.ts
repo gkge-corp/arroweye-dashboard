@@ -61,23 +61,16 @@ const filterByType = (
       )
     : notifications;
 
-const NOTIFICATION_CATEGORIES: Record<NotificationType, string> = {
-  Campaigns: "campaign",
-  Milestones: "milestone",
-  Security: "security",
-  Assets: "drop",
-  Payments: "payment",
-  Others: "other",
-};
-
+// No `category` param: the backend filters it against a field that is null on
+// every notification, so it returns nothing. Callers filter by `type` instead.
 interface NotificationFilters {
-  type?: NotificationType;
   projectId?: number;
+  scope?: "user";
 }
 
 const fetchAllNotificationPages = async ({
-  type,
   projectId,
+  scope,
 }: NotificationFilters) => {
   const notifications: ApiNotification[] = [];
 
@@ -86,8 +79,8 @@ const fetchAllNotificationPages = async ({
       page: String(page),
       page_size: String(NOTIFICATION_PAGE_SIZE),
     });
-    if (type) params.set("category", NOTIFICATION_CATEGORIES[type]);
     if (projectId) params.set("project_id", String(projectId));
+    if (scope) params.set("scope", scope);
 
     const response = await apiRequest<NotificationApiResponse>({
       method: "GET",
@@ -110,7 +103,7 @@ export const getNotifications = async (
 ): Promise<ApiNotification[]> => {
   try {
     const notifications = filterByType(
-      await fetchAllNotificationPages({ type }),
+      await fetchAllNotificationPages({ scope: "user" }),
       type,
     );
 
@@ -135,7 +128,7 @@ export const getProjectNotifications = async (
   projectId: number,
   type?: NotificationType,
 ): Promise<ApiNotification[]> =>
-  filterByType(await fetchAllNotificationPages({ type, projectId }), type);
+  filterByType(await fetchAllNotificationPages({ projectId }), type);
 
 /** @deprecated Use getNotifications for the normalized notification array. */
 export const getNotification = getNotifications;
