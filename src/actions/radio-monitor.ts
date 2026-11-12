@@ -1,5 +1,6 @@
 "use server";
 
+import { loadLatestStationCharts } from "@/lib/radio-monitor/load-radio-station-plays";
 import { canManageRadioMonitor } from "@/lib/radio-monitor/radio-monitor-access";
 import { getAuthorizedStaff } from "@/lib/server/get-authorized-staff";
 import {
@@ -7,9 +8,11 @@ import {
   findLatestRadioMonitor,
   getRadioMonitorDownloadUrl,
   isRadioMonitorFormat,
+  listRadioMonitors,
   RADIO_MONITOR_MAX_BYTES,
 } from "@/lib/storage/r2";
 import type {
+  RadioMonitorChartsResult,
   RadioMonitorDownloadResult,
   RadioMonitorFileResult,
   RadioMonitorUploadSignatureResult,
@@ -67,6 +70,19 @@ export async function getRadioMonitorFile(): Promise<RadioMonitorFileResult> {
       success: false,
       message: toMessage(error, "The radio monitor file could not be loaded."),
     };
+  }
+}
+
+export async function getRadioMonitorCharts(): Promise<RadioMonitorChartsResult> {
+  try {
+    await authorizeRadioMonitor();
+    return {
+      success: true,
+      charts: await loadLatestStationCharts(await listRadioMonitors()),
+    };
+  } catch (error) {
+    console.error("Radio monitor charts failed to load:", error);
+    return { success: false, message: "The radio charts could not be loaded." };
   }
 }
 

@@ -11,6 +11,11 @@ export interface Top100Row {
   previousPlays: number | null;
   /** Null when the cell is blank or "-". */
   impressions: number | null;
+  /** Last week's position; station charts only. */
+  lastWeek: number | null;
+  /** Peak position and weeks on chart; national charts only. */
+  peak: number | null;
+  weeks: number | null;
 }
 
 export interface Top100Chart {
@@ -140,6 +145,9 @@ const splitOwnerSuffix = (title: string, owner: string | undefined) => {
   return title.replace(OWNER_SUFFIX, "").trim() || title;
 };
 
+const toInteger = (text: string | undefined) =>
+  INTEGER_PATTERN.test(text ?? "") ? Number(text) : null;
+
 const parseRow = (values: Record<string, string>): Top100Row | null => {
   const { Pos, Plays, Prev, Artist } = values;
   if (
@@ -155,8 +163,11 @@ const parseRow = (values: Record<string, string>): Top100Row | null => {
     artist: Artist,
     title: splitOwnerSuffix(values.Title ?? "", values.Owner),
     plays: Number(Plays),
-    previousPlays: INTEGER_PATTERN.test(Prev ?? "") ? Number(Prev) : null,
+    previousPlays: toInteger(Prev),
     impressions: parseImpressions(values["Imp's"]),
+    lastWeek: toInteger(values.LW),
+    peak: toInteger(values.Pk),
+    weeks: toInteger(values.Wks),
   };
 };
 

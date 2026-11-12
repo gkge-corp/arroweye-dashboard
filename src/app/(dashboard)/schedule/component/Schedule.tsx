@@ -109,9 +109,11 @@ const Schedule: React.FC<ScheduleProps> = ({
 
   return (
     <div>
-      <div className="schedule-container mb-[100px] space-y-[20px]">
+      {/* Fixed height so only the calendar body scrolls; the top nav, add
+          button and calendar toolbar stay in view. */}
+      <div className="schedule-container flex h-[calc(100dvh-6rem)] flex-col gap-[20px] pb-[20px]">
         {filterIcon && (
-          <div className="mb-[30px] flex items-center justify-center gap-[5px]">
+          <div className="flex shrink-0 items-center justify-center gap-[5px]">
             <Button
               type="button"
               size="icon-lg"
@@ -123,8 +125,8 @@ const Schedule: React.FC<ScheduleProps> = ({
             </Button>
           </div>
         )}
-        <div className="schedule-calendar">
-          <div className="sm:hidden">
+        <div className="schedule-calendar min-h-0 flex-1">
+          <div className="h-full sm:hidden">
             <FullCalendar
               plugins={[
                 dayGridPlugin,
@@ -133,6 +135,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                 interactionPlugin,
               ]}
               initialView="dayGridMonth"
+              height="100%"
               headerToolbar={{
                 left: "prev,next today",
                 center: "title",
@@ -146,7 +149,7 @@ const Schedule: React.FC<ScheduleProps> = ({
               droppable={true}
             />
           </div>
-          <div className="hidden sm:block">
+          <div className="hidden h-full sm:block">
             <FullCalendar
               plugins={[
                 dayGridPlugin,
@@ -155,6 +158,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                 interactionPlugin,
               ]}
               initialView="dayGridMonth"
+              height="100%"
               headerToolbar={{
                 left: "prev,next today",
                 center: "title",
