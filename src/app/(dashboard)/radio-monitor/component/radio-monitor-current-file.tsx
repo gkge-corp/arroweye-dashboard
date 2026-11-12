@@ -10,7 +10,7 @@ interface RadioMonitorCurrentFileProps {
   error?: string;
 }
 
-const formatUploadedAt = (value: string) => {
+export const formatUploadedAt = (value: string) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Upload date unknown";
   return `Uploaded ${format(date, "MMM d, yyyy 'at' h:mm a")} · ${formatDistanceToNow(date, { addSuffix: true })}`;

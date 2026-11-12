@@ -70,7 +70,7 @@ const statusPillStyles: Record<SpinStatus, string> = {
   "": "bg-muted text-muted-foreground",
 };
 
-function MovementPill({ movement }: { movement: number | null }) {
+export function MovementPill({ movement }: { movement: number | null }) {
   if (movement === null) {
     return (
       <span
@@ -135,32 +135,44 @@ function SpinsHeader({ chart }: { chart: SpinsChart }) {
     <header className="grid grid-cols-[1fr_auto_1fr] items-center px-5 py-8 sm:px-8">
       <span />
 
-      <Popover open={chart.calendarOpen} onOpenChange={chart.setCalendarOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 w-64 justify-start rounded-2xl px-4 text-left text-sm font-normal"
+      <div className="flex flex-col items-center gap-1.5">
+        <Popover open={chart.calendarOpen} onOpenChange={chart.setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-64 justify-start rounded-2xl px-4 text-left text-sm font-normal"
+            >
+              <CalendarDays className="text-muted-foreground mr-2 size-4" />
+              <span className="truncate">{chart.formattedDateRange}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="center"
+            sideOffset={8}
+            className="w-auto max-w-[calc(100vw-2rem)] overflow-auto p-0"
           >
-            <CalendarDays className="text-muted-foreground mr-2 size-4" />
-            <span className="truncate">{chart.formattedDateRange}</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="center"
-          sideOffset={8}
-          className="w-auto max-w-[calc(100vw-2rem)] overflow-auto p-0"
-        >
-          <Calendar
-            mode="range"
-            selected={chart.dateRange}
-            onSelect={chart.handleDateRangeSelect}
-            defaultMonth={chart.dateRange?.from}
-            numberOfMonths={2}
-            disabled={{ after: new Date() }}
-          />
-        </PopoverContent>
-      </Popover>
+            <Calendar
+              mode="range"
+              selected={chart.dateRange}
+              onSelect={chart.handleDateRangeSelect}
+              defaultMonth={chart.dateRange?.from}
+              numberOfMonths={2}
+              disabled={{ after: new Date() }}
+            />
+          </PopoverContent>
+        </Popover>
+        {chart.lastUpdated && (
+          <p className="text-xs text-muted-foreground">
+            Last updated{" "}
+            {chart.lastUpdated.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </p>
+        )}
+      </div>
 
       <DataGuideDialog />
     </header>
@@ -228,6 +240,16 @@ function SpinsTable({ chart }: { chart: SpinsChart }) {
           </TableRow>
         </TableHeader>
         <TableBody>
+          {chart.tableData.length === 0 && (
+            <TableRow className="hover:bg-transparent">
+              <TableCell
+                colSpan={tableHeaders.length}
+                className="py-16 text-center text-sm text-muted-foreground"
+              >
+                No spins in this period.
+              </TableCell>
+            </TableRow>
+          )}
           {chart.tableData.map((row, idx) => (
             <TableRow
               key={`${row.song}-${row.artist}-${idx}`}

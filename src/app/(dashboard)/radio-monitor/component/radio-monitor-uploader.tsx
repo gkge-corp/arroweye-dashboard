@@ -21,7 +21,16 @@ const formatFileSize = (bytes: number) =>
     ? `${Math.max(1, Math.round(bytes / 1024))} KB`
     : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
-export function RadioMonitorUploader() {
+interface RadioMonitorUploaderProps {
+  /** Off when the current file is already shown elsewhere on the page. */
+  showCurrentFile?: boolean;
+  onUploaded?: () => void;
+}
+
+export function RadioMonitorUploader({
+  showCurrentFile = true,
+  onUploaded,
+}: RadioMonitorUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -44,6 +53,7 @@ export function RadioMonitorUploader() {
       await upload(selectedFile);
       toast.success("Radio monitor uploaded.");
       setSelectedFile(null);
+      onUploaded?.();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -55,13 +65,17 @@ export function RadioMonitorUploader() {
 
   return (
     <div className="flex w-full flex-col gap-5 rounded-[12px] border p-6 text-left">
-      <RadioMonitorCurrentFile
-        file={currentFile}
-        isLoading={isLoadingFile}
-        error={fileError}
-      />
+      {showCurrentFile && (
+        <RadioMonitorCurrentFile
+          file={currentFile}
+          isLoading={isLoadingFile}
+          error={fileError}
+        />
+      )}
 
-      <div className="flex flex-col gap-2 border-t pt-5">
+      <div
+        className={cn("flex flex-col gap-2", showCurrentFile && "border-t pt-5")}
+      >
         <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
           {currentFile ? "Replace file" : "Upload file"}
         </p>

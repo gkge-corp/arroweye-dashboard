@@ -292,6 +292,15 @@ const AssetsLibrary = () => {
                     "h-9 py-0 text-[15px] placeholder:text-[15px]",
                   )}
                 </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  aria-label="New drop"
+                  className="size-9 shrink-0 rounded-full active:scale-[0.97]"
+                  onClick={() => setUploadDialogOpen(true)}
+                >
+                  <Icon path={mdiPlus} className="size-4" />
+                </Button>
                 <NotificationsMenu triggerClassName="relative size-9 rounded-full text-foreground active:scale-[0.97] [&_svg]:size-[18px]!" />
               </>
             )}

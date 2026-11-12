@@ -67,9 +67,12 @@ export function NotificationCard({
   const iconValue = notification.icon;
   const mdiIcon = getMdiNotificationIcon(iconValue);
   const icon = mdiIcon ?? getFallbackNotificationIcon(type, message);
-  // Security tiles always use the template's gray tile with a black icon.
+  // Security and drop tiles always use the template colors; the API's drop
+  // color is the light lime tile, which would leave a white icon unreadable.
   const apiTileColor =
-    type === "Security" ? undefined : mdiIcon?.backgroundColor;
+    type === "Security" || type === "Assets"
+      ? undefined
+      : mdiIcon?.backgroundColor;
   const isIconUrl = isNotificationIconUrl(iconValue);
   const isArtwork = type === "Assets" && isIconUrl;
   const isSpinNotification =

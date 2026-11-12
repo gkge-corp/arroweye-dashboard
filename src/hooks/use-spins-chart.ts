@@ -156,6 +156,33 @@ const mapApiDataToChartData = (apiData: any[]): ChartData[] => {
   });
 };
 
+const shiftDays = (date: Date, days: number): Date => {
+  const shifted = new Date(date);
+  shifted.setDate(shifted.getDate() + days);
+  return shifted;
+};
+
+const MAX_LOOKBACK_WEEKS = 26;
+
+/**
+ * Spins land in batches, so the current week is often still empty. Walks
+ * back a week at a time to the most recent week that has spins.
+ */
+const findLatestSpinsRange = async (
+  end: Date,
+): Promise<{ from: Date; to: Date } | null> => {
+  for (let week = 0; week < MAX_LOOKBACK_WEEKS; week++) {
+    const to = shiftDays(end, -7 * week);
+    const from = shiftDays(to, -7);
+    const content = await getSpinsAnalytics(
+      formatDateForAPI(from),
+      formatDateForAPI(to),
+    );
+    if (content?.audio_spins?.length > 0) return { from, to };
+  }
+  return null;
+};
+
 const toExportRow = (row: ChartData) => [
   row.position,
   row.song,
@@ -170,6 +197,8 @@ const toExportRow = (row: ChartData) => [
 export function useSpinsChart() {
   const [dateRange, setDateRange] = useState<DateRange>();
   const [datesReady, setDatesReady] = useState(false);
+  /** End of the latest week with spins, when the current week has none. */
+  const [lastUpdated, setLastUpdated] = useState<Date>();
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     column: null,
@@ -184,14 +213,25 @@ export function useSpinsChart() {
 
     if (startFromUrl && endFromUrl && startFromUrl <= endFromUrl) {
       setDateRange({ from: startFromUrl, to: endFromUrl });
-    } else {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - 7);
-      setDateRange({ from: start, to: end });
+      setDatesReady(true);
+      return;
     }
 
-    setDatesReady(true);
+    const end = new Date();
+    const currentWeek = { from: shiftDays(end, -7), to: end };
+
+    findLatestSpinsRange(end)
+      .then((latest) => {
+        setDateRange(latest ?? currentWeek);
+        if (latest && latest.to.getTime() !== end.getTime()) {
+          setLastUpdated(latest.to);
+        }
+      })
+      .catch((err) => {
+        console.error("Error finding latest spins week:", err);
+        setDateRange(currentWeek);
+      })
+      .finally(() => setDatesReady(true));
   }, []);
 
   const startDate = dateRange?.from;
@@ -217,6 +257,7 @@ export function useSpinsChart() {
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     setDateRange(range);
+    setLastUpdated(undefined);
 
     if (!range?.from || !range.to) return;
 
@@ -310,6 +351,7 @@ export function useSpinsChart() {
     handleSort,
     dateRange,
     formattedDateRange,
+    lastUpdated,
     calendarOpen,
     setCalendarOpen,
     handleDateRangeSelect,

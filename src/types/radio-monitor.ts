@@ -1,3 +1,5 @@
+import type { Top100Chart } from "@/lib/radio-monitor/parse-top-100-chart";
+
 export interface RadioMonitorUploadParams {
   uploadUrl: string;
   contentType: string;
@@ -19,4 +21,8 @@ export type RadioMonitorDownloadResult =
 
 export type RadioMonitorFileResult =
   | { success: true; file: RadioMonitorFile | null }
+  | { success: false; message: string };
+
+export type RadioMonitorChartsResult =
+  | { success: true; charts: Top100Chart[] }
   | { success: false; message: string };

@@ -26,13 +26,12 @@ const readChart = async (
 };
 
 /**
- * Ranks the stations playing the campaign's song. Each upload is one
- * station's Radiomonitor Top 100 PDF; only the newest chart per station counts.
+ * Each upload is one station's Radiomonitor Top 100 PDF; only the newest
+ * chart per station counts.
  */
-export const loadRadioStationPlays = async (
+export const loadLatestStationCharts = async (
   files: StoredRadioMonitor[],
-  song: { title: string; artist: string },
-): Promise<RadioStationPlay[]> => {
+): Promise<Top100Chart[]> => {
   const charts = await Promise.all(files.filter(isPdf).map(readChart));
   const latestByStation = new Map<string, Top100Chart>();
 
@@ -43,13 +42,23 @@ export const loadRadioStationPlays = async (
     }
   }
 
-  const plays = [...latestByStation.values()]
+  return [...latestByStation.values()];
+};
+
+/** Ranks the stations playing the campaign's song. */
+export const loadRadioStationPlays = async (
+  files: StoredRadioMonitor[],
+  song: { title: string; artist: string },
+): Promise<RadioStationPlay[]> => {
+  const charts = await loadLatestStationCharts(files);
+
+  const plays = charts
     .map((chart) => findStationPlay(chart, song.title, song.artist))
     .filter((play): play is RadioStationPlay => Boolean(play));
 
   if (plays.length === 0) {
     console.warn(
-      `Radio monitor: "${song.title}" by "${song.artist}" is not on any uploaded chart (checked ${latestByStation.size} of ${files.length} files: ${[...latestByStation.keys()].join(", ") || "none parsed"}).`,
+      `Radio monitor: "${song.title}" by "${song.artist}" is not on any uploaded chart (checked ${charts.length} of ${files.length} files: ${charts.map((chart) => chart.station).join(", ") || "none parsed"}).`,
     );
   }
 
