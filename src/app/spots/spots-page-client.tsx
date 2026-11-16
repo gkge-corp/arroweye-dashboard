@@ -8,6 +8,10 @@ import {
   SortableTableHeader,
   sortableCellClassName,
 } from "@/components/sortable-table-header";
+import {
+  NoSearchResults,
+  TableSearchInput,
+} from "@/components/table-search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableBody, TableHeader, TableRow } from "@/components/ui/table";
 import { useActiveColumn } from "@/hooks/use-active-column";
@@ -212,6 +216,15 @@ function RadioRows({
     );
   }
 
+  if (spots.hasRadioData && spots.radioStations.length === 0) {
+    return (
+      <NoSearchResults
+        query={spots.searchQuery}
+        colSpan={RADIO_COLUMNS.length}
+      />
+    );
+  }
+
   return spots.radioStations.map((station) => (
     <tr key={station.id}>
       <td className={cell("position")}>{station.position}</td>
@@ -237,6 +250,13 @@ export default function SpotsPageClient() {
       {/* Table headers stick just below this bar. */}
       <div ref={header.ref} className="sticky top-0 z-30 bg-background">
         <SpotsHeader tab={spots.tab} onTabChange={spots.setTab} />
+        <div className="flex justify-center px-5 pb-5">
+          <TableSearchInput
+            value={spots.searchQuery}
+            onChange={spots.setSearchQuery}
+            placeholder="Search name, country…"
+          />
+        </div>
       </div>
 
       <main className="px-3 sm:px-4">
@@ -249,17 +269,24 @@ export default function SpotsPageClient() {
         {spots.tab === "tv" && (
           <SpotsTable spots={spots} columns={TV_COLUMNS}>
             {(cell) =>
-              spots.tvChannels.map((channel) => (
-                <tr key={channel.name}>
-                  <td className={cell("position")}>{channel.position}</td>
-                  <td className={cell("name")}>{channel.name}</td>
-                  <td className={cell("country")}>{channel.country}</td>
-                  <AudienceCell
-                    value={channel.audience}
-                    className={cell("audience")}
-                  />
-                </tr>
-              ))
+              spots.tvChannels.length === 0 ? (
+                <NoSearchResults
+                  query={spots.searchQuery}
+                  colSpan={TV_COLUMNS.length}
+                />
+              ) : (
+                spots.tvChannels.map((channel) => (
+                  <tr key={channel.name}>
+                    <td className={cell("position")}>{channel.position}</td>
+                    <td className={cell("name")}>{channel.name}</td>
+                    <td className={cell("country")}>{channel.country}</td>
+                    <AudienceCell
+                      value={channel.audience}
+                      className={cell("audience")}
+                    />
+                  </tr>
+                ))
+              )
             }
           </SpotsTable>
         )}
@@ -267,40 +294,47 @@ export default function SpotsPageClient() {
         {spots.tab === "publications" && (
           <SpotsTable spots={spots} columns={PUBLICATION_COLUMNS}>
             {(cell) =>
-              spots.publications.map((publication) => (
-                <tr key={publication.name}>
-                  <td className={cell("position")}>{publication.position}</td>
-                  <td className={cell("name")}>
-                    <a
-                      href={publication.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline-offset-4 hover:underline"
-                    >
-                      {publication.name}
-                    </a>
-                  </td>
-                  <td className={cell("country")}>{publication.country}</td>
-                  <td className={cell("seoScore")}>{publication.seoScore}</td>
-                  <AudienceCell
-                    value={publication.audience}
-                    className={cell("audience")}
-                  />
-                  <td className={cell("engagement")}>
-                    {engagementLabel(publication.engagement)}
-                  </td>
-                  <td className={cell("topPlatform")}>
-                    <a
-                      href={publication.social}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline-offset-4 hover:underline"
-                    >
-                      {publication.topPlatform}
-                    </a>
-                  </td>
-                </tr>
-              ))
+              spots.publications.length === 0 ? (
+                <NoSearchResults
+                  query={spots.searchQuery}
+                  colSpan={PUBLICATION_COLUMNS.length}
+                />
+              ) : (
+                spots.publications.map((publication) => (
+                  <tr key={publication.name}>
+                    <td className={cell("position")}>{publication.position}</td>
+                    <td className={cell("name")}>
+                      <a
+                        href={publication.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {publication.name}
+                      </a>
+                    </td>
+                    <td className={cell("country")}>{publication.country}</td>
+                    <td className={cell("seoScore")}>{publication.seoScore}</td>
+                    <AudienceCell
+                      value={publication.audience}
+                      className={cell("audience")}
+                    />
+                    <td className={cell("engagement")}>
+                      {engagementLabel(publication.engagement)}
+                    </td>
+                    <td className={cell("topPlatform")}>
+                      <a
+                        href={publication.social}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {publication.topPlatform}
+                      </a>
+                    </td>
+                  </tr>
+                ))
+              )
             }
           </SpotsTable>
         )}
@@ -309,7 +343,7 @@ export default function SpotsPageClient() {
       <button
         type="button"
         onClick={spots.exportCsv}
-        disabled={spots.tab === "radio" && spots.radioStations.length === 0}
+        disabled={spots.tab === "radio" && !spots.hasRadioData}
         className="fixed bottom-8 left-1/2 z-20 -translate-x-1/2 rounded-full bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg transition-colors hover:bg-blue-700 disabled:opacity-50"
       >
         Export

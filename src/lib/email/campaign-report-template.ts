@@ -42,8 +42,10 @@ import {
   formatDate,
   formatDateTime,
   formatNumber,
+  hasStats,
   safeUrl,
   topEntry,
+  total,
 } from "./campaign-report/utils";
 
 export function renderCampaignReportEmail({
@@ -69,7 +71,9 @@ export function renderCampaignReportEmail({
   );
   const artist = asString(project.artist_name || project.song_artist);
   const aiSummary = getAiSummary(project, aiInsights);
-  const { weekly } = metrics;
+  const airplayCount = total(metrics.airplay);
+  const streamCount = total(metrics.streaming);
+  const socialCount = total(metrics.socialMedia);
   const spinCount = asNumber(project.spin_count || metrics.spinCount);
   const topStreaming = topEntry(metrics.streaming);
   const audienceGrowth = metrics.audienceGrowth;
@@ -123,19 +127,19 @@ export function renderCampaignReportEmail({
   const metricCards: MetricCard[] = [
     ...[
       {
-        visible: weekly.airplay > 0,
+        visible: hasStats(metrics.airplay),
         card: {
           label: "Airplay",
-          value: weekly.airplay,
+          value: airplayCount,
           detailLabel: "Top Channel",
           detailValue: metrics.topRadio,
         },
       },
       {
-        visible: weekly.streaming > 0,
+        visible: hasStats(metrics.streaming),
         card: {
           label: "Streams",
-          value: weekly.streaming,
+          value: streamCount,
           detailLabel: "Top Platform",
           detailValue: topStreaming?.[0],
         },
@@ -184,9 +188,10 @@ export function renderCampaignReportEmail({
   const sections = [
     renderCampaignTrend(
       {
-        airplay: weekly.airplay,
-        social: weekly.social,
-        streaming: weekly.streaming,
+        airplay: airplayCount,
+        spins: spinCount,
+        social: socialCount,
+        streaming: streamCount,
       },
       aiSummary,
     ),
@@ -210,10 +215,10 @@ export function renderCampaignReportEmail({
     renderAiRecommendations(project, projectLink, aiInsights),
   ].join("");
 
-  const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Campaign Performance Report | Arroweye Pro</title></head><body style="background-color:#f9f9f9;font-family:Avenir,Arial,sans-serif;margin:0;padding:0;-webkit-font-smoothing:antialiased;color:#333;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Performance report for ${escapeHtml(projectName)}</div><div style="max-width:600px;margin:28px auto;padding:5px 1px 1px;background-color:#ff7400;background-image:linear-gradient(to right,#ff006d,#ff7f00,#ffff00,#00ff00,#147aff);box-shadow:0 8px 30px rgba(0,0,0,.045);text-align:left;"><div style="padding:22px 20px 40px 20px;background-color:#fff;"><div style="margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid #eeeeee;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;"><tr><td style="text-align:left;vertical-align:middle;padding:0;"><img src="https://res.cloudinary.com/dyueswnzk/image/upload/v1792488900/studio_pcyhb7.png" alt="Arroweye" width="170" style="display:block;width:170px;height:auto;border:0;"></td><td style="text-align:right;vertical-align:middle;padding:0 0 0 12px;white-space:nowrap;"><span style="display:inline-block;background:#FFF1E4;border:1px solid #FFD6B0;border-radius:999px;padding:6px 9px;font-size:9px;letter-spacing:.8px;font-weight:bold;color:#B95300;">7-DAY READOUT</span></td></tr></table></div><div style="font-size:24px;line-height:1.15;font-weight:bold;color:#222;">Performance Report</div><div style="background:#fafafa;padding:13px 15px;border-radius:10px;margin-top:16px;border:1px solid #e7e7e7;"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;font-size:14px;">${detailRows}</table></div>${sections}<div style="text-align:center;margin-top:35px;"><a href="${projectLink}" style="display:inline-block;font-size:13px;font-weight:bold;color:#fff;background-color:#ff7400;padding:11px 24px;text-decoration:none;border-radius:999px;line-height:20px;">View Dashboard</a></div><div style="text-align:center;margin-top:20px;padding:15px 0;"></div></div></div></body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Campaign Performance Report | Arroweye Pro</title></head><body style="background-color:#f9f9f9;font-family:Avenir,Arial,sans-serif;margin:0;padding:0;-webkit-font-smoothing:antialiased;color:#333;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">Performance report for ${escapeHtml(projectName)}</div><div style="max-width:600px;margin:28px auto;padding:5px 1px 1px;background-color:#ff7400;background-image:linear-gradient(to right,#ff006d,#ff7f00,#ffff00,#00ff00,#147aff);box-shadow:0 8px 30px rgba(0,0,0,.045);text-align:left;"><div style="padding:22px 20px 40px 20px;background-color:#fff;"><div style="margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid #eeeeee;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;"><tr><td style="text-align:left;vertical-align:middle;padding:0;"><img src="https://res.cloudinary.com/dyueswnzk/image/upload/v1792488900/studio_pcyhb7.png" alt="Arroweye" width="170" style="display:block;width:170px;height:auto;border:0;"></td></tr></table></div><div style="font-size:24px;line-height:1.15;font-weight:bold;color:#222;">Performance Report</div><div style="background:#fafafa;padding:13px 15px;border-radius:10px;margin-top:16px;border:1px solid #e7e7e7;"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;font-size:14px;">${detailRows}</table></div>${sections}<div style="text-align:center;margin-top:35px;"><a href="${projectLink}" style="display:inline-block;font-size:13px;font-weight:bold;color:#fff;background-color:#ff7400;padding:11px 24px;text-decoration:none;border-radius:999px;line-height:20px;">View Dashboard</a></div><div style="text-align:center;margin-top:20px;padding:15px 0;"></div></div></div></body></html>`;
 
   const text = [
-    `${projectName} | Marketing Report (last 7 days)`,
+    `${projectName} | Marketing Report`,
     artist ? `Artiste: ${artist}` : "",
     ...metricCards.map((card) => {
       const change =
@@ -225,7 +230,7 @@ export function renderCampaignReportEmail({
         : "";
       return `${card.label}: ${card.valuePrefix ?? ""}${formatNumber(card.value)}${change}${detail}`;
     }),
-    spinCount > 0 ? `Spins to date: ${formatNumber(spinCount)}` : "",
+    spinCount > 0 ? `Spins: ${formatNumber(spinCount)}` : "",
     metrics.topRadioStations.length
       ? `Top radio stations:\n${describeRadioStations(metrics.topRadioStations)}`
       : "",

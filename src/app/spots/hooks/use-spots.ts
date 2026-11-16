@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+
+import { useSearchFilter, useSearchQuery } from "@/hooks/use-table-search";
 
 import { PUBLICATIONS, TV_CHANNELS } from "../spots-data";
 
@@ -80,6 +82,23 @@ const fetchRadioRanking = async (): Promise<RadioStationRow[]> => {
   return payload.items ?? [];
 };
 
+const radioSearchText = (row: RadioStationRow) => [
+  row.name,
+  row.city,
+  row.country,
+];
+
+const tvSearchText = (row: (typeof tvChannels)[number]) => [
+  row.name,
+  row.country,
+];
+
+const publicationSearchText = (row: (typeof publications)[number]) => [
+  row.name,
+  row.country,
+  row.topPlatform,
+];
+
 const toCsvCell = (value: string | number) =>
   `"${String(value).replace(/"/g, '""')}"`;
 
@@ -105,6 +124,42 @@ export function useSpots() {
     staleTime: 60 * 60_000,
   });
   const radioStations = radio.data ?? [];
+  const search = useSearchQuery();
+
+  // Sorted once per data or sort change, so the search index below is only
+  // rebuilt then and not on every render.
+  const sortedRadio = useMemo(
+    () =>
+      sortRows(
+        (radio.data ?? []).map((station) => ({
+          ...station,
+          audience: station.reach,
+        })),
+        sort,
+      ),
+    [radio.data, sort],
+  );
+  const sortedTv = useMemo(() => sortRows(tvChannels, sort), [sort]);
+  const sortedPublications = useMemo(
+    () => sortRows(publications, sort),
+    [sort],
+  );
+
+  const visibleRadio = useSearchFilter(
+    sortedRadio,
+    search.deferredQuery,
+    radioSearchText,
+  );
+  const visibleTv = useSearchFilter(
+    sortedTv,
+    search.deferredQuery,
+    tvSearchText,
+  );
+  const visiblePublications = useSearchFilter(
+    sortedPublications,
+    search.deferredQuery,
+    publicationSearchText,
+  );
 
   const changeTab = (nextTab: SpotsTab) => {
     setTab(nextTab);
@@ -177,15 +232,15 @@ export function useSpots() {
     setTab: changeTab,
     sort,
     toggleSort,
-    radioStations: sortRows(
-      radioStations.map((station) => ({ ...station, audience: station.reach })),
-      sort,
-    ),
+    searchQuery: search.query,
+    setSearchQuery: search.setQuery,
+    radioStations: visibleRadio,
+    hasRadioData: radioStations.length > 0,
     isRadioLoading: radio.isLoading,
     hasRadioError: radio.isError,
     retryRadio: () => void radio.refetch(),
-    tvChannels: sortRows(tvChannels, sort),
-    publications: sortRows(publications, sort),
+    tvChannels: visibleTv,
+    publications: visiblePublications,
     exportCsv,
   };
 }

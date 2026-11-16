@@ -27,6 +27,10 @@ import {
   SortableTableHeader,
   sortableCellClassName,
 } from "@/components/sortable-table-header";
+import {
+  NoSearchResults,
+  TableSearchInput,
+} from "@/components/table-search-input";
 import { useActiveColumn } from "@/hooks/use-active-column";
 import { useElementHeight } from "@/hooks/use-element-height";
 import {
@@ -250,9 +254,15 @@ function SpinsTable({ chart }: { chart: SpinsChart }) {
               </TableCell>
             </TableRow>
           )}
-          {chart.tableData.map((row, idx) => (
+          {chart.tableData.length > 0 && chart.visibleRows.length === 0 && (
+            <NoSearchResults
+              query={chart.searchQuery}
+              colSpan={tableHeaders.length}
+            />
+          )}
+          {chart.visibleRows.map((row) => (
             <TableRow
-              key={`${row.song}-${row.artist}-${idx}`}
+              key={`${row.position}-${row.song}-${row.artist}`}
               className="border-0 hover:bg-transparent"
             >
               <TableCell className={columnClassName("position")}>
@@ -608,6 +618,13 @@ const SpinsTableComponent: React.FC = () => {
       {/* Table headers stick just below this bar. */}
       <div ref={header.ref} className="sticky top-0 z-30 bg-background">
         <SpinsHeader chart={chart} />
+        <div className="flex justify-center px-5 pb-5">
+          <TableSearchInput
+            value={chart.searchQuery}
+            onChange={chart.setSearchQuery}
+            placeholder="Search song, artist, DJ…"
+          />
+        </div>
       </div>
 
       <main className="px-3 sm:px-4">

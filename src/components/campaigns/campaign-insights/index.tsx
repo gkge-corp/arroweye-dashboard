@@ -39,7 +39,6 @@ import {
   type TrendRange,
 } from "./hooks/use-campaign-channel-trend";
 import { useChannelTrendSummary } from "./hooks/use-channel-trend-summary";
-import { useWeeklyReport } from "./hooks/use-weekly-report";
 import { sendCampaignReport } from "@/actions/campaign-report";
 import type { CampaignReportMetrics } from "@/types/campaign-report";
 import { PLAYLIST_PLATFORMS } from "@/lib/music-analytics/platforms";
@@ -155,13 +154,6 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   } = useCampaignChannelTrend(songIsrc, {
     startDate: campaignStartDate,
     endDate: campaignEndDate,
-  });
-  const { loadWeeklyFigures } = useWeeklyReport({
-    isrc: songIsrc,
-    trendPoints,
-    campaignStartDate,
-    countries: selectedMarkets,
-    airplayDisabled,
   });
   const [trendRange, setTrendRange] = React.useState<TrendRange>("campaign");
   const { trendSummary, isTrendSummaryLoading } = useChannelTrendSummary(
@@ -327,9 +319,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   });
   const songTitle =
     content?.title || content?.song_title || content?.campaign?.song_title;
-  const reportMetrics = React.useMemo<
-    Omit<CampaignReportMetrics, "weekly">
-  >(() => {
+  const reportMetrics = React.useMemo<CampaignReportMetrics>(() => {
     // Same figure as the ACTIONS "Video creations" slice, so the report matches it.
     const videoCreations = Number(smactionData?.["Video creations"] ?? 0);
     const topCreationPlatform = Object.entries(
@@ -436,22 +426,17 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     stations,
     topCreators,
   ]);
-  // The email is a 7-day readout, so airplay, radio stations, audience growth
-  // and highlights are swapped for their 7-day versions at send time.
-  const sendWeeklyReport = async (recipient: string) => {
-    const weeklyFigures = await loadWeeklyFigures();
-    return sendCampaignReport({
+  const sendReport = (recipient: string) =>
+    sendCampaignReport({
       campaignId: String(content?.id),
       recipient,
-      metrics: { ...reportMetrics, ...weeklyFigures },
+      metrics: reportMetrics,
     });
-  };
   const reportLoading =
     isAudienceGrowthLoading ||
     Boolean(
       songIsrc &&
       (isInsightStatsLoading ||
-        isTrendLoading ||
         isRadioLoading ||
         isSocialTractionLoading ||
         isTopCreatorsLoading ||
@@ -767,7 +752,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
         contentId={content?.id}
         media={content?.media}
         reportLoading={reportLoading}
-        onSendReport={sendWeeklyReport}
+        onSendReport={sendReport}
         onPublicationsChanged={refreshContent}
       />
     </div>

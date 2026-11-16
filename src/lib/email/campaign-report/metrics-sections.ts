@@ -13,6 +13,7 @@ import {
 
 const COLORS = {
   airplay: "#f59e0b",
+  spins: "#147aff",
   social: "#ef3f9a",
   streaming: "#13bf7a",
 };
@@ -65,11 +66,14 @@ export const renderCampaignSnapshot = (cards: MetricCard[]) => {
   const hasPercentageChange = cards.some(
     (card) => card.changePercent !== null && card.changePercent !== undefined,
   );
+  const changePeriodDays = cards.find(
+    (card) => card.changePercent !== null && card.changePercent !== undefined,
+  )?.changePeriodDays;
   const changeNote = hasPercentageChange
-    ? " Percentage changes compare against the total at the start of the week."
+    ? ` Percentage changes show the change over the last ${changePeriodDays ?? 30} days.`
     : "";
 
-  return `<div style="margin-top:26px;">${sectionTitle("Campaign Snapshot", "1.2px")}${renderMetricGrid(cards)}${infoNote(`Metrics show gains over the last 7 days.${changeNote}`)}</div>`;
+  return `<div style="margin-top:26px;">${sectionTitle("Campaign Snapshot", "1.2px")}${renderMetricGrid(cards)}${infoNote(`Metrics show current campaign performance across selected sources.${changeNote}`)}</div>`;
 };
 
 const renderTrendRow = (
@@ -96,6 +100,7 @@ const renderTrendRow = (
 export const renderCampaignTrend = (
   values: {
     airplay: number;
+    spins: number;
     social: number;
     streaming: number;
   },
@@ -103,6 +108,7 @@ export const renderCampaignTrend = (
 ) => {
   const entries = [
     { label: "Radio", value: values.airplay, color: COLORS.airplay },
+    { label: "Spins", value: values.spins, color: COLORS.spins },
     { label: "Social", value: values.social, color: COLORS.social },
     { label: "Streaming", value: values.streaming, color: COLORS.streaming },
   ].filter(({ value }) => value > 0);
@@ -162,7 +168,7 @@ export const renderDjInsights = (project: UnknownRecord, spinCount: number) => {
   const cards: DjCard[] = [];
 
   if (spinCount > 0) {
-    cards.push({ label: "Spins to date", value: formatNumber(spinCount) });
+    cards.push({ label: "Spins", value: formatNumber(spinCount) });
   }
   if (topDjName) {
     cards.push({
