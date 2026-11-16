@@ -25,11 +25,13 @@ interface RadioMonitorUploaderProps {
   /** Off when the current file is already shown elsewhere on the page. */
   showCurrentFile?: boolean;
   onUploaded?: () => void;
+  className?: string;
 }
 
 export function RadioMonitorUploader({
   showCurrentFile = true,
   onUploaded,
+  className,
 }: RadioMonitorUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -64,7 +66,12 @@ export function RadioMonitorUploader({
   };
 
   return (
-    <div className="flex w-full flex-col gap-5 rounded-[12px] border p-6 text-left">
+    <div
+      className={cn(
+        "flex w-full flex-col gap-5 rounded-[12px] border p-6 text-left",
+        className,
+      )}
+    >
       {showCurrentFile && (
         <RadioMonitorCurrentFile
           file={currentFile}

@@ -136,39 +136,47 @@ function StatusPill({ status }: { status: SpinStatus }) {
 
 function SpinsHeader({ chart }: { chart: SpinsChart }) {
   return (
-    <header className="grid grid-cols-[1fr_auto_1fr] items-center px-5 py-8 sm:px-8">
-      <span />
-
-      <div className="flex flex-col items-center gap-1.5">
-        <Popover open={chart.calendarOpen} onOpenChange={chart.setCalendarOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 w-64 justify-start rounded-2xl px-4 text-left text-sm font-normal"
-            >
-              <CalendarDays className="text-muted-foreground mr-2 size-4" />
-              <span className="truncate">{chart.formattedDateRange}</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="center"
-            sideOffset={8}
-            className="w-auto max-w-[calc(100vw-2rem)] overflow-auto p-0"
+    <header className="flex justify-center px-5 py-8 sm:px-8">
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Popover
+            open={chart.calendarOpen}
+            onOpenChange={chart.setCalendarOpen}
           >
-            <Calendar
-              mode="range"
-              selected={chart.dateRange}
-              onSelect={chart.handleDateRangeSelect}
-              defaultMonth={chart.dateRange?.from}
-              numberOfMonths={2}
-              disabled={{ after: new Date() }}
-            />
-          </PopoverContent>
-        </Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 w-64 justify-start rounded-full px-4 text-left text-sm font-normal"
+              >
+                <CalendarDays className="text-muted-foreground mr-2 size-4" />
+                <span className="truncate">{chart.formattedDateRange}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="center"
+              sideOffset={8}
+              className="w-auto max-w-[calc(100vw-2rem)] overflow-auto p-0"
+            >
+              <Calendar
+                mode="range"
+                selected={chart.dateRange}
+                onSelect={chart.handleDateRangeSelect}
+                defaultMonth={chart.dateRange?.from}
+                numberOfMonths={2}
+                disabled={{ after: new Date() }}
+              />
+            </PopoverContent>
+          </Popover>
+          <TableSearchInput
+            value={chart.searchQuery}
+            onChange={chart.setSearchQuery}
+            placeholder="Search song, artist, DJ…"
+          />
+        </div>
         {chart.lastUpdated && (
           <p className="text-xs text-muted-foreground">
-            Last updated{" "}
+            Last updated:{" "}
             {chart.lastUpdated.toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
@@ -177,8 +185,6 @@ function SpinsHeader({ chart }: { chart: SpinsChart }) {
           </p>
         )}
       </div>
-
-      <DataGuideDialog />
     </header>
   );
 }
@@ -327,7 +333,7 @@ function ExportDialog({ chart }: { chart: SpinsChart }) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="fixed bottom-8 left-1/2 z-20 -translate-x-1/2 rounded-full bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg transition-colors hover:bg-blue-700"
+          className="rounded-full bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg transition-colors hover:bg-blue-700"
         >
           Export
         </button>
@@ -372,7 +378,7 @@ function DataGuideDialog() {
           type="button"
           size="icon-lg"
           aria-label="Open data guide"
-          className="bg-foreground text-background hover:bg-foreground/80 size-11 justify-self-end rounded-full active:scale-[0.97]"
+          className="bg-foreground text-background hover:bg-foreground/80 size-12 rounded-full shadow-lg active:scale-[0.97]"
         >
           <Info className="size-5" />
         </Button>
@@ -618,20 +624,16 @@ const SpinsTableComponent: React.FC = () => {
       {/* Table headers stick just below this bar. */}
       <div ref={header.ref} className="sticky top-0 z-30 bg-background">
         <SpinsHeader chart={chart} />
-        <div className="flex justify-center px-5 pb-5">
-          <TableSearchInput
-            value={chart.searchQuery}
-            onChange={chart.setSearchQuery}
-            placeholder="Search song, artist, DJ…"
-          />
-        </div>
       </div>
 
       <main className="px-3 sm:px-4">
         <SpinsTable chart={chart} />
       </main>
 
-      <ExportDialog chart={chart} />
+      <div className="fixed bottom-8 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3">
+        <DataGuideDialog />
+        <ExportDialog chart={chart} />
+      </div>
     </div>
   );
 };
