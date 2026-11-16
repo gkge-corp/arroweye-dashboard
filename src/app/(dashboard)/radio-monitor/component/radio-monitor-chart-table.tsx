@@ -100,14 +100,14 @@ function StationPicker({ charts }: { charts: RadioCharts }) {
   if (!charts.chart) return null;
 
   return (
-    <div className="flex flex-col items-center gap-1 px-5 py-2 text-center">
+    <div className="flex flex-col items-center gap-3 px-5 py-2 text-center">
       <div className="flex flex-wrap items-center justify-center gap-2">
         <Select
           value={charts.chart.station}
           onValueChange={charts.selectStation}
         >
           <SelectTrigger
-            className="h-11 w-72 max-w-full rounded-2xl"
+            className="h-11 w-72 max-w-full rounded-full"
             aria-label="Station"
           >
             <SelectValue />
@@ -126,9 +126,6 @@ function StationPicker({ charts }: { charts: RadioCharts }) {
           placeholder="Search song or artist…"
         />
       </div>
-      <p className="text-xs text-muted-foreground">
-        {[charts.chart.chart, charts.chart.period].filter(Boolean).join(" · ")}
-      </p>
     </div>
   );
 }
@@ -241,9 +238,8 @@ const SKELETON_ROWS = 8;
 function ChartTableSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading radio chart">
-      <div className="flex flex-col items-center gap-1 px-5 py-2">
-        <Skeleton className="h-11 w-72 max-w-full rounded-2xl" />
-        <Skeleton className="h-3 w-40" />
+      <div className="flex flex-col items-center gap-3 px-5 py-2">
+        <Skeleton className="h-11 w-72 max-w-full rounded-full" />
       </div>
       <div className="overflow-x-auto lg:overflow-x-clip">
         <table className="w-full min-w-[800px] table-auto text-xs lg:min-w-0">

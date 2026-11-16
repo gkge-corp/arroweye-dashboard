@@ -32,7 +32,7 @@ export function TableSearchInput({
         }}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-11 w-full rounded-2xl border border-input bg-background pr-10 pl-10 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40 [&::-webkit-search-cancel-button]:hidden"
+        className="h-11 w-full rounded-full border border-input bg-background pr-10 pl-10 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40 [&::-webkit-search-cancel-button]:hidden"
       />
       {value && (
         <button
