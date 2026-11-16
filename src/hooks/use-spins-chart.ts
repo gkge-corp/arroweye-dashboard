@@ -5,6 +5,7 @@ import type { DateRange } from "react-day-picker";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+import { useSearchFilter, useSearchQuery } from "@/hooks/use-table-search";
 import { getSpinsAnalytics } from "@/services";
 
 export type SpinStatus = "NEW" | "HOT" | "BREAKING" | "";
@@ -183,6 +184,15 @@ const findLatestSpinsRange = async (
   return null;
 };
 
+const spinsSearchText = (row: ChartData) => [
+  row.song,
+  row.artist,
+  row.genre,
+  row.location,
+  row.dj,
+  row.status,
+];
+
 const toExportRow = (row: ChartData) => [
   row.position,
   row.song,
@@ -205,6 +215,12 @@ export function useSpinsChart() {
     direction: "asc",
   });
   const [tableData, setTableData] = useState<ChartData[]>(initialData);
+  const search = useSearchQuery();
+  const visibleRows = useSearchFilter(
+    tableData,
+    search.deferredQuery,
+    spinsSearchText,
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -347,6 +363,10 @@ export function useSpinsChart() {
 
   return {
     tableData,
+    visibleRows,
+    searchQuery: search.query,
+    setSearchQuery: search.setQuery,
+    isSearching: search.isSearching,
     sortConfig,
     handleSort,
     dateRange,

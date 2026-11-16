@@ -1,9 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { getRadioMonitorCharts } from "@/actions/radio-monitor";
+import { useSearchFilter, useSearchQuery } from "@/hooks/use-table-search";
 
 // Nested under the upload hook's key so a new upload refreshes the charts.
 const RADIO_MONITOR_CHARTS_KEY = ["radio-monitor", "charts"];
@@ -47,6 +48,8 @@ const compareRows = (
   return direction === "asc" ? order : -order;
 };
 
+const radioSearchText = (row: RadioChartRow) => [row.title, row.artist];
+
 export function useRadioMonitorCharts() {
   const [selectedStation, setSelectedStation] = useState<string>();
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -67,12 +70,24 @@ export function useRadioMonitorCharts() {
   const chart =
     charts.find((item) => item.station === selectedStation) ?? charts[0];
 
-  const rows: RadioChartRow[] = (chart?.rows ?? [])
-    .map((row) => ({
-      ...row,
-      growth: row.lastWeek === null ? null : row.lastWeek - row.position,
-    }))
-    .sort((a, b) => compareRows(a, b, sortConfig));
+  const search = useSearchQuery();
+
+  // Rebuilt only when the chart or sort changes, so the search index is too.
+  const rows: RadioChartRow[] = useMemo(
+    () =>
+      (chart?.rows ?? [])
+        .map((row) => ({
+          ...row,
+          growth: row.lastWeek === null ? null : row.lastWeek - row.position,
+        }))
+        .sort((a, b) => compareRows(a, b, sortConfig)),
+    [chart, sortConfig],
+  );
+  const visibleRows = useSearchFilter(
+    rows,
+    search.deferredQuery,
+    radioSearchText,
+  );
 
   const maxPlays = Math.max(1, ...rows.map((row) => row.plays));
 
@@ -90,6 +105,9 @@ export function useRadioMonitorCharts() {
     charts,
     chart,
     rows,
+    visibleRows,
+    searchQuery: search.query,
+    setSearchQuery: search.setQuery,
     isLoading: chartsQuery.isLoading,
     error: chartsQuery.error?.message,
     selectStation: setSelectedStation,

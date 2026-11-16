@@ -8,6 +8,10 @@ import {
   sortableCellClassName,
 } from "@/components/sortable-table-header";
 import {
+  NoSearchResults,
+  TableSearchInput,
+} from "@/components/table-search-input";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -97,21 +101,31 @@ function StationPicker({ charts }: { charts: RadioCharts }) {
 
   return (
     <div className="flex flex-col items-center gap-1 px-5 py-2 text-center">
-      <Select value={charts.chart.station} onValueChange={charts.selectStation}>
-        <SelectTrigger
-          className="h-11 w-72 max-w-full rounded-2xl"
-          aria-label="Station"
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Select
+          value={charts.chart.station}
+          onValueChange={charts.selectStation}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {charts.charts.map((chart) => (
-            <SelectItem key={chart.station} value={chart.station}>
-              {stationLabel(chart)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectTrigger
+            className="h-11 w-72 max-w-full rounded-2xl"
+            aria-label="Station"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {charts.charts.map((chart) => (
+              <SelectItem key={chart.station} value={chart.station}>
+                {stationLabel(chart)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <TableSearchInput
+          value={charts.searchQuery}
+          onChange={charts.setSearchQuery}
+          placeholder="Search song or artist…"
+        />
+      </div>
       <p className="text-xs text-muted-foreground">
         {[charts.chart.chart, charts.chart.period].filter(Boolean).join(" · ")}
       </p>
@@ -159,7 +173,13 @@ function ChartTable({ charts }: { charts: RadioCharts }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {charts.rows.map((row) => (
+          {charts.rows.length > 0 && charts.visibleRows.length === 0 && (
+            <NoSearchResults
+              query={charts.searchQuery}
+              colSpan={headers.length}
+            />
+          )}
+          {charts.visibleRows.map((row) => (
             <TableRow
               key={`${row.position}-${row.title}-${row.artist}`}
               className="border-0 hover:bg-transparent"
