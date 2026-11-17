@@ -76,8 +76,6 @@ const DashboardLayoutClient: FC<LayoutProps> = ({
     pathname === "/campaigns/setup" ||
     pathname === "/campaigns/setup/launch";
   const useLogoOnlySidebar = pathname === "/create";
-  // Pages whose own sticky headers sit below the notification bar.
-  const pinTopNav = pathname === "/radio-monitor";
 
   if (isLoading) {
     return (
@@ -129,15 +127,7 @@ const DashboardLayoutClient: FC<LayoutProps> = ({
         id="dashboard-scroll-container"
         className={`flex-1 flex flex-col overflow-y-scroll scrollbar-hide flex-grow ${isSetupLanding ? "bg-background" : ""}`}
       >
-        {!isSetupLanding && (
-          <div
-            className={
-              pinTopNav ? "sticky top-0 z-40 bg-background" : undefined
-            }
-          >
-            <TopNav />
-          </div>
-        )}
+        {!isSetupLanding && <TopNav />}
         <main
           className={
             isSetupLanding
