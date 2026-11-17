@@ -4,10 +4,13 @@ import { mdiRadioTower } from "@mdi/js";
 import Icon from "@mdi/react";
 import type { CSSProperties } from "react";
 
-import { useElementHeight } from "@/hooks/use-element-height";
 import { useRadioMonitorUpload } from "@/hooks/use-radio-monitor-upload";
+import { useStickyHeader } from "@/hooks/use-sticky-header";
+import { cn } from "@/lib/utils";
 
+import NotificationsMenu from "../../notifications-menu";
 import { RadioMonitorChartTable } from "./radio-monitor-chart-table";
+import { RadioMonitorUploadDialog } from "./radio-monitor-upload-dialog";
 import { RadioMonitorUploader } from "./radio-monitor-uploader";
 
 function RadioMonitorTitle() {
@@ -34,28 +37,36 @@ function EmptyRadioMonitor() {
   );
 }
 
-// Sits below the layout's 50px notification bar, which is pinned on this page.
-const TOP_NAV_HEIGHT = 50;
+const HEADER_HEIGHT = 64;
 
 function RadioMonitorChartView() {
-  const header = useElementHeight<HTMLDivElement>();
+  const { sentinelRef, isSticky } = useStickyHeader();
 
   return (
     <div
       className="flex w-full flex-col gap-6"
       style={
         {
-          "--radio-header-height": `${TOP_NAV_HEIGHT + header.height}px`,
+          "--radio-header-height": `${HEADER_HEIGHT}px`,
         } as CSSProperties
       }
     >
-      {/* Table headers stick just below this bar. */}
+      <div ref={sentinelRef} className="-mb-6 h-px" aria-hidden="true" />
+      {/* Fixed height so the sticky picker and table offsets never lag a resize. */}
       <div
-        ref={header.ref}
-        className="sticky z-30 bg-background pb-3"
-        style={{ top: TOP_NAV_HEIGHT }}
+        className={cn(
+          "sticky top-0 z-30 flex h-16 items-center justify-between gap-[10px] bg-background [overflow-anchor:none]",
+          isSticky &&
+            "-mx-5 border-b border-zinc-200 px-6 dark:border-zinc-800 lg:px-10",
+        )}
       >
         <RadioMonitorTitle />
+        <div className="flex shrink-0 items-center gap-2">
+          <RadioMonitorUploadDialog />
+          {isSticky && (
+            <NotificationsMenu triggerClassName="relative size-9 rounded-full text-foreground active:scale-[0.97] [&_svg]:size-[18px]!" />
+          )}
+        </div>
       </div>
       <RadioMonitorChartTable />
     </div>
