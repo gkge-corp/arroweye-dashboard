@@ -4,10 +4,11 @@ import {
   type TableHeader,
   type TableRow,
 } from "@/components/campaigns/table";
-import { SelectInput } from "@/components/ui/selectinput";
 import { Dialog } from "primereact/dialog";
 import { Button } from "@/components/ui/button";
 import { useArchive } from "@/hooks/use-archive";
+import { useCampaignFilters } from "@/hooks/use-campaign-filters";
+import CampaignFilters from "@/components/campaigns/campaign-filters";
 
 interface ProjectsProps {
   filterVisible: boolean;
@@ -24,6 +25,7 @@ const ARCHIVE_HEADERS: TableHeader[] = [
 ];
 
 const Archive: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
+  const campaignFilters = useCampaignFilters();
   const {
     editMode,
     setEditMode,
@@ -34,7 +36,7 @@ const Archive: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
     filteredContent,
     handleArchiveSubmit,
     handleCopyPin,
-  } = useArchive({ searchValue });
+  } = useArchive({ searchValue, filters: campaignFilters.filters });
 
   const rows = useMemo<TableRow[]>(
     () =>
@@ -81,33 +83,7 @@ const Archive: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
 
   return (
     <div className="">
-      {filterVisible && (
-        <div className="text-center flex flex-wrap items-end gap-[5px] md:gap-[10px] my-4">
-          <div className="max-w-[150px] w-full rounded-full">
-            <SelectInput
-              rounded={true}
-              options={[
-                { value: "", label: "Investment" },
-                { value: "htl", label: "High to Low" },
-                { value: "lth", label: "Low to High" },
-              ]}
-            />
-          </div>
-          <div className="max-w-[150px] w-full rounded-full">
-            <SelectInput
-              rounded={true}
-              options={[
-                { value: "", label: "Revenue" },
-                { value: "htl", label: "High to Low" },
-                { value: "lth", label: "Low to High" },
-              ]}
-            />
-          </div>
-          <p className="max-w-[150px] w-full cursor-pointer text-[14px] rounded-full px-[10px] py-[5px] hover:bg-orange-500 bg-[#000000] dark:bg-primary dark:text-primary-foreground text-white inline">
-            Clear Filters
-          </p>
-        </div>
-      )}
+      {filterVisible && <CampaignFilters state={campaignFilters} />}
 
       <div className="mt-[20px]">
         {isLoading ? (

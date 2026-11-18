@@ -40,7 +40,7 @@ const Table: React.FC<TableProps> = ({
             {headers.map((header, index) => (
               <th
                 key={index}
-                className="sticky top-[var(--table-sticky-top,0px)] z-10 bg-[#31bc86] px-4 py-[11px] text-center font-medium dark:bg-[#17954c]"
+                className="sticky top-0 z-10 lg:top-[var(--table-sticky-top,0px)] bg-[#31bc86] px-4 py-[11px] text-center font-medium dark:bg-[#17954c]"
               >
                 {header}
               </th>

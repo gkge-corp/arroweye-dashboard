@@ -10,14 +10,12 @@ import { MdOutlineModeEditOutline } from "react-icons/md";
 import { Dialog } from "primereact/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useCampaigns } from "@/hooks/use-campaigns";
+import { useCampaignFilters } from "@/hooks/use-campaign-filters";
+import CampaignFilters from "@/components/campaigns/campaign-filters";
+import { useActiveColumn } from "@/hooks/use-active-column";
+import { sortRows, useTableSort, type TableSort } from "@/hooks/use-table-sort";
+import type { CampaignPage, ProjectListItem } from "@/types/api";
 import Pagination from "@/app/(dashboard)/drops/component/pagination";
 
 interface ProjectsProps {
@@ -25,49 +23,56 @@ interface ProjectsProps {
   searchValue: string;
 }
 
-const PROJECT_HEADERS: TableHeader[] = [
-  { content: "Campaigns", align: "left" },
-  { content: "Label", align: "left" },
-  { content: "Artist", align: "left" },
-  { content: "Start Date", align: "left" },
+type SortColumn = "title" | "label" | "artist" | "startDate";
+type CampaignListItem = NonNullable<CampaignPage>["results"][number];
+
+const PROJECT_COLUMNS: { label: string; key: SortColumn }[] = [
+  { label: "Campaigns", key: "title" },
+  { label: "Label", key: "label" },
+  { label: "Artist", key: "artist" },
+  { label: "Start Date", key: "startDate" },
 ];
 
-const ADVERTISER_HEADERS: TableHeader[] = [
-  { content: "Campaigns", align: "left" },
-  { content: "Artist", align: "left" },
-  { content: "Start Date", align: "left" },
+const ADVERTISER_COLUMNS: { label: string; key: SortColumn }[] = [
+  { label: "Campaigns", key: "title" },
+  { label: "Artist", key: "artist" },
+  { label: "Start Date", key: "startDate" },
 ];
+
+const projectSortValue = (item: ProjectListItem, column: SortColumn) =>
+  ({
+    title: item.title,
+    label: item.subvendor?.organization_name,
+    artist: item.artist_name,
+    startDate: item.created,
+  })[column];
+
+const campaignSortValue = (item: CampaignListItem, column: SortColumn) =>
+  ({
+    title: item.song_title,
+    label: undefined,
+    artist: item.song_artist,
+    startDate: item.start_date,
+  })[column];
+
+const toSortableHeaders = (
+  columns: { label: string; key: SortColumn }[],
+  sort: TableSort<SortColumn>,
+  toggleSort: (column: SortColumn) => void,
+  highlightProps: ReturnType<
+    typeof useActiveColumn<SortColumn>
+  >["highlightProps"],
+): TableHeader[] =>
+  columns.map(({ label, key }) => ({
+    content: label,
+    align: "left",
+    onSort: () => toggleSort(key),
+    sortDirection: sort.column === key ? sort.direction : null,
+    highlightProps: highlightProps(key),
+  }));
 
 const EDIT_HEADER: TableHeader = { content: "Manage", align: "center" };
 const DELETE_HEADER: TableHeader = { content: "Action", align: "center" };
-
-const sortOptions = [
-  { value: "htl", label: "High to Low" },
-  { value: "lth", label: "Low to High" },
-];
-
-const FilterSelect = ({
-  placeholder,
-  value,
-  onChange,
-}: {
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-}) => (
-  <Select value={value || undefined} onValueChange={onChange}>
-    <SelectTrigger className="h-[40px] rounded-full border-border bg-background text-primary shadow-none">
-      <SelectValue placeholder={placeholder} />
-    </SelectTrigger>
-    <SelectContent>
-      {sortOptions.map((option) => (
-        <SelectItem key={`${placeholder}-${option.value}`} value={option.value}>
-          {option.label}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-);
 
 const TableEmptyState = ({ label }: { label: string }) => (
   <div className="flex h-[50vh] flex-col items-center justify-center text-center">
@@ -96,6 +101,7 @@ const createTableSkeletonRows = (headers: TableHeader[]): TableRow[] =>
   }));
 
 const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
+  const campaignFilters = useCampaignFilters();
   const {
     isLoading,
     isAdvertiser,
@@ -104,32 +110,41 @@ const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
     totalPages,
     isArchiving,
     setIsArchiving,
-    investmentFilter,
-    setInvestmentFilter,
-    revenueFilter,
-    setRevenueFilter,
     goToPage,
     handleArchiveSubmit,
     editMode,
     setEditMode,
     filteredContent,
     filteredCampaignList,
-  } = useCampaigns({ searchValue });
+  } = useCampaigns({ searchValue, filters: campaignFilters.filters });
   const isManager = userRole === "Manager";
+  const { sort, toggleSort } = useTableSort<SortColumn>();
+  const { activeColumn, highlightProps } = useActiveColumn<SortColumn>(
+    sort.column,
+  );
+
+  const columns = isAdvertiser ? ADVERTISER_COLUMNS : PROJECT_COLUMNS;
+  const activeColumnIndex = columns.findIndex(
+    (column) => column.key === activeColumn,
+  );
+  const sortableHeaders = toSortableHeaders(
+    columns,
+    sort,
+    toggleSort,
+    highlightProps,
+  );
 
   const projectHeaders = isManager
-    ? [...PROJECT_HEADERS, EDIT_HEADER, DELETE_HEADER]
-    : PROJECT_HEADERS;
+    ? [...sortableHeaders, EDIT_HEADER, DELETE_HEADER]
+    : sortableHeaders;
   const advertiserHeaders = isManager
-    ? [...ADVERTISER_HEADERS, EDIT_HEADER]
-    : ADVERTISER_HEADERS;
+    ? [...sortableHeaders, EDIT_HEADER]
+    : sortableHeaders;
 
   const projectRows = useMemo<TableRow[]>(
     () =>
-      filteredContent
-        ?.slice()
-        .reverse()
-        .map((item, index) => ({
+      sortRows(filteredContent.slice().reverse(), sort, projectSortValue).map(
+        (item, index) => ({
           id: item.id ?? index,
           data: [
             <div key={`project-title-${item.id ?? index}`}>
@@ -175,78 +190,53 @@ const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
                 ]
               : []),
           ],
-        })) ?? [],
-    [filteredContent, isArchiving, isManager, setEditMode, setIsArchiving],
+        }),
+      ) ?? [],
+    [
+      filteredContent,
+      sort,
+      isArchiving,
+      isManager,
+      setEditMode,
+      setIsArchiving,
+    ],
   );
 
   const advertiserRows = useMemo<TableRow[]>(
     () =>
-      filteredCampaignList?.map((item, index) => ({
-        id: item.id ?? index,
-        data: [
-          <div key={`campaign-title-${item.id ?? index}`}>
-            <Link href={`/campaigns/${item.id}`}>{item.song_title}</Link>
-          </div>,
-          item.song_artist,
-          item.start_date,
-          ...(isManager
-            ? [
-                <Link
-                  href={`/campaigns/${item.id}`}
-                  key={`campaign-manage-${item.id ?? index}`}
-                >
-                  <div className="flex justify-center text-black dark:text-foreground">
-                    <span className="sr-only">
-                      Manage {item.song_title ?? "campaign"}
-                    </span>
-                    <MdOutlineModeEditOutline size={20} aria-hidden="true" />
-                  </div>
-                </Link>,
-              ]
-            : []),
-        ],
-      })) ?? [],
-    [filteredCampaignList, isManager],
+      sortRows(filteredCampaignList, sort, campaignSortValue).map(
+        (item, index) => ({
+          id: item.id ?? index,
+          data: [
+            <div key={`campaign-title-${item.id ?? index}`}>
+              <Link href={`/campaigns/${item.id}`}>{item.song_title}</Link>
+            </div>,
+            item.song_artist,
+            item.start_date,
+            ...(isManager
+              ? [
+                  <Link
+                    href={`/campaigns/${item.id}`}
+                    key={`campaign-manage-${item.id ?? index}`}
+                  >
+                    <div className="flex justify-center text-black dark:text-foreground">
+                      <span className="sr-only">
+                        Manage {item.song_title ?? "campaign"}
+                      </span>
+                      <MdOutlineModeEditOutline size={20} aria-hidden="true" />
+                    </div>
+                  </Link>,
+                ]
+              : []),
+          ],
+        }),
+      ) ?? [],
+    [filteredCampaignList, sort, isManager],
   );
 
   return (
     <>
-      {filterVisible && (
-        <div className="text-center flex flex-wrap items-end gap-[5px] md:gap-[10px] my-4">
-          <div className="max-w-[150px] w-full">
-            <FilterSelect
-              placeholder="Investment"
-              value={investmentFilter}
-              onChange={(value) =>
-                setInvestmentFilter(
-                  value === "htl" || value === "lth" ? value : "",
-                )
-              }
-            />
-          </div>
-          <div className="max-w-[150px] w-full">
-            <FilterSelect
-              placeholder="Revenue"
-              value={revenueFilter}
-              onChange={(value) =>
-                setRevenueFilter(
-                  value === "htl" || value === "lth" ? value : "",
-                )
-              }
-            />
-          </div>
-          <Button
-            type="button"
-            className="h-[40px] rounded-full bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200 px-4 text-white hover:bg-zinc-800"
-            onClick={() => {
-              setInvestmentFilter("");
-              setRevenueFilter("");
-            }}
-          >
-            Clear Filters
-          </Button>
-        </div>
-      )}
+      {filterVisible && <CampaignFilters state={campaignFilters} />}
       <div>
         <span className="sr-only" role="status">
           {isLoading ? "Loading campaigns…" : ""}
@@ -255,11 +245,10 @@ const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
           <Table
             aria-label="Campaign projects"
             highlightFirstCell={true}
+            activeColumn={activeColumnIndex}
             headers={projectHeaders}
             rows={
-              isLoading
-                ? createTableSkeletonRows(projectHeaders)
-                : projectRows
+              isLoading ? createTableSkeletonRows(projectHeaders) : projectRows
             }
             emptyState={<TableEmptyState label="No Data" />}
           />
@@ -270,6 +259,7 @@ const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
             <Table
               aria-label="Created campaigns"
               highlightFirstCell={true}
+              activeColumn={activeColumnIndex}
               headers={advertiserHeaders}
               rows={
                 isLoading

@@ -140,7 +140,7 @@ function ChartTable({ charts }: { charts: RadioCharts }) {
     cn(
       cellClassName,
       sortableCellClassName,
-      activeColumn === key && activeColumnClassName(),
+      activeColumn === key && activeColumnClassName("orange"),
     );
 
   return (
@@ -156,6 +156,7 @@ function ChartTable({ charts }: { charts: RadioCharts }) {
               <SortableTableHeader
                 key={header.key}
                 label={header.label}
+                tone="orange"
                 active={activeColumn === header.key}
                 sortDirection={
                   charts.sortConfig.column === header.key

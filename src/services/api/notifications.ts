@@ -61,16 +61,23 @@ const filterByType = (
       )
     : notifications;
 
-// No `category` param: the backend filters it against a field that is null on
-// every notification, so it returns nothing. Callers filter by `type` instead.
+// Types the backend can filter by `category`; the rest are filtered by `type`
+// in the app.
+const notificationCategories: Partial<Record<NotificationType, string>> = {
+  Payments: "payment",
+  Milestones: "milestone",
+};
+
 interface NotificationFilters {
   projectId?: number;
   scope?: "user";
+  category?: string;
 }
 
 const fetchAllNotificationPages = async ({
   projectId,
   scope,
+  category,
 }: NotificationFilters) => {
   const notifications: ApiNotification[] = [];
 
@@ -81,6 +88,7 @@ const fetchAllNotificationPages = async ({
     });
     if (projectId) params.set("project_id", String(projectId));
     if (scope) params.set("scope", scope);
+    if (category) params.set("category", category);
 
     const response = await apiRequest<NotificationApiResponse>({
       method: "GET",
@@ -101,11 +109,12 @@ const fetchAllNotificationPages = async ({
 export const getNotifications = async (
   type?: NotificationType,
 ): Promise<ApiNotification[]> => {
+  const category = type ? notificationCategories[type] : undefined;
+
   try {
-    const notifications = filterByType(
-      await fetchAllNotificationPages({ scope: "user" }),
-      type,
-    );
+    const notifications = category
+      ? await fetchAllNotificationPages({ category })
+      : filterByType(await fetchAllNotificationPages({ scope: "user" }), type);
 
     ls.set("Notifications", notifications, { encrypt: true });
     return notifications;
