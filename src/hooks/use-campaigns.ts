@@ -4,18 +4,17 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProjects, getCreatedCampaigns, archiveProject } from "@/services";
 
 import { useAuth } from "@/context/auth-session";
+import {
+  isWithinDateRange,
+  type CampaignFilters,
+} from "@/hooks/use-campaign-filters";
 
 interface UseCampaignsProps {
   searchValue: string;
+  filters: CampaignFilters;
 }
 
-const toNumber = (value: unknown) => {
-  const number = Number(value ?? 0);
-
-  return Number.isFinite(number) ? number : 0;
-};
-
-export const useCampaigns = ({ searchValue }: UseCampaignsProps) => {
+export const useCampaigns = ({ searchValue, filters }: UseCampaignsProps) => {
   const router = useRouter();
   const pathname = usePathname() || "/campaigns";
   const searchParams = useSearchParams();
@@ -28,11 +27,6 @@ export const useCampaigns = ({ searchValue }: UseCampaignsProps) => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [isArchiving, setIsArchiving] = useState<number | null>(null);
-
-  const [investmentFilter, setInvestmentFilter] = useState<"" | "htl" | "lth">(
-    "",
-  );
-  const [revenueFilter, setRevenueFilter] = useState<"" | "htl" | "lth">("");
 
   const PAGE_SIZE = 10;
   const normalizedSearchValue = searchValue.trim().toLowerCase();
@@ -99,6 +93,7 @@ export const useCampaigns = ({ searchValue }: UseCampaignsProps) => {
   const filteredContent = content.filter(
     (item) =>
       !item.archived &&
+      isWithinDateRange(item.created, filters.dateRange) &&
       (item.title.toLowerCase().includes(normalizedSearchValue) ||
         item.vendor.organization_name
           ?.toLowerCase()
@@ -108,22 +103,13 @@ export const useCampaigns = ({ searchValue }: UseCampaignsProps) => {
           .includes(normalizedSearchValue)),
   );
 
-  const filteredCampaignList = campaignList
-    .filter(
-      (item) =>
-        item.status === "active" &&
-        (item.song_title?.toLowerCase().includes(normalizedSearchValue) ||
-          item.song_artist?.toLowerCase().includes(normalizedSearchValue)),
-    )
-    .sort((a, b) => {
-      if (investmentFilter === "htl") {
-        return toNumber(b.total_tokens) - toNumber(a.total_tokens);
-      }
-      if (investmentFilter === "lth") {
-        return toNumber(a.total_tokens) - toNumber(b.total_tokens);
-      }
-      return 0;
-    });
+  const filteredCampaignList = campaignList.filter(
+    (item) =>
+      item.status === "active" &&
+      isWithinDateRange(item.start_date, filters.dateRange) &&
+      (item.song_title?.toLowerCase().includes(normalizedSearchValue) ||
+        item.song_artist?.toLowerCase().includes(normalizedSearchValue)),
+  );
 
   return {
     isLoading,
@@ -134,10 +120,6 @@ export const useCampaigns = ({ searchValue }: UseCampaignsProps) => {
     totalCount,
     isArchiving,
     setIsArchiving,
-    investmentFilter,
-    setInvestmentFilter,
-    revenueFilter,
-    setRevenueFilter,
     goToPage,
     handleArchiveSubmit,
     editMode,

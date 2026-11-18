@@ -220,7 +220,7 @@ function SpinsTable({ chart }: { chart: SpinsChart }) {
     cn(
       cellClassName,
       sortableCellClassName,
-      activeColumn === key && activeColumnClassName(),
+      activeColumn === key && activeColumnClassName("orange"),
     );
 
   return (
@@ -236,6 +236,7 @@ function SpinsTable({ chart }: { chart: SpinsChart }) {
               <SortableTableHeader
                 key={header.key}
                 label={header.label}
+                tone="orange"
                 active={activeColumn === header.key}
                 sortDirection={
                   chart.sortConfig.column === header.key
