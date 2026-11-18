@@ -33,6 +33,7 @@ import {
 } from "@/components/table-search-input";
 import { useActiveColumn } from "@/hooks/use-active-column";
 import { useElementHeight } from "@/hooks/use-element-height";
+import { useStickyHeader } from "@/hooks/use-sticky-header";
 import {
   useSpinsChart,
   type ChartData,
@@ -40,6 +41,7 @@ import {
   type SpinStatus,
 } from "@/hooks/use-spins-chart";
 import { cn } from "@/lib/utils";
+import NotificationsMenu from "../../notifications-menu";
 
 type VideoLanguage = "english" | "pidgin";
 
@@ -616,6 +618,7 @@ function DataGuideDialog() {
 const SpinsTableComponent: React.FC = () => {
   const chart = useSpinsChart();
   const header = useElementHeight<HTMLDivElement>();
+  const { sentinelRef, isSticky } = useStickyHeader();
 
   return (
     <div
@@ -623,8 +626,14 @@ const SpinsTableComponent: React.FC = () => {
       style={{ "--spins-header-height": `${header.height}px` } as CSSProperties}
     >
       {/* Table headers stick just below this bar. */}
+      <div ref={sentinelRef} className="h-px" aria-hidden="true" />
       <div ref={header.ref} className="sticky top-0 z-30 bg-background">
         <SpinsHeader chart={chart} />
+        {isSticky && (
+          <div className="absolute right-4 top-8 sm:right-8">
+            <NotificationsMenu triggerClassName="relative size-10 rounded-full text-foreground active:scale-[0.97] [&_svg]:size-[18px]!" />
+          </div>
+        )}
       </div>
 
       <main className="px-3 sm:px-4">

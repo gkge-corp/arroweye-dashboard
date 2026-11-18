@@ -17,7 +17,7 @@ export const useCampaignSchedule = (projectId?: number) => {
   const campaignEvents = [...schedule.events]
     .sort(
       (a, b) =>
-        new Date(a.start ?? 0).getTime() - new Date(b.start ?? 0).getTime(),
+        new Date(b.start ?? 0).getTime() - new Date(a.start ?? 0).getTime(),
     )
     .map((event) => ({
       id: event.id,
