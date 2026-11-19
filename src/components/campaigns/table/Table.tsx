@@ -1,5 +1,4 @@
 import React, { type ComponentProps } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { activeColumnClassName } from "@/components/sortable-table-header";
 
@@ -40,6 +39,65 @@ const getAlignmentClass = (align?: TableHeader["align"]) => {
   return "text-left";
 };
 
+const ariaSort = (direction: TableHeader["sortDirection"]) =>
+  direction === "asc"
+    ? "ascending"
+    : direction === "desc"
+      ? "descending"
+      : undefined;
+
+/** Green header cell with the orange "Sorting by" tab above it, like Spots. */
+const SortableHeaderCell = ({
+  header,
+  active,
+}: {
+  header: TableHeader;
+  active: boolean;
+}) => {
+  const rowClassName = cn(
+    "flex w-full items-center gap-1 bg-[#31bc86] px-4 py-[11px] font-medium transition-colors duration-150 dark:bg-[#17954c]",
+    header.align === "center" && "justify-center",
+    header.align === "right" && "justify-end",
+    active && "border-x border-x-[#ee9a78] dark:border-x-[#dd6236]/70",
+  );
+
+  return (
+    <th
+      scope="col"
+      aria-sort={ariaSort(header.sortDirection)}
+      className={cn(
+        "sticky top-0 z-10 bg-card p-0 lg:top-[var(--table-sticky-top,0px)]",
+        getAlignmentClass(header.align),
+        header.className,
+      )}
+    >
+      <div className="flex h-8 items-end">
+        <span
+          className={cn(
+            "flex h-full w-full items-center justify-center rounded-t-lg bg-[#dd6236] text-[10px] font-semibold tracking-wide text-white transition-opacity duration-150",
+            active ? "opacity-100" : "opacity-0",
+          )}
+          aria-hidden={!active}
+        >
+          SORTING BY
+        </span>
+      </div>
+      {header.onSort ? (
+        <button
+          type="button"
+          onClick={header.onSort}
+          {...header.highlightProps}
+          className={cn(rowClassName, "cursor-pointer outline-none")}
+        >
+          {header.content}
+        </button>
+      ) : (
+        <div className={rowClassName}>{header.content}</div>
+      )}
+    </th>
+  );
+};
+
 const Table: React.FC<TableProps> = ({
   headers = [],
   rows = [],
@@ -50,6 +108,7 @@ const Table: React.FC<TableProps> = ({
   "aria-label": ariaLabel,
 }) => {
   const columnCount = Math.max(headers.length, 1);
+  const hasSortableHeaders = headers.some((header) => header.onSort);
 
   // On desktop, clip instead of scroll so the sticky header follows the page scroll.
   return (
@@ -64,48 +123,33 @@ const Table: React.FC<TableProps> = ({
         aria-label={ariaLabel}
       >
         <thead>
-          <tr className="rounded-2xl bg-[#31bc86] text-center text-[16px] text-white dark:bg-[#17954c]">
-            {headers.map((header, index) => (
-              <th
-                key={index}
-                scope="col"
-                aria-sort={
-                  header.sortDirection === "asc"
-                    ? "ascending"
-                    : header.sortDirection === "desc"
-                      ? "descending"
-                      : undefined
-                }
-                className={cn(
-                  "sticky top-0 z-10 lg:top-[var(--table-sticky-top,0px)] bg-[#31bc86] px-4 py-[11px] font-medium transition-colors duration-150 dark:bg-[#17954c]",
-                  getAlignmentClass(header.align),
-                  // The sort button carries the padding so the whole cell is clickable.
-                  header.onSort && "p-0",
-                  index === activeColumn &&
-                    "border-x border-x-[#ee9a78] dark:border-x-[#dd6236]/70",
-                  header.className,
-                )}
-              >
-                {header.onSort ? (
-                  <button
-                    type="button"
-                    onClick={header.onSort}
-                    {...header.highlightProps}
-                    className="flex w-full cursor-pointer items-center gap-1 px-4 py-[11px] outline-none"
-                  >
-                    {header.content}
-                    {header.sortDirection === "asc" && (
-                      <ArrowUp className="size-4" aria-hidden="true" />
-                    )}
-                    {header.sortDirection === "desc" && (
-                      <ArrowDown className="size-4" aria-hidden="true" />
-                    )}
-                  </button>
-                ) : (
-                  header.content
-                )}
-              </th>
-            ))}
+          <tr
+            className={cn(
+              "rounded-2xl text-center text-[16px] text-white",
+              !hasSortableHeaders && "bg-[#31bc86] dark:bg-[#17954c]",
+            )}
+          >
+            {headers.map((header, index) =>
+              hasSortableHeaders ? (
+                <SortableHeaderCell
+                  key={index}
+                  header={header}
+                  active={index === activeColumn}
+                />
+              ) : (
+                <th
+                  key={index}
+                  scope="col"
+                  className={cn(
+                    "sticky top-0 z-10 bg-[#31bc86] px-4 py-[11px] font-medium dark:bg-[#17954c] lg:top-[var(--table-sticky-top,0px)]",
+                    getAlignmentClass(header.align),
+                    header.className,
+                  )}
+                >
+                  {header.content}
+                </th>
+              ),
+            )}
           </tr>
         </thead>
 

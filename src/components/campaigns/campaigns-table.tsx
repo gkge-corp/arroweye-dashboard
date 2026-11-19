@@ -244,6 +244,7 @@ const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
         {!isAdvertiser && (
           <Table
             aria-label="Campaign projects"
+            className="border-0"
             highlightFirstCell={true}
             activeColumn={activeColumnIndex}
             headers={projectHeaders}
@@ -258,6 +259,7 @@ const Campaigns: React.FC<ProjectsProps> = ({ filterVisible, searchValue }) => {
           <div className="relative">
             <Table
               aria-label="Created campaigns"
+              className="border-0"
               highlightFirstCell={true}
               activeColumn={activeColumnIndex}
               headers={advertiserHeaders}
