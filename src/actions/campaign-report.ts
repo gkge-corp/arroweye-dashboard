@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import OpenAI from "openai";
 
 import { renderCampaignReportEmail } from "@/lib/email/campaign-report-template";
@@ -12,6 +11,7 @@ import { getAuthorizedProject } from "@/lib/server/get-authorized-project";
 import { loadRadioStationPlays } from "@/lib/radio-monitor/load-radio-station-plays";
 import { listRadioMonitors } from "@/lib/storage/r2";
 import { buildRadioMonitorLink } from "@/lib/storage/report-link";
+import { getAppBaseUrl } from "@/lib/server/get-app-base-url";
 import type {
   CampaignReportCreator,
   CampaignReportRadioStation,
@@ -293,18 +293,6 @@ const generateCampaignAiInsights = async (
 
   if (!response.output_text) return undefined;
   return parseAiInsights(response.output_text);
-};
-
-// Links in the email must point at the app that sent it, not the API server.
-const getAppBaseUrl = async () => {
-  const requestHeaders = await headers();
-  const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  if (!host) throw new Error("The app URL could not be determined.");
-  const protocol =
-    requestHeaders.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") ? "http" : "https");
-  return `${protocol}://${host}`;
 };
 
 // The upload is shared across campaigns, so it is only linked when this song is on a chart.

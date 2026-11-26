@@ -1,6 +1,7 @@
 import "server-only";
 
 import nodemailer from "nodemailer";
+import type Mail from "nodemailer/lib/mailer";
 
 interface SendZeptoMailInput {
   recipient: string;
@@ -8,6 +9,7 @@ interface SendZeptoMailInput {
   html: string;
   text: string;
   clientReference: string;
+  attachments?: Mail.Attachment[];
 }
 
 const getRequiredEnv = (name: string) => {
@@ -74,6 +76,7 @@ export async function sendZeptoMail({
   html,
   text,
   clientReference,
+  attachments,
 }: SendZeptoMailInput) {
   const result = await createTransport().sendMail({
     from: getSender(),
@@ -81,6 +84,7 @@ export async function sendZeptoMail({
     subject,
     html,
     text,
+    attachments,
     headers: {
       "X-Arroweye-Client-Reference": clientReference,
     },

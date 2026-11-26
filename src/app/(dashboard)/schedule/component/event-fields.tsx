@@ -67,18 +67,20 @@ export const ClearButton = ({
   </button>
 );
 
-const TimeSelect = ({
+export const TimeSelect = ({
   id,
   value,
   options,
   onChange,
+  disabled,
 }: {
   id: string;
   value: string;
   options: TimeOption[];
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) => (
-  <Select value={value} onValueChange={onChange}>
+  <Select value={value} onValueChange={onChange} disabled={disabled}>
     <SelectTrigger id={id} className={cn(triggerClassName, "justify-between")}>
       {/* div, not span: SelectTrigger line-clamps direct span children, stacking them */}
       <div className="flex items-center gap-3">
