@@ -14,9 +14,6 @@ interface LayoutProps {
 interface CampaignTitleResponse {
   title?: string | null;
   song_title?: string | null;
-  campaign?: {
-    song_title?: string | null;
-  } | null;
 }
 
 const getCampaignTitle = async (
@@ -35,7 +32,6 @@ const getCampaignTitle = async (
     return (
       campaign.title?.trim() ||
       campaign.song_title?.trim() ||
-      campaign.campaign?.song_title?.trim() ||
       null
     );
   } catch {
@@ -55,16 +51,10 @@ export async function generateMetadata({
   let campaignTitle: string | null = null;
 
   if (token && apiBaseUrl) {
-    const projectTitle = await getCampaignTitle(
+    campaignTitle = await getCampaignTitle(
       `${apiBaseUrl}/api/campaigns/${id}`,
       token,
     );
-    campaignTitle =
-      projectTitle ||
-      (await getCampaignTitle(
-        `${apiBaseUrl}/api/v1/campaigns/${id}/dashboard/`,
-        token,
-      ));
   }
 
   const title = campaignTitle

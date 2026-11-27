@@ -9,7 +9,11 @@ import {
   prepareRsvp,
   sendMailerBatch,
 } from "@/actions/mailer";
-import { scheduleInvitation } from "@/actions/mailer-schedule";
+import {
+  getInvitationImageUrl,
+  recordSentInvitation,
+  scheduleInvitation,
+} from "@/actions/mailer-schedule";
 import { SCHEDULED_INVITATIONS_KEY } from "@/hooks/use-scheduled-invitations";
 import { useAuth } from "@/context/auth-session";
 import { type InvitationEventFields } from "@/hooks/use-invitation-events";
@@ -27,6 +31,7 @@ import type {
   InvitationFields,
   MailerRecipient,
   MailerSendFailure,
+  ScheduledInvitation,
 } from "@/types/mailer";
 
 export interface MailerProgress {
@@ -65,6 +70,8 @@ export const useMailer = () => {
   const [isScheduling, setIsScheduling] = useState(false);
   const [progress, setProgress] = useState<MailerProgress | null>(null);
   const [isDraftRestored, setIsDraftRestored] = useState(false);
+  /** Title of the saved invitation loaded into the composer, if any. */
+  const [openedTitle, setOpenedTitle] = useState<string | null>(null);
   const heroImage = useInvitationImage();
 
   // Restored after mount: localStorage doesn't exist during the server render.
@@ -114,9 +121,9 @@ export const useMailer = () => {
   const fillFromEvent = (fields: InvitationEventFields) =>
     setInvitation((current) => ({ ...current, ...fields }));
 
-  const importSheet = async () => {
+  const importSheet = async (url = sheetUrl) => {
     setIsImporting(true);
-    const result = await loadSheetRecipients(sheetUrl);
+    const result = await loadSheetRecipients(url);
     setIsImporting(false);
 
     if (!result.success) {
@@ -124,7 +131,7 @@ export const useMailer = () => {
       return;
     }
 
-    setImportedSheetUrl(sheetUrl);
+    setImportedSheetUrl(url);
     setRecipients(result.recipients);
     setSkipped(result.skipped);
     setAlreadyInvited(result.alreadyInvited);
@@ -149,6 +156,7 @@ export const useMailer = () => {
     setSheetUrl("");
     setInvitation(DEFAULT_INVITATION);
     heroImage.removeImage();
+    setOpenedTitle(null);
   };
 
   /**
@@ -242,6 +250,45 @@ export const useMailer = () => {
     }
   };
 
+  /** Loads a saved invitation back into the composer and re-imports its sheet. */
+  const openInvitation = async (saved: ScheduledInvitation) => {
+    reset();
+    setInvitation({ ...DEFAULT_INVITATION, ...saved.invitation });
+    setSheetUrl(saved.sheetUrl);
+    setOpenedTitle(saved.invitation.title);
+
+    if (saved.imageKey) {
+      try {
+        const previewUrl = await getInvitationImageUrl(saved.imageKey);
+        if (previewUrl) heroImage.setStoredImage(saved.imageKey, previewUrl);
+      } catch (error) {
+        console.error("Loading the saved invitation image failed:", error);
+        toast.error("The saved image couldn't be loaded. Add it again.");
+      }
+    }
+
+    await importSheet(saved.sheetUrl);
+  };
+
+  const saveSentInvitation = async (sentCount: number, imageKey?: string) => {
+    try {
+      const result = await recordSentInvitation({
+        sheetUrl: importedSheetUrl,
+        invitation,
+        imageKey,
+        sentCount,
+      });
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: SCHEDULED_INVITATIONS_KEY });
+    } catch (error) {
+      console.error("Saving the sent invitation failed:", error);
+      toast.error("The invitation could not be saved to history.");
+    }
+  };
+
   const sendAll = async () => {
     const prepared = await prepareSend();
     if (!prepared.ready) return;
@@ -270,6 +317,7 @@ export const useMailer = () => {
     }
 
     setProgress({ total, sent, failed, done: true });
+    if (sent > 0) await saveSentInvitation(sent, prepared.imageKey);
     if (failed.length) toast.error(`${failed.length} invitations failed to send`);
     else toast.success(`Sent ${sent} invitations`);
     if (!sheetUpdated) {
@@ -303,6 +351,8 @@ export const useMailer = () => {
     importSheet,
     clearRecipients,
     reset,
+    openInvitation,
+    openedTitle,
     sendTest,
     sendAll,
   };

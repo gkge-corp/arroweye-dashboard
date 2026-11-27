@@ -164,25 +164,6 @@ export const updateProjectIsrc = (
     requireToken: true,
   });
 
-export const shareProject = async (
-  id: number,
-  payload: unknown,
-): Promise<void> => {
-  try {
-    const { data: response } = await apiRequest<
-      ApiRequestResponse<ApiResponse>
-    >({
-      method: "POST",
-      url: `/api/v1/projects/${id}/share-project/`,
-      data: payload,
-      requireToken: true,
-    });
-
-    console.log(response);
-    toast.success("Action successful!");
-  } catch (error: unknown) {}
-};
-
 export const campaignStaffAction = async (
   id: number | string,
   payload: ProjectWatcherAction,
@@ -287,31 +268,4 @@ export const getSingleCampaign = async (
 export const getStoredSingleCampaign = (id: number): Campaign | null => {
   const content = ls.get(`SingleCampaign:${id}`, { decrypt: true });
   return content as Campaign | null;
-};
-
-export const ClaimReward = async (payload: unknown): Promise<void> => {
-  const claimRewardToast = toast.loading("claiming reward...");
-  try {
-    const { data: response } = await apiRequest<
-      ApiRequestResponse<ApiResponse>
-    >({
-      method: "POST",
-      url: `/api/v1/ums/claim-reward/`,
-      data: payload,
-      requireToken: true,
-      skipErrorHandling: true,
-      loadingToastId: claimRewardToast,
-    });
-
-    console.log(response);
-    toast.update(claimRewardToast, {
-      render: "Claim Reward Successful",
-      type: "info",
-      isLoading: false,
-      autoClose: 3000,
-    });
-    window.location.reload();
-  } catch (error: unknown) {
-    return;
-  }
 };

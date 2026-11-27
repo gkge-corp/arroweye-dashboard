@@ -90,14 +90,70 @@ export function SchedulePopover({
   );
 }
 
+const HISTORY_STATUS_LABELS: Partial<Record<ScheduledInvitation["status"], string>> = {
+  sent: "Sent",
+  done: "Finished",
+  cancelled: "Cancelled",
+};
+
+function OpenButton({
+  disabled,
+  onOpen,
+}: {
+  disabled: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="rounded-full"
+      disabled={disabled}
+      onClick={onOpen}
+    >
+      Open
+    </Button>
+  );
+}
+
+function HistoryRow({
+  invitation,
+  openDisabled,
+  onOpen,
+}: {
+  invitation: ScheduledInvitation;
+  openDisabled: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <li className="flex items-start gap-3 p-3 text-xs">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">
+          {invitation.invitation.title}
+        </p>
+        <p className="text-muted-foreground">
+          {HISTORY_STATUS_LABELS[invitation.status]} ·{" "}
+          {formatDateLabel(invitation.sendOn)} · {invitation.sentCount} sent
+        </p>
+      </div>
+      <OpenButton disabled={openDisabled} onOpen={onOpen} />
+    </li>
+  );
+}
+
 function ScheduledRow({
   schedule,
   isCancelling,
   onCancel,
+  openDisabled,
+  onOpen,
 }: {
   schedule: ScheduledInvitation;
   isCancelling: boolean;
   onCancel: () => void;
+  openDisabled: boolean;
+  onOpen: () => void;
 }) {
   const [isConfirming, setIsConfirming] = useState(false);
 
@@ -119,6 +175,7 @@ function ScheduledRow({
             <p className="text-red-600">{schedule.lastError}</p>
           )}
         </div>
+        <OpenButton disabled={openDisabled} onOpen={onOpen} />
         {!isConfirming && (
           <Button
             type="button"
@@ -167,14 +224,30 @@ function ScheduledRow({
   );
 }
 
-export function ScheduledList() {
-  const { schedules, isLoading, cancelSchedule, cancellingId } =
+const sectionHeadingClass =
+  "bg-muted/50 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
+
+/** Scheduled invitations still sending, then past ones; any can be reopened in the composer. */
+export function ScheduledList({
+  mailer,
+  openDisabled,
+}: {
+  mailer: Mailer;
+  openDisabled: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const { schedules, history, isLoading, cancelSchedule, cancellingId } =
     useScheduledInvitations();
 
+  const openInvitation = (invitation: ScheduledInvitation) => {
+    setOpen(false);
+    void mailer.openInvitation(invitation);
+  };
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <ComposeIconButton label="Scheduled invitations">
+        <ComposeIconButton label="Invitations">
           <ListChecks className="size-[18px]" />
           {schedules.length > 0 && (
             <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white">
@@ -186,21 +259,45 @@ export function ScheduledList() {
       <PopoverContent align="end" side="top" className="w-80 p-0">
         {isLoading ? (
           <p className="p-4 text-sm text-muted-foreground">Loading…</p>
-        ) : schedules.length === 0 ? (
+        ) : schedules.length === 0 && history.length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground">
-            No scheduled invitations.
+            No invitations yet.
           </p>
         ) : (
-          <ul className="max-h-80 divide-y divide-border overflow-auto">
-            {schedules.map((schedule) => (
-              <ScheduledRow
-                key={schedule.id}
-                schedule={schedule}
-                isCancelling={cancellingId === schedule.id}
-                onCancel={() => cancelSchedule(schedule.id)}
-              />
-            ))}
-          </ul>
+          <div className="max-h-96 overflow-auto">
+            {schedules.length > 0 && (
+              <>
+                <p className={sectionHeadingClass}>Scheduled</p>
+                <ul className="divide-y divide-border">
+                  {schedules.map((schedule) => (
+                    <ScheduledRow
+                      key={schedule.id}
+                      schedule={schedule}
+                      isCancelling={cancellingId === schedule.id}
+                      onCancel={() => cancelSchedule(schedule.id)}
+                      openDisabled={openDisabled}
+                      onOpen={() => openInvitation(schedule)}
+                    />
+                  ))}
+                </ul>
+              </>
+            )}
+            {history.length > 0 && (
+              <>
+                <p className={sectionHeadingClass}>Past</p>
+                <ul className="divide-y divide-border">
+                  {history.map((invitation) => (
+                    <HistoryRow
+                      key={invitation.id}
+                      invitation={invitation}
+                      openDisabled={openDisabled}
+                      onOpen={() => openInvitation(invitation)}
+                    />
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
         )}
       </PopoverContent>
     </Popover>

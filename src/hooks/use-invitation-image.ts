@@ -7,7 +7,8 @@ import { getMailerImageUpload } from "@/actions/mailer";
 import { MAILER_IMAGE_MAX_BYTES, MAILER_IMAGE_TYPES } from "@/lib/mailer/limits";
 
 export interface InvitationImage {
-  file: File;
+  /** Missing when reopened from a saved invitation: it's already in storage. */
+  file?: File;
   name: string;
   previewUrl: string;
   /** Set once uploaded at send time, so a test then a real send upload once. */
@@ -43,7 +44,7 @@ export const useInvitationImage = () => {
   const [image, setImage] = useState<InvitationImage | null>(null);
 
   const removeImage = () => {
-    if (image) URL.revokeObjectURL(image.previewUrl);
+    if (image?.file) URL.revokeObjectURL(image.previewUrl);
     setImage(null);
   };
 
@@ -62,6 +63,7 @@ export const useInvitationImage = () => {
   const ensureImageUploaded = async () => {
     if (!image) return undefined;
     if (image.key) return image.key;
+    if (!image.file) return undefined;
 
     const key = await uploadImageFile(image.file);
     setImage((current) =>
@@ -70,5 +72,10 @@ export const useInvitationImage = () => {
     return key;
   };
 
-  return { image, pickImage, removeImage, ensureImageUploaded };
+  const setStoredImage = (key: string, previewUrl: string) => {
+    removeImage();
+    setImage({ name: "Saved image", previewUrl, key });
+  };
+
+  return { image, pickImage, removeImage, ensureImageUploaded, setStoredImage };
 };
