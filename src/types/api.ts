@@ -6,7 +6,10 @@ import type { components, operations } from "@/types/generated/arroweye-api";
  * Keep UI code importing from this file. The generated file is intentionally
  * large and should only be refreshed from docs/Arroweye API.yaml.
  */
-export type Business = components["schemas"]["Business"];
+export type OrganizationKind = "agency" | "label" | "personal";
+export type Business = components["schemas"]["Business"] & {
+  kind?: OrganizationKind;
+};
 export type BusinessStaff = components["schemas"]["Staff"];
 export type Campaign = components["schemas"]["MarketplaceCampaign"];
 export type CampaignDraft = components["schemas"]["MarketplaceCampaignDraft"];
@@ -14,7 +17,6 @@ export type CampaignDraftResponse = CampaignDraft & {
   /** Returned at runtime but missing from the documented response schema. */
   id?: number;
 };
-export type CreateBusinessInput = components["schemas"]["CreateBusiness"];
 export type EventStatus = "confirmed" | "tentative" | "cancelled";
 /** description/status are returned at runtime but not yet in the documented schema. */
 type EventDetailFields = {
@@ -81,10 +83,19 @@ export interface UserProfile {
   business_type: string;
 }
 
+export interface UserOrganization {
+  id: number;
+  name: string | null;
+  kind: "agency" | "label";
+  role: string;
+}
+
 export interface AuthenticatedUser {
   id: string;
   email: string;
   user_type?: components["schemas"]["UserTypeEnum"];
+  platform_role?: string | null;
+  organizations?: UserOrganization[];
   user_profile: UserProfile;
   created: string | null;
   last_login?: string | null;

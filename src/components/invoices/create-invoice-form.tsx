@@ -21,6 +21,7 @@ import {
 } from "@/services";
 import { ContentItem } from "@/types/contents";
 import type { Business, CreateInvoiceInput } from "@/types/api";
+import type { InvoiceAgencyAccess } from "@/hooks/use-create-invoice";
 import { hasAccess, hasAccessExceptVendorManager } from "@/lib/utils";
 
 // The shared Input/SelectInput still carry legacy hard-coded colours, including
@@ -87,7 +88,11 @@ interface ProjectFormData {
   services: { service_id: number; quantity: number; cost: number | string }[];
 }
 
-const CreateInvoiceForm = () => {
+interface CreateInvoiceFormProps {
+  agencyAccess: InvoiceAgencyAccess;
+}
+
+const CreateInvoiceForm = ({ agencyAccess }: CreateInvoiceFormProps) => {
   const [selectedService, setSelectedService] = useState<number | string>();
   // const [selectedServiceCost, setSelectedServiceCost] = useState<
   //   number | string
@@ -167,18 +172,26 @@ const CreateInvoiceForm = () => {
     });
   }, []);
 
-  const vendorOptions = business
-    ? business
-        .filter((item) => item.type === "Vendor")
+  const vendorOptions = agencyAccess.canPickAnyAgency
+    ? (business ?? [])
+        .filter((item) => item.kind === "agency")
         .map((item) => ({
           value: item.id ?? 0,
           label: item.organization_name ?? "",
         }))
-    : [];
+    : agencyAccess.managedAgencies.map((org) => ({
+        value: org.id,
+        label: org.name ?? "",
+      }));
+  // An agency manager with one agency always invoices as that agency.
+  const fixedAgencyId =
+    !agencyAccess.canPickAnyAgency && vendorOptions.length === 1
+      ? vendorOptions[0].value
+      : null;
 
   const subVendorOptions = business
     ? business
-        .filter((item) => item.type === "SubVendor")
+        .filter((item) => item.kind === "label")
         .map((item) => ({
           value: item.id ?? 0,
           label: item.organization_name ?? "",
@@ -273,6 +286,7 @@ const CreateInvoiceForm = () => {
       },
     ],
   });
+  const vendorId = fixedAgencyId ?? projectFormData.vendor_id;
 
   const [projectErrors, setProjectErrors] = useState<ProjectErrors>({
     project_title: "",
@@ -326,8 +340,11 @@ const CreateInvoiceForm = () => {
     if (!projectFormData.currency) {
       newErrors.project_title = "Please select a Currency option.";
     }
-    if (!projectFormData.vendor_id) {
-      newErrors.vendor_id = "Please select a Vendor.";
+    if (!vendorId) {
+      newErrors.vendor_id = "Please select an Agency.";
+    }
+    if (!projectFormData.subvendor_id) {
+      newErrors.subvendor_id = "Please select a Label.";
     }
     if (!projectFormData.artist_name) {
       newErrors.artist_name = "Please enter an Artist Name.";
@@ -372,10 +389,8 @@ const CreateInvoiceForm = () => {
     if (!hasErrors) {
       const updatedFormData: CreateInvoiceInput = {
         ...projectFormData,
-        vendor_id: Number(projectFormData.vendor_id),
-        subvendor_id: projectFormData.subvendor_id
-          ? Number(projectFormData.subvendor_id)
-          : undefined,
+        vendor_id: Number(vendorId),
+        subvendor_id: Number(projectFormData.subvendor_id),
         currency: String(projectFormData.currency),
         isrc: normalizeIsrc(projectFormData.isrc),
         // cost: customCost,
@@ -516,29 +531,30 @@ const CreateInvoiceForm = () => {
                 )}
               </div>
 
-              {/* Select Vendor */}
-              <div className="w-full">
-                <SelectInput
-                  icon={true}
-                  label="SELECT VENDOR"
-                  name="vendor"
-                  options={vendorOptions}
-                  onChange={handleVendorChange}
-                  value={projectFormData.vendor_id}
-                  labelClassName={LABEL_CLASS}
-                  className={SELECT_CLASS}
-                />
-                {projectErrors.vendor_id && (
-                  <p className={ERROR_CLASS}>{projectErrors.vendor_id}</p>
-                )}
-              </div>
+              {fixedAgencyId === null && (
+                <div className="w-full">
+                  <SelectInput
+                    icon={true}
+                    label="SELECT AGENCY"
+                    name="vendor"
+                    options={vendorOptions}
+                    onChange={handleVendorChange}
+                    value={projectFormData.vendor_id}
+                    labelClassName={LABEL_CLASS}
+                    className={SELECT_CLASS}
+                  />
+                  {projectErrors.vendor_id && (
+                    <p className={ERROR_CLASS}>{projectErrors.vendor_id}</p>
+                  )}
+                </div>
+              )}
 
-              {/* Select Subvendor */}
+              {/* Select Label */}
               <div className="w-full">
                 <SelectInput
                   icon={true}
                   name="subVendor"
-                  label="SELECT SUBVENDOR"
+                  label="SELECT LABEL"
                   options={subVendorOptions}
                   onChange={handleSubVendorChange}
                   value={projectFormData.subvendor_id}
@@ -590,7 +606,7 @@ const CreateInvoiceForm = () => {
                   type="number"
                   name="discount"
                   placeholder="0"
-                  info="This is an optional discount percentage offered by the Vendor."
+                  info="This is an optional discount percentage offered by the agency."
                   value={projectFormData.discount || ""}
                   onChange={handleInputChange}
                   labelClassName={LABEL_CLASS}

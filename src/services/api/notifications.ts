@@ -9,17 +9,16 @@ import type {
   NotificationType,
 } from "@/types/notifications";
 import type { NotificationPage } from "@/types/api";
-import ls from "localstorage-slim";
-
-if (typeof window !== "undefined" && window?.localStorage)
-  ls.config.storage = localStorage;
-
 type NotificationApiResponse =
   | NotificationPage
   | ApiNotification[]
   | { notifications: ApiNotification[] };
 
 export const notificationQueryKey = ["notifications"] as const;
+export const unreadNotificationQueryKey = [
+  ...notificationQueryKey,
+  "unread",
+] as const;
 
 const normalizeNotifications = (value: unknown): ApiNotification[] => {
   if (typeof value === "string") {
@@ -61,22 +60,13 @@ const filterByType = (
       )
     : notifications;
 
-// Types the backend can filter by `category`; the rest are filtered by `type`
-// in the app.
-const notificationCategories: Partial<Record<NotificationType, string>> = {
-  Payments: "payment",
-  Milestones: "milestone",
-};
-
 // The API only ever returns the signed-in user's own notifications.
 interface NotificationFilters {
   projectId?: number;
-  category?: string;
 }
 
 const fetchAllNotificationPages = async ({
   projectId,
-  category,
 }: NotificationFilters) => {
   const notifications: ApiNotification[] = [];
 
@@ -86,7 +76,6 @@ const fetchAllNotificationPages = async ({
       page_size: String(NOTIFICATION_PAGE_SIZE),
     });
     if (projectId) params.set("campaign_id", String(projectId));
-    if (category) params.set("category", category);
 
     const response = await apiRequest<NotificationApiResponse>({
       method: "GET",
@@ -104,31 +93,52 @@ const fetchAllNotificationPages = async ({
   return notifications;
 };
 
-export const getNotifications = async (
-  type?: NotificationType,
-): Promise<ApiNotification[]> => {
-  const category = type ? notificationCategories[type] : undefined;
+export const NOTIFICATION_LIST_PAGE_SIZE = 20;
 
-  try {
-    const notifications = category
-      ? await fetchAllNotificationPages({ category })
-      : filterByType(await fetchAllNotificationPages({}), type);
+export interface NotificationListPage {
+  items: ApiNotification[];
+  count: number;
+  nextPage: number | null;
+}
 
-    ls.set("Notifications", notifications, { encrypt: true });
-    return notifications;
-  } catch {
-    // The deployed notifications list endpoint currently returns HTTP 500 for
-    // some accounts. /ums/me/ exposes the same collection at runtime.
-    const user = await apiRequest<unknown>({
-      method: "GET",
-      url: `/api/me`,
-      requireToken: true,
-    });
+interface NotificationPageQuery {
+  type?: NotificationType;
+  page?: number;
+  pageSize?: number;
+  unreadOnly?: boolean;
+}
 
-    const notifications = filterByType(normalizeNotifications(user), type);
-    ls.set("Notifications", notifications, { encrypt: true });
-    return notifications;
-  }
+export const getNotificationPage = async ({
+  type,
+  page = 1,
+  pageSize = NOTIFICATION_LIST_PAGE_SIZE,
+  unreadOnly = false,
+}: NotificationPageQuery): Promise<NotificationListPage> => {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  if (type) params.set("type", type);
+  if (unreadOnly) params.set("read", "false");
+
+  const response = await apiRequest<NotificationApiResponse>({
+    method: "GET",
+    url: `/api/notifications?${params}`,
+    data: null,
+    requireToken: true,
+    silent: true,
+    skipErrorHandling: true,
+  });
+
+  const items = normalizeNotifications(response);
+  return {
+    items,
+    count:
+      !Array.isArray(response) && "count" in response
+        ? Number(response.count)
+        : items.length,
+    nextPage: hasNextPage(response) ? page + 1 : null,
+  };
 };
 
 export const getProjectNotifications = async (
@@ -136,9 +146,6 @@ export const getProjectNotifications = async (
   type?: NotificationType,
 ): Promise<ApiNotification[]> =>
   filterByType(await fetchAllNotificationPages({ projectId }), type);
-
-/** @deprecated Use getNotifications for the normalized notification array. */
-export const getNotification = getNotifications;
 
 export const markNotificationsAsRead = async (
   payload: MarkNotificationsReadInput,
@@ -156,3 +163,11 @@ export const markNotificationsAsRead = async (
     return null;
   }
 };
+
+export const markAllNotificationsAsRead = () =>
+  apiRequest<{ updated: number }>({
+    method: "POST",
+    url: `/api/notifications/read-all`,
+    data: null,
+    requireToken: true,
+  });
