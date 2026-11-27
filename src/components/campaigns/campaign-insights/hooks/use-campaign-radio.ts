@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import { useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
@@ -25,7 +26,7 @@ export const fetchTopRadio = async (
   if (countries) query.set("countries", countries.join(","));
   if (window.startDate) query.set("startDate", window.startDate);
   if (window.endDate) query.set("endDate", window.endDate);
-  const response = await fetch(`/api/music-analytics/top-radio?${query}`);
+  const response = await fetchMusicAnalytics(`top-radio?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: RadioRow[];
     nextOffset?: number | null;

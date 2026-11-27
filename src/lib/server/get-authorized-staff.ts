@@ -18,7 +18,7 @@ export const getAuthorizedStaff = async (
     throw new Error("Your session has expired. Please sign in again.");
   if (!apiBaseUrl) throw new Error("The account service is not configured.");
 
-  const response = await fetch(`${apiBaseUrl}/api/v1/ums/me/`, {
+  const response = await fetch(`${apiBaseUrl}/api/me`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });

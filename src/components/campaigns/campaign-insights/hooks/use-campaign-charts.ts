@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import { useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
@@ -25,7 +26,7 @@ const fetchCharts = async (
     query.set("platforms", cursor.platforms.join(","));
   }
 
-  const response = await fetch(`/api/music-analytics/charts?${query}`);
+  const response = await fetchMusicAnalytics(`charts?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: ChartRow[];
     nextOffset?: number | null;
@@ -42,7 +43,10 @@ const fetchCharts = async (
     items: payload.items ?? [],
     nextCursor:
       payload.nextOffset != null
-        ? { offset: payload.nextOffset, platforms: payload.nextPlatforms ?? null }
+        ? {
+            offset: payload.nextOffset,
+            platforms: payload.nextPlatforms ?? null,
+          }
         : null,
     failedPlatforms: payload.failedPlatforms ?? [],
   };

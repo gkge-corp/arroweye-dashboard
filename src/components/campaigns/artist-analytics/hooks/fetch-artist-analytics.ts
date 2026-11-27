@@ -1,3 +1,4 @@
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 /** The linked song plus the campaign's artist, which picks the right credit. */
 export interface ArtistQuery {
   isrc?: string;
@@ -17,7 +18,7 @@ export const fetchArtistAnalytics = async <T>(
   params: Record<string, string>,
 ): Promise<T> => {
   const query = new URLSearchParams(params);
-  const response = await fetch(`/api/music-analytics/${route}?${query}`);
+  const response = await fetchMusicAnalytics(`${route}?${query}`);
   const payload = (await response.json().catch(() => ({}))) as T & {
     error?: string;
   };

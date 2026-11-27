@@ -18,7 +18,7 @@ export const CreateEvent = async (
 ): Promise<CreateEventInput> => {
   const response = await apiRequest<CreateEventInput>({
     method: "POST",
-    url: `/api/v1/projects/schedule/events/create/`,
+    url: `/api/events`,
     data: payload,
     requireToken: true,
   });
@@ -31,7 +31,7 @@ export const RescheduleEvent = async (
 ): Promise<RescheduleEventResponse> => {
   const response = await apiRequest<RescheduleEventResponse>({
     method: "POST",
-    url: `/api/v1/projects/schedule/events/reschedule/`,
+    url: `/api/events/reschedule`,
     data: payload,
     requireToken: true,
   });
@@ -48,7 +48,7 @@ export const UpdateEvent = async ({
 }): Promise<Event> => {
   const response = await apiRequest<Event>({
     method: "PATCH",
-    url: `/api/v1/projects/schedule/events/${id}/`,
+    url: `/api/events/${id}`,
     data: payload,
     requireToken: true,
   });
@@ -65,7 +65,7 @@ export const SendEventEmail = async ({
 }): Promise<void> => {
   await apiRequest<void>({
     method: "POST",
-    url: `/api/v1/projects/schedule/events/${id}/resend-email/`,
+    url: `/api/events/${id}/send-email`,
     data: { email_type: emailType },
     requireToken: true,
     skipErrorHandling: true,
@@ -75,7 +75,7 @@ export const SendEventEmail = async ({
 export const getEvents = async (): Promise<Event[]> => {
   const response = await apiRequest<Event[]>({
     method: "GET",
-    url: `/api/v1/projects/schedule/events/`,
+    url: `/api/events`,
     requireToken: true,
   });
 
@@ -93,7 +93,7 @@ const isNetworkError = (error: unknown) =>
 export const deleteEvents = async (id: number): Promise<void> => {
   await apiRequest<void>({
     method: "DELETE",
-    url: `/api/v1/projects/schedule/events/${id}/`,
+    url: `/api/events/${id}`,
     requireToken: true,
     skipErrorHandling: true,
   });
@@ -112,7 +112,7 @@ export const getProjectsEvents = async (id: number): Promise<Event[]> => {
     // The schema says Event, but this list-like endpoint returns Event[].
     const response = await apiRequest<Event[]>({
       method: "GET",
-      url: `/api/v1/projects/${id}/events/`,
+      url: `/api/campaigns/${id}/events`,
       data: null,
       requireToken: true,
       skipErrorHandling: true,

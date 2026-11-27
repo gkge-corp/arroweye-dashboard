@@ -17,7 +17,7 @@ export const getLoggedInUser = async (): Promise<AuthenticatedUser | null> => {
   try {
     const response = await apiRequest<AuthenticatedUser>({
       method: "GET",
-      url: `/api/v1/ums/me/`,
+      url: `/api/me`,
       requireToken: true,
     });
 
@@ -28,14 +28,14 @@ export const getLoggedInUser = async (): Promise<AuthenticatedUser | null> => {
 };
 
 export const LoginEP = async (payload: LoginRequest): Promise<LoginResponse> => {
-  const result = await apiRequest<LoginResponse>({
+  await apiRequest<{ success: boolean }>({
     method: "POST",
-    url: `/login/`,
-    data: payload,
+    url: `/api/auth/email-otp/send-verification-otp`,
+    data: { email: payload.email, type: "sign-in" },
     requireToken: false,
   });
 
-  return result;
+  return { message: "Kindly check your email for login token" };
 };
 
 export const Verify = async (payload: unknown): Promise<void> => {
@@ -56,23 +56,31 @@ export const Verify = async (payload: unknown): Promise<void> => {
 export const VerifyLogin = async (
   payload: VerifyLoginRequest,
 ): Promise<AuthSession> => {
-  const response = await apiRequest<AuthSession>({
+  const { token } = await apiRequest<{ token: string }>({
     method: "POST",
-    url: `/verify-login/`,
-    data: payload,
+    url: `/api/auth/sign-in/email-otp`,
+    data: { email: payload.email, otp: payload.token },
     requireToken: false,
   });
 
-  return response;
+  const user = await apiRequest<AuthenticatedUser>({
+    method: "GET",
+    url: `/api/me`,
+    headers: { Authorization: `Bearer ${token}` },
+    requireToken: false,
+  });
+
+  return { access: token, user };
 };
 
 export const AddStaff = async (
   payload: AddStaffInput,
 ): Promise<AddStaffInput> => {
+  const { business_id, project_id, ...member } = payload;
   const response = await apiRequest<AddStaffInput>({
     method: "POST",
-    url: `/api/v1/org/staff/add-user/`,
-    data: payload,
+    url: `/api/organizations/${business_id}/members`,
+    data: { ...member, campaign_id: project_id ?? undefined },
     requireToken: true,
   });
 
@@ -85,7 +93,7 @@ export const getBusinessStaff = async (
   try {
     const response = await apiRequest<BusinessStaff[]>({
       method: "GET",
-      url: `/api/v1/org/business/${id}/staff/`,
+      url: `/api/organizations/${id}/members`,
       requireToken: true,
     });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -69,7 +70,7 @@ const sortRows = <T extends Partial<Record<SpotsSortColumn, unknown>>>(
 };
 
 const fetchRadioRanking = async (): Promise<RadioStationRow[]> => {
-  const response = await fetch("/api/music-analytics/radio-ranking");
+  const response = await fetchMusicAnalytics("radio-ranking");
   const payload = (await response.json().catch(() => ({}))) as {
     items?: RadioStationRow[];
     error?: string;

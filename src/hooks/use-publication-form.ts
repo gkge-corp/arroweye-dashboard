@@ -97,7 +97,7 @@ export const usePublicationForm = ({
     setIsSaving(true);
     try {
       if (publication) {
-        await updateMedia(publication.id, payload);
+        await updateMedia(projectId, publication.id, payload);
         toast.success("Publication updated.");
       } else {
         await CreateMedia(Number(projectId), payload);
@@ -122,13 +122,17 @@ export const usePublicationForm = ({
   };
 };
 
-export const useDeletePublication = (onDeleted?: () => void) => {
+export const useDeletePublication = (
+  projectId: number | string | undefined,
+  onDeleted?: () => void,
+) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const removePublication = async (publication: PublicationMedia) => {
+    if (!projectId) return false;
     setIsDeleting(true);
     try {
-      await deleteMedia(publication.id);
+      await deleteMedia(projectId, publication.id);
       toast.success("Publication deleted.");
       onDeleted?.();
       return true;

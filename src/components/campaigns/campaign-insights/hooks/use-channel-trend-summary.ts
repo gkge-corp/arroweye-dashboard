@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -15,9 +16,7 @@ const fetchTrendSummary = async (
   range: TrendRange,
 ): Promise<string | null> => {
   const query = new URLSearchParams({ campaignId, range });
-  const response = await fetch(
-    `/api/music-analytics/channel-trend-summary?${query}`,
-  );
+  const response = await fetchMusicAnalytics(`channel-trend-summary?${query}`);
   const payload = (await response
     .json()
     .catch(() => ({}))) as TrendSummaryResponse;

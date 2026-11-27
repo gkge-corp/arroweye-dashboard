@@ -27,10 +27,16 @@ import {
   useAirplayMarkets,
 } from "@/hooks/use-airplay-markets";
 import {
-  mergeStreamingPlatforms,
   resolveStreamingSelection,
   useInsightSources,
 } from "@/hooks/use-insight-sources";
+import {
+  buildCampaignReportMetrics,
+  campaignDateRange,
+  pickShazamValue,
+  selectAirplayData,
+  selectStreamingData,
+} from "@/lib/campaign-report/report-metrics";
 import { TopRadioCard } from "./top-radio-card";
 import { TopCreatorsCard } from "./top-creators-card";
 import { ChannelTrendCard } from "./channel-trend-card";
@@ -39,23 +45,13 @@ import {
   type TrendRange,
 } from "./hooks/use-campaign-channel-trend";
 import { useChannelTrendSummary } from "./hooks/use-channel-trend-summary";
-import { sendCampaignReport } from "@/actions/campaign-report";
+import { sendCampaignReportEmail } from "@/services/api/campaign-emails";
 import type { CampaignReportMetrics } from "@/types/campaign-report";
 import { PLAYLIST_PLATFORMS } from "@/lib/music-analytics/platforms";
 
 const playlistPlatformCodes = new Set(
   PLAYLIST_PLATFORMS.map((platform) => platform.code),
 );
-
-const toDateOnly = (value: unknown) => {
-  if (typeof value !== "string" || !value.trim()) return undefined;
-  const datePrefix = value.trim().match(/^\d{4}-\d{2}-\d{2}/)?.[0];
-  if (datePrefix) return datePrefix;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? undefined
-    : date.toISOString().slice(0, 10);
-};
 
 const editActionButtonClassName =
   "h-11 w-full justify-start rounded-[8px] border-zinc-300 !bg-white px-5 text-sm font-medium !text-zinc-950 shadow-none hover:!bg-zinc-100 hover:!text-zinc-950 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-violet-500/25";
@@ -83,15 +79,8 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     isrc: content?.isrc,
     onSaved: refreshContent,
   });
-  const campaignStartDate = toDateOnly(
-    content?.start_dte ??
-      content?.start_date ??
-      content?.campaign?.start_date ??
-      content?.created,
-  );
-  const campaignEndDate = toDateOnly(
-    content?.end_dte ?? content?.end_date ?? content?.campaign?.end_date,
-  );
+  const { startDate: campaignStartDate, endDate: campaignEndDate } =
+    campaignDateRange(content);
   const songIsrc = linkedIsrc || content?.song_isrc || undefined;
   const openLinkSong = songIsrc
     ? undefined
@@ -173,57 +162,16 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
       ),
     [insightStats?.performanceReach],
   );
-  const shazamRow = socialTraction.find((item) => item.id === "shazam");
-  // Both are all-time counts; the traction data only fills in when insight
-  // stats could not read Shazam.
-  const shazamValue =
-    typeof insightStats?.dsp?.Shazam === "number"
-      ? insightStats.dsp.Shazam
-      : typeof shazamRow?.value === "number"
-        ? shazamRow.value
-        : null;
-
-  // Songstats reports plays for platforms with no playlist list (SoundCloud),
-  // so the STREAMING chart can show more than the playlist picker lists.
-  // Hiding is applied here rather than in the route so toggling a platform
+  const shazamValue = pickShazamValue(insightStats, socialTraction);
+  // Hiding platforms is applied here rather than in the route so toggling one
   // costs no further calls.
-  const streamingOptions = React.useMemo(
-    () => mergeStreamingPlatforms(insightStats?.availableStreamingPlatforms),
-    [insightStats?.availableStreamingPlatforms],
-  );
-  const visibleStreamingLabels = React.useMemo(() => {
-    const selected = new Set(
-      resolveStreamingSelection(sources, streamingOptions),
-    );
-    return new Set(
-      streamingOptions
-        .filter((platform) => selected.has(platform.code))
-        .map((platform) => platform.label),
-    );
-  }, [sources, streamingOptions]);
-  const visibleDsp = React.useMemo(() => {
-    const dsp = insightStats?.dsp;
-    if (!dsp) return undefined;
-
-    const kept = Object.entries(dsp).filter(
-      ([label]) =>
-        label !== "total_count" &&
-        label !== "Shazam" &&
-        visibleStreamingLabels.has(label),
-    );
-    return {
-      ...Object.fromEntries(kept),
-      total_count: kept.reduce((sum, [, value]) => sum + Number(value), 0),
-    };
-  }, [insightStats?.dsp, visibleStreamingLabels]);
-  const discoveryChartData = React.useMemo(
-    () =>
-      visibleStreamingLabels.has("Shazam") &&
-      shazamValue !== null &&
-      shazamValue > 0
-        ? { Shazam: shazamValue }
-        : undefined,
-    [shazamValue, visibleStreamingLabels],
+  const {
+    streamingOptions,
+    visibleDsp,
+    discoveryData: discoveryChartData,
+  } = React.useMemo(
+    () => selectStreamingData(insightStats, sources, shazamValue),
+    [insightStats, sources, shazamValue],
   );
   const {
     availableMarkets,
@@ -284,11 +232,7 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
     stats: {
       ...insightStats,
       dsp: visibleDsp,
-      airplayByCountry: airplayDisabled
-        ? { total_count: 0 }
-        : airplayMarketData.total_count > 0
-          ? airplayMarketData
-          : undefined,
+      airplayByCountry: selectAirplayData(airplayDisabled, airplayMarketData),
     },
   });
 
@@ -319,119 +263,47 @@ const CampaignInsights: React.FC<InsightChartProps> = ({
   });
   const songTitle =
     content?.title || content?.song_title || content?.campaign?.song_title;
-  const reportMetrics = React.useMemo<CampaignReportMetrics>(() => {
-    // Same figure as the ACTIONS "Video creations" slice, so the report matches it.
-    const videoCreations = Number(smactionData?.["Video creations"] ?? 0);
-    const topCreationPlatform = Object.entries(
-      insightStats?.videoCreationsByPlatform ?? {},
-    )
-      .filter(([label, value]) => label !== "total_count" && value > 0)
-      .sort(([, a], [, b]) => b - a)[0]?.[0];
-    const shazamRow = socialTraction.find((item) => item.id === "shazam");
-    const youtubeRow = socialTraction.find((item) => item.id === "youtube");
-
-    return {
-      airplay: airPlayData ?? {},
-      streaming: {
-        ...dspData,
-        ...discoveryChartData,
-        total_count: discoveryAndStreamingTotal,
-      },
-      audience: audienceData ?? {},
-      socialMedia: socialMediaData ?? {},
-      actions: smactionData ?? {},
-      performance: dspPerformanceData ?? {},
-      performanceReach: insightStats?.performanceReach ?? {},
-      spinCount: Number(content?.spin_count ?? 0),
-      topRadio: stations[0]?.name,
-      topRadioStations: stations
-        .slice(0, 5)
-        .map(({ name, country, plays }) => ({ name, country, plays })),
-      audienceGrowth:
-        audienceGrowth?.available && audienceGrowth.totalGrowth !== null
-          ? {
-              totalGrowth: audienceGrowth.totalGrowth,
-              topPlatform:
-                audienceGrowth.topPlatform?.toLowerCase() === "others"
-                  ? undefined
-                  : (audienceGrowth.topPlatform ?? undefined),
-            }
-          : undefined,
-      highlights: [
-        ...(videoCreations > 0
-          ? [
-              {
-                id: "videoCreations" as const,
-                value: videoCreations,
-                changePercent: null,
-                periodDays: socialTractionPeriodDays,
-                topPlatform: topCreationPlatform,
-              },
-            ]
-          : []),
-        ...(shazamValue !== null
-          ? [
-              {
-                id: "shazam" as const,
-                value: shazamValue,
-                changePercent: shazamRow?.percentEvolution ?? null,
-                periodDays: socialTractionPeriodDays,
-                topMarket: shazamRow?.topMarket ?? undefined,
-              },
-            ]
-          : []),
-        ...(typeof youtubeRow?.value === "number"
-          ? [
-              {
-                id: "youtube" as const,
-                value: youtubeRow.value,
-                changePercent: youtubeRow.percentEvolution,
-                periodDays: socialTractionPeriodDays,
-              },
-            ]
-          : []),
-      ],
-      topCreators: topCreators.map((creator) => ({
-        handle: creator.handle || creator.name,
-        platform: creator.platform,
-        followers: creator.followers,
-        views: creator.views,
-        url: creator.url,
-      })),
-      playlists: playlists.map((playlist) => ({
-        name: playlist.name,
-        platform: playlist.platform,
-        url: playlist.url,
-        position: playlist.position,
-        addedAt: playlist.addedAt,
-      })),
-    };
-  }, [
-    airPlayData,
-    audienceGrowth,
-    audienceData,
-    content?.spin_count,
-    discoveryAndStreamingTotal,
-    discoveryChartData,
-    dspData,
-    dspPerformanceData,
-    insightStats?.performanceReach,
-    insightStats?.videoCreationsByPlatform,
-    playlists,
-    smactionData,
-    socialMediaData,
-    socialTraction,
-    socialTractionPeriodDays,
-    shazamValue,
-    stations,
-    topCreators,
-  ]);
+  const reportMetrics = React.useMemo<CampaignReportMetrics>(
+    () =>
+      buildCampaignReportMetrics({
+        airplay: airPlayData ?? {},
+        dsp: dspData,
+        discoveryData: discoveryChartData,
+        audience: audienceData ?? {},
+        socialMedia: socialMediaData ?? {},
+        actions: smactionData ?? {},
+        performance: dspPerformanceData ?? {},
+        insightStats,
+        spinCount: Number(content?.spin_count ?? 0),
+        stations,
+        audienceGrowth,
+        socialTraction,
+        socialTractionPeriodDays,
+        shazamValue,
+        topCreators,
+        playlists,
+      }),
+    [
+      airPlayData,
+      audienceGrowth,
+      audienceData,
+      content?.spin_count,
+      discoveryChartData,
+      dspData,
+      dspPerformanceData,
+      insightStats,
+      playlists,
+      smactionData,
+      socialMediaData,
+      socialTraction,
+      socialTractionPeriodDays,
+      shazamValue,
+      stations,
+      topCreators,
+    ],
+  );
   const sendReport = (recipient: string) =>
-    sendCampaignReport({
-      campaignId: String(content?.id),
-      recipient,
-      metrics: reportMetrics,
-    });
+    sendCampaignReportEmail(String(content?.id), recipient);
   const reportLoading =
     isAudienceGrowthLoading ||
     Boolean(

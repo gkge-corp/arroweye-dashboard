@@ -15,17 +15,22 @@ import {
 } from "@/hooks/use-publication-form";
 
 interface DeletePublicationDialogProps {
+  projectId?: number;
   publication?: PublicationMedia;
   onOpenChange: (open: boolean) => void;
   onDeleted?: () => void;
 }
 
 export function DeletePublicationDialog({
+  projectId,
   publication,
   onOpenChange,
   onDeleted,
 }: DeletePublicationDialogProps) {
-  const { removePublication, isDeleting } = useDeletePublication(onDeleted);
+  const { removePublication, isDeleting } = useDeletePublication(
+    projectId,
+    onDeleted,
+  );
   const name = publication?.publication?.trim() || "this publication";
 
   const confirmDelete = async () => {
