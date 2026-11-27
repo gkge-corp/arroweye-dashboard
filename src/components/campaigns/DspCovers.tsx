@@ -42,15 +42,6 @@ const DspCovers: React.FC<DspCoversProps> = ({ onSuccess }) => {
     setMediaItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const convertFileToBase64 = (file: any) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -59,23 +50,12 @@ const DspCovers: React.FC<DspCoversProps> = ({ onSuccess }) => {
       return;
     }
 
-    // Convert the array to JSON
-
-    const base64Files: any = await Promise.all(
-      mediaItems.map(async (item: any) => {
-        console.log(item.file);
-        const base64 = await convertFileToBase64(item.file);
-        return base64;
-      }),
-    );
-
     const payload = {
       type: "DSP_Covers",
-      files: base64Files,
+      files: mediaItems.map((item: any) => item.file as File),
     };
-    console.log("Payload", payload);
     try {
-      const response = await CreateMedia(id, payload, "application/json");
+      const response = await CreateMedia(id, payload);
       console.log("RESPONSE", response);
       setMediaItems([]); // Clear the form
       onSuccess?.();

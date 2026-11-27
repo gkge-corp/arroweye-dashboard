@@ -2,11 +2,11 @@
 
 import { useCallback } from "react";
 
-import { sendArtistReport } from "@/actions/artist-report";
+import { sendArtistReportEmail } from "@/services/api/campaign-emails";
 
 export function useArtistReportSend(campaignId: string) {
   return useCallback(
-    (recipient: string) => sendArtistReport({ campaignId, recipient }),
+    (recipient: string) => sendArtistReportEmail(campaignId, recipient),
     [campaignId],
   );
 }

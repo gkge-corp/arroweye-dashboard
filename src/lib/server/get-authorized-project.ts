@@ -19,7 +19,7 @@ export const getAuthorizedProject = async (
   if (!apiBaseUrl) throw new Error("The campaign service is not configured.");
 
   const response = await fetch(
-    `${apiBaseUrl}/api/v1/projects/${encodeURIComponent(campaignId)}/`,
+    `${apiBaseUrl}/api/campaigns/${encodeURIComponent(campaignId)}`,
     {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",

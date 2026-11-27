@@ -147,7 +147,7 @@ export const useLogin = (_props?: UseLoginProps) => {
     setOtpErrors(newLoginErrors);
 
     if (newLoginErrors.otp === "") {
-      VerifyLogin({ token: otpFormData.otp })
+      VerifyLogin({ email: loginFormData.email, token: otpFormData.otp })
         .then((response) => {
           toast.success("Verification successful!");
           login(response);

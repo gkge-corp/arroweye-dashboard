@@ -87,7 +87,7 @@ export const getStoredSingleContent = (): ContentItem | null => {
 export const getProjects = async (): Promise<ProjectListItem[]> => {
   const response = await apiRequest<ProjectListItem[]>({
     method: "GET",
-    url: `/api/v1/projects/`,
+    url: `/api/campaigns/`,
     requireToken: true,
   });
 
@@ -97,7 +97,7 @@ export const getProjects = async (): Promise<ProjectListItem[]> => {
 export const getCampaignOptions = async (): Promise<CampaignOptionItem[]> => {
   const response = await apiRequest<CampaignOptionItem[]>({
     method: "GET",
-    url: `/api/v1/projects/`,
+    url: `/api/campaigns/`,
     params: {
       fields: "id,title,code,pin,vendor,subvendor",
     },
@@ -116,7 +116,7 @@ export const getSingleProject = async (
   try {
     const response = await apiRequest<AppProject>({
       method: "GET",
-      url: `/api/v1/projects/${id}/`,
+      url: `/api/campaigns/${id}`,
       data: null,
       requireToken: true,
     });
@@ -144,7 +144,7 @@ export const archiveProject = async (
 ): Promise<AppProject> => {
   const response = await apiRequest<AppProject>({
     method: "PATCH",
-    url: `/api/v1/projects/${id}/`,
+    url: `/api/campaigns/${id}`,
     data: payload,
     requireToken: true,
   });
@@ -159,7 +159,7 @@ export const updateProjectIsrc = (
 ): Promise<AppProject> =>
   apiRequest<AppProject>({
     method: "PATCH",
-    url: `/api/v1/projects/${id}/`,
+    url: `/api/campaigns/${id}`,
     data: { isrc } satisfies UpdateProjectInput,
     requireToken: true,
   });
@@ -188,14 +188,31 @@ export const campaignStaffAction = async (
   payload: ProjectWatcherAction,
 ): Promise<AppProject | null> => {
   try {
-    const response = await apiRequest<AppProject>({
+    const memberUrl = `/api/campaigns/${id}/members`;
+
+    if (payload.action === "remove") {
+      return await apiRequest<AppProject>({
+        method: "DELETE",
+        url: `${memberUrl}/${payload.user_id}`,
+        requireToken: true,
+      });
+    }
+
+    if (payload.action === "update") {
+      return await apiRequest<AppProject>({
+        method: "PATCH",
+        url: `${memberUrl}/${payload.user_id}`,
+        data: { role: payload.role },
+        requireToken: true,
+      });
+    }
+
+    return await apiRequest<AppProject>({
       method: "POST",
-      url: `/api/v1/projects/${id}/watchers/`,
-      data: payload,
+      url: memberUrl,
+      data: { user_id: payload.user_id },
       requireToken: true,
     });
-
-    return response;
   } catch (error: unknown) {
     return null;
   }
@@ -206,7 +223,7 @@ export const createCampaignDraft = async (
 ): Promise<CampaignDraftResponse> => {
   const result = await apiRequest<CampaignDraftResponse>({
     method: "POST",
-    url: `/api/v1/campaigns/draft/`,
+    url: `/api/spin-campaigns/draft`,
     data: payload,
     requireToken: true,
   });
@@ -222,7 +239,7 @@ export const launchCampaignFully = async (
 ): Promise<any> => {
   return await apiRequest<ApiRequestResponse<ApiResponse>>({
     method: "POST",
-    url: `/api/v1/campaigns/${id}/launch/`,
+    url: `/api/spin-campaigns/${id}/launch`,
     data: payload,
     requireToken: true,
   });
@@ -235,7 +252,7 @@ export const getCreatedCampaigns = async (
   try {
     return await apiRequest<CampaignPage>({
       method: "GET",
-      url: `/api/v1/campaigns/`,
+      url: `/api/spin-campaigns`,
       params: { page, page_size: pageSize },
       requireToken: true,
     });
@@ -250,7 +267,7 @@ export const getSingleCampaign = async (
   try {
     const response = await apiRequest<Campaign>({
       method: "GET",
-      url: `/api/v1/campaigns/${id}/dashboard/`,
+      url: `/api/spin-campaigns/${id}/dashboard`,
       data: null,
       requireToken: true,
     });

@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import React, { useEffect, useState } from "react";
 import { Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -31,7 +32,7 @@ const searchSongs = async (params: { term?: string; isrc?: string }) => {
   if (params.isrc) query.set("isrc", params.isrc);
   if (params.term) query.set("term", params.term);
 
-  const response = await fetch(`/api/music-analytics/song-search?${query}`);
+  const response = await fetchMusicAnalytics(`song-search?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: SongCandidate[];
     error?: string;
@@ -50,7 +51,7 @@ const resolveIsrc = async (song: SongCandidate) => {
   if (song.isrc) return song.isrc;
 
   const query = new URLSearchParams({ id: song.uuid });
-  const response = await fetch(`/api/music-analytics/song-search?${query}`);
+  const response = await fetchMusicAnalytics(`song-search?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: SongCandidate[];
     error?: string;
@@ -130,8 +131,8 @@ export function LinkSongDialog({
             Link song
           </DialogTitle>
           <DialogDescription className="text-sm text-zinc-500 dark:text-zinc-400">
-            Match this campaign to the exact recording. Playlist
-            placements are pulled for whichever recording you pick.
+            Match this campaign to the exact recording. Playlist placements are
+            pulled for whichever recording you pick.
           </DialogDescription>
         </DialogHeader>
 

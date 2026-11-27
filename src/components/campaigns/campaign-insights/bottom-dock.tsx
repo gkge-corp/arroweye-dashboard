@@ -20,7 +20,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { sendCampaignReport } from "@/actions/campaign-report";
+import { sendCampaignReportEmail } from "@/services/api/campaign-emails";
 import { NotificationList } from "@/app/(dashboard)/campaigns/notifications/NotificationList";
 import { DropzoneUploadDialog } from "@/app/(dashboard)/campaigns/notifications/dropzone-upload-dialog";
 import { DropsIcon } from "@/app/(dashboard)/sidebar";
@@ -175,11 +175,7 @@ export function BottomDock({
     try {
       const result = onSendReport
         ? await onSendReport(recipient)
-        : await sendCampaignReport({
-            campaignId: String(contentId),
-            recipient,
-            metrics: reportMetrics!,
-          });
+        : await sendCampaignReportEmail(String(contentId), recipient);
 
       if (result.success) {
         setEmail("");
@@ -676,6 +672,7 @@ export function BottomDock({
             onSaved={onPublicationsChanged}
           />
           <DeletePublicationDialog
+            projectId={projectId}
             publication={publicationToDelete}
             onOpenChange={(open) => {
               if (!open) setPublicationToDelete(undefined);

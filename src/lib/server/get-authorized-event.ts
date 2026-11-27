@@ -18,7 +18,7 @@ export const getAuthorizedEvent = async (
   if (!apiBaseUrl) throw new Error("The schedule service is not configured.");
 
   const response = await fetch(
-    `${apiBaseUrl}/api/v1/projects/schedule/events/${eventId}/`,
+    `${apiBaseUrl}/api/events/${eventId}`,
     {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",

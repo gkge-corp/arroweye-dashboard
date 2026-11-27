@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import { useQuery } from "@tanstack/react-query";
 
 export type InsightStats = Record<string, number>;
@@ -58,7 +59,7 @@ const fetchInsightStats = async (
   if (options.startDate) query.set("startDate", options.startDate);
   if (options.endDate) query.set("endDate", options.endDate);
 
-  const response = await fetch(`/api/music-analytics/insight-stats?${query}`);
+  const response = await fetchMusicAnalytics(`insight-stats?${query}`);
   const payload = (await response
     .json()
     .catch(() => ({}))) as InsightStatsResponse;

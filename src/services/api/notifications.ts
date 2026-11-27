@@ -68,15 +68,14 @@ const notificationCategories: Partial<Record<NotificationType, string>> = {
   Milestones: "milestone",
 };
 
+// The API only ever returns the signed-in user's own notifications.
 interface NotificationFilters {
   projectId?: number;
-  scope?: "user";
   category?: string;
 }
 
 const fetchAllNotificationPages = async ({
   projectId,
-  scope,
   category,
 }: NotificationFilters) => {
   const notifications: ApiNotification[] = [];
@@ -86,13 +85,12 @@ const fetchAllNotificationPages = async ({
       page: String(page),
       page_size: String(NOTIFICATION_PAGE_SIZE),
     });
-    if (projectId) params.set("project_id", String(projectId));
-    if (scope) params.set("scope", scope);
+    if (projectId) params.set("campaign_id", String(projectId));
     if (category) params.set("category", category);
 
     const response = await apiRequest<NotificationApiResponse>({
       method: "GET",
-      url: `/api/v1/notification/notification/?${params}`,
+      url: `/api/notifications?${params}`,
       data: null,
       requireToken: true,
       silent: true,
@@ -114,7 +112,7 @@ export const getNotifications = async (
   try {
     const notifications = category
       ? await fetchAllNotificationPages({ category })
-      : filterByType(await fetchAllNotificationPages({ scope: "user" }), type);
+      : filterByType(await fetchAllNotificationPages({}), type);
 
     ls.set("Notifications", notifications, { encrypt: true });
     return notifications;
@@ -123,7 +121,7 @@ export const getNotifications = async (
     // some accounts. /ums/me/ exposes the same collection at runtime.
     const user = await apiRequest<unknown>({
       method: "GET",
-      url: `/api/v1/ums/me/`,
+      url: `/api/me`,
       requireToken: true,
     });
 
@@ -148,7 +146,7 @@ export const markNotificationsAsRead = async (
   try {
     const response = await apiRequest<ApiNotification>({
       method: "POST",
-      url: `/api/v1/notification/notification/update-notifications/`,
+      url: `/api/notifications/read`,
       data: payload,
       requireToken: true,
     });

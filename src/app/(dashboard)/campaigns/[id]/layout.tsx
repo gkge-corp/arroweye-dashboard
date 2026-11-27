@@ -56,7 +56,7 @@ export async function generateMetadata({
 
   if (token && apiBaseUrl) {
     const projectTitle = await getCampaignTitle(
-      `${apiBaseUrl}/api/v1/projects/${id}/`,
+      `${apiBaseUrl}/api/campaigns/${id}`,
       token,
     );
     campaignTitle =

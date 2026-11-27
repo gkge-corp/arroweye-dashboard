@@ -56,7 +56,7 @@ export type NotificationPage =
   operations["api_v1_notification_notification_list"]["responses"][200]["content"]["application/json"];
 
 export type LoginRequest = { email: string };
-export type VerifyLoginRequest = { token: string };
+export type VerifyLoginRequest = { email: string; token: string };
 
 export interface LoginResponse {
   message?: string;

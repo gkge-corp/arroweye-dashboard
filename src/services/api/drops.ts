@@ -33,7 +33,7 @@ export const getDropZones = async ({
 
   const response = await apiRequest<AppDropZonePage>({
     method: "GET",
-    url: `/api/v1/projects/general/dropzone/`,
+    url: `/api/drops`,
     params,
     requireToken: true,
   });
@@ -41,50 +41,19 @@ export const getDropZones = async ({
   return response;
 };
 
-const CAMPAIGN_DROPS_PAGE_SIZE = 100;
-const CAMPAIGN_DROPS_MAX_PAGES = 20;
-
-// The list endpoint has no campaign filter, so walk every page and match on `project`.
-export const getCampaignDropZones = async (
+export const getCampaignDropZones = (
   projectId: number | string,
-): Promise<DropZone[]> => {
-  const drops: DropZone[] = [];
-  for (let page = 1; page <= CAMPAIGN_DROPS_MAX_PAGES; page++) {
-    const response = await apiRequest<AppDropZonePage>({
-      method: "GET",
-      url: `/api/v1/projects/general/dropzone/`,
-      params: { page, page_size: CAMPAIGN_DROPS_PAGE_SIZE },
-      requireToken: true,
-    });
-    drops.push(
-      ...response.results.filter(
-        (drop) => String(drop.project) === String(projectId),
-      ),
-    );
-    if (!response.next) break;
-  }
-  return drops;
-};
-
-export const getProjectDropZone = async (
-  projectId: number | string,
-): Promise<DropZone | null> => {
-  try {
-    return await apiRequest<DropZone>({
-      method: "GET",
-      url: `/api/v1/projects/${projectId}/dropzone/`,
-      requireToken: true,
-      silent: true,
-    });
-  } catch {
-    return null;
-  }
-};
+): Promise<DropZone[]> =>
+  apiRequest<DropZone[]>({
+    method: "GET",
+    url: `/api/campaigns/${projectId}/drops`,
+    requireToken: true,
+  });
 
 export const deleteDropZones = async (id: number): Promise<void> => {
   await apiRequest<void>({
     method: "DELETE",
-    url: `/api/v1/projects/general/dropzone/${id}/`,
+    url: `/api/drops/${id}`,
     requireToken: true,
     skipErrorHandling: true,
   });
@@ -93,7 +62,7 @@ export const deleteDropZones = async (id: number): Promise<void> => {
 export const getBusiness = async (): Promise<Business[]> => {
   const response = await apiRequest<Business[]>({
     method: "GET",
-    url: `/api/v1/org/business/`,
+    url: `/api/organizations`,
     requireToken: true,
   });
 
@@ -113,7 +82,7 @@ export const createDropzone = async (
   try {
     const response = await apiRequest({
       method: "POST",
-      url: `/api/v1/projects/${projectId}/dropzone/`,
+      url: `/api/campaigns/${projectId}/drops`,
       data,
       requireToken: true,
     });

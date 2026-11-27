@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import { useQuery } from "@tanstack/react-query";
 
 export interface SocialTractionRow {
@@ -24,7 +25,7 @@ export const fetchSocialTraction = async (
   days = 30,
 ): Promise<SocialTractionResponse> => {
   const query = new URLSearchParams({ isrc, days: String(days) });
-  const response = await fetch(`/api/music-analytics/social-traction?${query}`);
+  const response = await fetchMusicAnalytics(`social-traction?${query}`);
   const payload = (await response
     .json()
     .catch(() => ({}))) as SocialTractionResponse;

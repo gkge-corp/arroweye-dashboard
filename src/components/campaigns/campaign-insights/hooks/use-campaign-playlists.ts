@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import { useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
@@ -28,7 +29,7 @@ const fetchPlaylists = async (
     query.set("platforms", cursor.platforms.join(","));
   }
 
-  const response = await fetch(`/api/music-analytics/playlists?${query}`);
+  const response = await fetchMusicAnalytics(`playlists?${query}`);
   const payload = (await response.json().catch(() => ({}))) as {
     items?: PlaylistRow[];
     nextOffset?: number | null;
@@ -72,8 +73,7 @@ export function useCampaignPlaylists(
     queryFn: ({ pageParam }) => fetchPlaylists(isrc!, pageParam),
     initialPageParam: { offset: 0, platforms } as PlaylistCursor,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    enabled:
-      Boolean(isrc) && (options?.ready ?? true) && platforms.length > 0,
+    enabled: Boolean(isrc) && (options?.ready ?? true) && platforms.length > 0,
     staleTime: 5 * 60_000,
   });
 

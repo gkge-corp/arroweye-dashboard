@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import { useQuery } from "@tanstack/react-query";
 
 export interface CampaignAudienceGrowth {
@@ -28,7 +29,7 @@ export const fetchAudienceGrowth = async (
   query.set("isrc", isrc);
   if (endDate) query.set("endDate", endDate);
 
-  const response = await fetch(`/api/music-analytics/audience-growth?${query}`);
+  const response = await fetchMusicAnalytics(`audience-growth?${query}`);
   const payload = (await response.json().catch(() => ({}))) as
     | CampaignAudienceGrowth
     | { error?: string };

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { toast } from "react-toastify";
 import { AddStaff, campaignStaffAction } from "@/services";
-import { sendCampaignWelcome } from "@/actions/campaign-welcome";
+import { sendCampaignWelcomeEmail } from "@/services/api/campaign-emails";
 import {
   AddCampaignUserErrors,
   AddCampaignUserFormData,
@@ -63,7 +63,7 @@ export function useCampaignMemberActions({
     if (!id || !recipient) return;
 
     try {
-      const result = await sendCampaignWelcome({ campaignId: id, recipient });
+      const result = await sendCampaignWelcomeEmail(id, recipient);
       if (result.success) return;
       console.error("Welcome email failed:", result.message);
     } catch (error) {
@@ -77,10 +77,10 @@ export function useCampaignMemberActions({
 
     setIsResendingInvite(true);
     try {
-      const result = await sendCampaignWelcome({
-        campaignId: id,
-        recipient: selectedUser.staff_email,
-      });
+      const result = await sendCampaignWelcomeEmail(
+        id,
+        selectedUser.staff_email,
+      );
       if (result.success) {
         toast.success("Invite resent.");
       } else {

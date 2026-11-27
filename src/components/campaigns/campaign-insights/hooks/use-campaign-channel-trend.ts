@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchMusicAnalytics } from "@/services/api/music-analytics";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -33,7 +34,7 @@ const fetchChannelTrend = async (
 ): Promise<ChannelTrendResponse> => {
   const query = new URLSearchParams({ isrc, startDate });
   if (endDate) query.set("endDate", endDate);
-  const response = await fetch(`/api/music-analytics/channel-trend?${query}`);
+  const response = await fetchMusicAnalytics(`channel-trend?${query}`);
   const payload = (await response
     .json()
     .catch(() => ({}))) as ChannelTrendResponse;

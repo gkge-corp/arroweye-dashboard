@@ -209,7 +209,7 @@ export const getAirPlayStats = async ({
 
     const response = await apiRequest<any>({
       method: "GET",
-      url: `/api/v1/projects/${id}/get-airplay-stats/`,
+      url: `/api/campaigns/${id}/get-airplay-stats`,
       params,
       data: null,
       requireToken: true,
@@ -250,7 +250,7 @@ export const getSocialMediaStats = async ({
 
     const response = await apiRequest<any>({
       method: "GET",
-      url: `/api/v1/projects/${id}/get-social-media-stats/`,
+      url: `/api/campaigns/${id}/get-social-media-stats`,
       params,
       data: null,
       requireToken: true,
@@ -291,7 +291,7 @@ export const getDSPStats = async ({
 
     const response = await apiRequest<any>({
       method: "GET",
-      url: `/api/v1/projects/${id}/get-dsp-stats/`,
+      url: `/api/campaigns/${id}/get-dsp-stats`,
       params,
       data: null,
       requireToken: true,
@@ -332,7 +332,7 @@ export const getAudienceStats = async ({
 
     const response = await apiRequest<any>({
       method: "GET",
-      url: `/api/v1/projects/${id}/audience-stats/`,
+      url: `/api/campaigns/${id}/audience-stats`,
       params,
       data: null,
       requireToken: true,
@@ -373,7 +373,7 @@ export const geteSMActionStats = async ({
 
     const response = await apiRequest<any>({
       method: "GET",
-      url: `/api/v1/projects/${id}/sm-actions-stats/`,
+      url: `/api/campaigns/${id}/sm-actions-stats`,
       params,
       data: null,
       requireToken: true,
@@ -414,7 +414,7 @@ export const geteDSPPerformanceStats = async ({
 
     const response = await apiRequest<any>({
       method: "GET",
-      url: `/api/v1/projects/${id}/dsp-performance-stats/`,
+      url: `/api/campaigns/${id}/dsp-performance-stats`,
       params,
       data: null,
       requireToken: true,
@@ -462,7 +462,7 @@ export const getSpinsAnalytics = async (
   endDate?: string,
 ): Promise<any | null> => {
   try {
-    let url = `/api/v1/spins/audio-spins-analytics/`;
+    let url = `/api/spins/chart`;
     if (startDate && endDate) {
       url += `?start_date=${startDate}&end_date=${endDate}`;
     }
@@ -484,7 +484,7 @@ export const getSpinsNotificationPublic = async (
   spinId: string | string[] | undefined,
 ): Promise<any | null> => {
   try {
-    let url = `/api/v1/spins/public-spin/${spinId}/`;
+    let url = `/api/spins/${spinId}`;
 
     const response = await apiRequest({
       method: "GET",
@@ -501,7 +501,7 @@ export const getSpinsNotificationPublic = async (
 
 export const getCampaignClusters = async (): Promise<any | null> => {
   try {
-    let url = `/api/v1/clusters/`;
+    let url = `/api/marketplace/clusters`;
 
     const response = await apiRequest({
       method: "GET",
@@ -518,7 +518,7 @@ export const getCampaignClusters = async (): Promise<any | null> => {
 
 export const getSystemAudienceReach = async (): Promise<any | null> => {
   try {
-    let url = `/api/v1/system-target-audience-reach/`;
+    let url = `/api/marketplace/system-reach`;
 
     const response = await apiRequest({
       method: "GET",
@@ -537,7 +537,7 @@ export const getCampaignSongISRC = async (
   song_isrc: string,
 ): Promise<any | null> => {
   try {
-    let url = `/api/v1/songs/lookup?isrc=${song_isrc}`;
+    let url = `/api/marketplace/songs/lookup?isrc=${encodeURIComponent(song_isrc)}`;
 
     const response = await apiRequest({
       method: "GET",
@@ -557,7 +557,7 @@ export const getClusterDjs = async (params?: {
   search?: string;
 }): Promise<any | null> => {
   try {
-    let url = `/api/v1/djs/`;
+    let url = `/api/marketplace/djs`;
     const query = new URLSearchParams();
 
     if (params?.cluster_id != null) {

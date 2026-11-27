@@ -53,45 +53,84 @@ export const CreateBusiness = async (
   return result;
 };
 
+type MediaUploadKind = "report" | "cover";
+
+// Files go straight to storage with a signed URL; the API only receives the returned key.
+const uploadMediaFile = async (
+  projectId: number,
+  kind: MediaUploadKind,
+  file: File,
+): Promise<string> => {
+  const { upload_url, key, content_type } = await apiRequest<{
+    upload_url: string;
+    key: string;
+    content_type: string;
+  }>({
+    method: "POST",
+    url: `/api/campaigns/${projectId}/media/upload-url`,
+    data: { kind, file_name: file.name },
+    requireToken: true,
+  });
+
+  const response = await fetch(upload_url, {
+    method: "PUT",
+    headers: { "Content-Type": content_type },
+    body: file,
+  });
+  if (!response.ok) throw new Error("The file could not be uploaded.");
+  return key;
+};
+
 export const CreateMedia = async (
   id: number,
-  payload: unknown,
-  contentType?: string,
-): Promise<any> => {
+  payload: Record<string, unknown>,
+): Promise<unknown> => {
   try {
-    const { data: response } = await apiRequest<
-      ApiRequestResponse<ApiResponse>
-    >({
-      method: "POST",
-      url: `/api/v1/projects/${id}/media/`,
-      data: payload,
-      requireToken: true,
-      headers: {
-        "Content-Type": contentType || "multipart/form-data",
-      },
-    });
+    const { report, files, ...fields } = payload;
+    const data: Record<string, unknown> = { ...fields };
+    if (report instanceof File) {
+      data.report_key = await uploadMediaFile(id, "report", report);
+    }
+    if (Array.isArray(files)) {
+      data.file_keys = await Promise.all(
+        files.map((file: File) => uploadMediaFile(id, "cover", file)),
+      );
+    }
 
-    console.log(`create media response: ${response}`);
+    const response = await apiRequest<unknown>({
+      method: "POST",
+      url: `/api/campaigns/${id}/media`,
+      data,
+      requireToken: true,
+    });
     toast.success("Creation successful!");
+    return response;
   } catch (error: unknown) {
-    // apiRequest already toasts the failure; rethrow so callers don't treat it as saved.
+    // apiRequest already toasts API failures; rethrow so callers don't treat it as saved.
     console.error("Create media failed:", error);
     throw error;
   }
 };
 
-export const updateMedia = (id: number, payload: Record<string, unknown>) =>
+export const updateMedia = (
+  projectId: number | string,
+  id: number,
+  payload: Record<string, unknown>,
+) =>
   apiRequest<unknown>({
     method: "PATCH",
-    url: `/api/v1/projects/general/media/${id}/`,
+    url: `/api/campaigns/${projectId}/media/${id}`,
     data: payload,
     requireToken: true,
   });
 
-export const deleteMedia = async (id: number): Promise<void> => {
+export const deleteMedia = async (
+  projectId: number | string,
+  id: number,
+): Promise<void> => {
   await apiRequest<void>({
     method: "DELETE",
-    url: `/api/v1/projects/general/media/${id}/`,
+    url: `/api/campaigns/${projectId}/media/${id}`,
     requireToken: true,
   });
 };
@@ -104,7 +143,7 @@ export const CreateService = async (
       ApiRequestResponse<ApiResponse>
     >({
       method: "POST",
-      url: `/api/v1/payments/service/`,
+      url: `/api/payments/services`,
       data: payload,
       requireToken: true,
     });
@@ -124,7 +163,7 @@ export const CreateInvoice = async (
       ApiRequestResponse<ApiResponse>
     >({
       method: "POST",
-      url: `/api/v1/payments/invoice/create/`,
+      url: `/api/payments/invoices`,
       data: payload,
       requireToken: true,
       skipErrorHandling: true,
@@ -157,6 +196,7 @@ export class DuplicatePoCodeError extends Error {
 // so it is matched on the constraint and column names rather than a code.
 const isDuplicatePoCodeError = (error: unknown) => {
   if (!axios.isAxiosError(error)) return false;
+  if (error.response?.status === 409) return true;
   const body = JSON.stringify(error.response?.data ?? "");
   return (
     body.includes("payments_invoice_po_code_key") ||
@@ -168,7 +208,7 @@ export const getInvoice = async (): Promise<ContentItem[] | null> => {
   try {
     const response = await apiRequest({
       method: "GET",
-      url: `/api/v1/payments/invoice/`,
+      url: `/api/payments/invoices`,
       data: null,
       requireToken: true,
     });
@@ -191,7 +231,7 @@ export const getService = async (): Promise<ContentItem[] | null> => {
   try {
     const response = await apiRequest({
       method: "GET",
-      url: `/api/v1/payments/service/`,
+      url: `/api/payments/services`,
       data: null,
       requireToken: true,
     });
@@ -211,7 +251,7 @@ export const getStoredService = (): ContentItem[] | null => {
 };
 
 export const getPaymentInvoice = async (id: number): Promise<any | null> => {
-  const endpoint = `/api/v1/payments/invoice/${id}/`;
+  const endpoint = `/api/payments/invoices/${id}`;
 
   try {
     const response = await apiRequest({
@@ -315,14 +355,14 @@ export const getDsp = async (): Promise<ContentItem[] | null> => {
   }
 };
 
-export const initializePayment = async (payload: unknown): Promise<any> => {
+export const initializePayment = async (payload: {
+  invoice_id: number;
+}): Promise<any> => {
   try {
-    const { data: response } = await apiRequest<
-      ApiRequestResponse<ApiResponse>
-    >({
+    // The API picks the reference and sends the receipt to the signed-in payer.
+    const response = await apiRequest<PaystackInitialization>({
       method: "POST",
-      url: `/api/v1/payments/initialize/`,
-      data: payload,
+      url: `/api/payments/invoices/${payload.invoice_id}/pay`,
       requireToken: true,
     });
     console.dir(response, { depth: 100 });
@@ -334,7 +374,7 @@ export const initializePayment = async (payload: unknown): Promise<any> => {
 
 export const getCampaignWallet = async (): Promise<any | null> => {
   try {
-    let url = `/api/v1/wallet/`;
+    let url = `/api/wallet`;
 
     const response = await apiRequest({
       method: "GET",
@@ -355,7 +395,7 @@ export const fundCampaignWallet = async (
   try {
     const result = await apiRequest<FundWalletResponse>({
       method: "POST",
-      url: `/api/v1/wallet/fund/`,
+      url: `/api/wallet/fund`,
       data: payload,
       requireToken: true,
     });
@@ -374,7 +414,7 @@ export const verifyWalletPayment = async (
   try {
     const response = await apiRequest({
       method: "GET",
-      url: `/api/v1/wallet/verify/`,
+      url: `/api/wallet/verify`,
       params: { reference },
       requireToken: true,
     });
@@ -389,7 +429,7 @@ export const getPromoterPlans = async (params?: {
   search?: string;
 }): Promise<any | null> => {
   try {
-    let url = `/api/v1/aggregators/`;
+    let url = `/api/marketplace/aggregators`;
 
     const query = new URLSearchParams();
 
