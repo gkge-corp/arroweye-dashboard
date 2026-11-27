@@ -51,9 +51,13 @@ export type ScheduledInvitationStatus =
   | "scheduled"
   | "active"
   | "done"
-  | "cancelled";
+  | "cancelled"
+  | "sent";
 
-/** A saved invitation the daily cron sends, then keeps sending to new sheet rows. */
+/**
+ * A saved invitation. Scheduled ones are sent by the daily cron, which keeps
+ * inviting new sheet rows; "sent" ones went out with Send now and are kept as history.
+ */
 export interface ScheduledInvitation {
   id: string;
   createdAt: string;

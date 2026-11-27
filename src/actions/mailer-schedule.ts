@@ -19,7 +19,10 @@ import {
 import { toInvitationFields } from "@/lib/mailer/send-invitation";
 import { getAppBaseUrl } from "@/lib/server/get-app-base-url";
 import { getAuthorizedStaff } from "@/lib/server/get-authorized-staff";
-import { isMailerImageKey } from "@/lib/storage/mailer-images";
+import {
+  createMailerImageViewUrl,
+  isMailerImageKey,
+} from "@/lib/storage/mailer-images";
 import {
   isScheduleId,
   listSchedules,
@@ -97,13 +100,61 @@ export async function scheduleInvitation(
   }
 }
 
-/** Schedules that will still send: not finished and not cancelled. */
-export async function listScheduledInvitations(): Promise<ScheduledInvitation[]> {
+/** Every saved invitation, newest first. */
+export async function listInvitations(): Promise<ScheduledInvitation[]> {
   await getAuthorizedStaff();
   const schedules = await listSchedules();
-  return schedules
-    .filter((schedule) => schedule.status === "scheduled" || schedule.status === "active")
-    .sort((a, b) => a.sendOn.localeCompare(b.sendOn));
+  return schedules.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+interface RecordSentInvitationInput {
+  sheetUrl: string;
+  invitation: InvitationFields;
+  imageKey?: string;
+  sentCount: number;
+}
+
+/** Keeps a Send now invitation so it can be found and reopened later. */
+export async function recordSentInvitation(
+  input: RecordSentInvitationInput,
+): Promise<ScheduleActionResult> {
+  if (!parseSheetUrl(String(input.sheetUrl))) {
+    return { success: false, message: "The sheet link is invalid." };
+  }
+  if (input.imageKey && !isMailerImageKey(String(input.imageKey))) {
+    return { success: false, message: "The image is invalid." };
+  }
+
+  try {
+    const user = await getAuthorizedStaff();
+    const today = todayInMailerZone();
+    const record: ScheduledInvitation = {
+      id: randomUUID(),
+      createdAt: new Date().toISOString(),
+      createdBy: user.email,
+      sheetUrl: input.sheetUrl.trim(),
+      invitation: toInvitationFields(input.invitation),
+      imageKey: input.imageKey,
+      baseUrl: await getAppBaseUrl(),
+      sendOn: today,
+      autoInviteUntil: today,
+      status: "sent",
+      sentCount: Number(input.sentCount) || 0,
+      lastRunAt: new Date().toISOString(),
+    };
+    await writeSchedule(record);
+    return { success: true, schedule: record };
+  } catch (error) {
+    console.error("Saving the sent invitation failed:", error);
+    return { success: false, message: "The invitation could not be saved to history." };
+  }
+}
+
+/** A short-lived link to show a saved invitation's hero image in the composer. */
+export async function getInvitationImageUrl(key: string): Promise<string | null> {
+  if (!isMailerImageKey(String(key))) return null;
+  await getAuthorizedStaff();
+  return createMailerImageViewUrl(key);
 }
 
 export async function cancelScheduledInvitation(

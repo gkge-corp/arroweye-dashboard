@@ -176,6 +176,27 @@ function RecipientsRow({ mailer, disabled }: { mailer: Mailer; disabled: boolean
   );
 }
 
+function OpenedInvitationBar({ mailer, disabled }: { mailer: Mailer; disabled: boolean }) {
+  if (!mailer.openedTitle) return null;
+
+  return (
+    <div className={cn(rowClass, "min-h-10 justify-between bg-muted/50 py-1.5 text-xs")}>
+      <span className="min-w-0 truncate text-muted-foreground">
+        Reusing &ldquo;{mailer.openedTitle}&rdquo;
+      </span>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={mailer.reset}
+        className="inline-flex shrink-0 items-center gap-1 font-medium text-primary hover:underline disabled:opacity-40"
+      >
+        <Icon path={mdiPencilOutline} className="size-3.5" />
+        New invitation
+      </button>
+    </div>
+  );
+}
+
 function SendStatus({ mailer }: { mailer: Mailer }) {
   const { progress } = mailer;
   if (!progress) return null;
@@ -302,7 +323,7 @@ function ComposeFooter({
         </div>
       </SchedulePopover>
       <div className="flex items-center gap-0.5">
-        <ScheduledList />
+        <ScheduledList mailer={mailer} openDisabled={busy} />
         <ComposeIconButton
           label={isPreviewing ? "Back to editing" : "Preview"}
           onClick={onTogglePreview}
@@ -363,6 +384,7 @@ export function MailerComposeWindow({
         />
         {mode !== "minimized" && (
           <>
+            <OpenedInvitationBar mailer={mailer} disabled={busy} />
             <RecipientsRow mailer={mailer} disabled={busy} />
             <div className="min-h-0 flex-1 overflow-y-auto">
               {isPreviewing ? (

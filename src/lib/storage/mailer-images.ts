@@ -7,6 +7,7 @@ import { getConfig } from "@/lib/storage/r2";
 
 const MAILER_IMAGE_FOLDER = "mailer-images/";
 const UPLOAD_URL_TTL_SECONDS = 300;
+const VIEW_URL_TTL_SECONDS = 3600;
 
 const CONTENT_TYPES: Record<string, string> = {
   png: "image/png",
@@ -40,6 +41,13 @@ export const createMailerImageUpload = async (fileName: string) => {
   );
 
   return { uploadUrl, contentType, key };
+};
+
+export const createMailerImageViewUrl = async (key: string) => {
+  const { client, bucket } = getConfig();
+  return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), {
+    expiresIn: VIEW_URL_TTL_SECONDS,
+  });
 };
 
 export const readMailerImage = async (key: string) => {
