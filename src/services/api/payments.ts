@@ -1,7 +1,6 @@
 import apiRequest from "@/Server/Api";
 import { handleApiError } from "@/lib/utils";
 import type {
-  CreateBusinessInput,
   CreateInvoiceInput,
   CreateServiceInput,
 } from "@/types/api";
@@ -39,19 +38,6 @@ interface PaystackInitialization {
 interface FundWalletResponse {
   paystack?: PaystackInitialization;
 }
-
-export const CreateBusiness = async (
-  payload: CreateBusinessInput,
-): Promise<CreateBusinessInput> => {
-  const result = await apiRequest<CreateBusinessInput>({
-    method: "POST",
-    url: `/api/v1/org/create-business/create/`,
-    data: payload,
-    requireToken: true,
-  });
-
-  return result;
-};
 
 type MediaUploadKind = "report" | "cover";
 

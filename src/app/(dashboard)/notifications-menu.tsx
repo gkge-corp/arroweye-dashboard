@@ -17,6 +17,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationList } from "./campaigns/notifications/NotificationList";
 import { DropzoneUploadDialog } from "./campaigns/notifications/dropzone-upload-dialog";
+import { LoadMoreSentinel } from "./campaigns/notifications/load-more-sentinel";
+import { NotificationListSkeleton } from "./campaigns/notifications/notification-list-skeleton";
 import { useTopNav } from "@/hooks/use-top-nav";
 import { getDropZones } from "@/services";
 import type { NotificationByType } from "@/types/notifications";
@@ -42,7 +44,13 @@ const NotificationsMenu = ({
     notificationLoading,
     notificationError,
     retryNotifications,
+    hasMoreNotifications,
+    loadingMoreNotifications,
+    loadMoreNotifications,
     allNotificationsRead,
+    unreadCount,
+    markAllRead,
+    markingAllRead,
     isSidebarOpen,
     activeMainTab,
     activeInnerTab,
@@ -137,12 +145,18 @@ const NotificationsMenu = ({
             variant="ghost"
             size="icon"
             className={triggerClassName}
-            aria-label="Open notifications"
+            aria-label={
+              unreadCount > 0
+                ? `Open notifications, ${unreadCount} unread`
+                : "Open notifications"
+            }
             tabIndex={triggerTabIndex}
           >
             <Bell className="size-[24px]!" />
             {!allNotificationsRead && !hasOpenedNotifications && (
-              <span className="absolute right-1 top-1 size-2 rounded-full bg-orange-500 ring-2 ring-background" />
+              <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-background">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
             )}
           </Button>
         </DropdownMenuTrigger>
@@ -174,14 +188,24 @@ const NotificationsMenu = ({
                     Drops
                   </TabsTrigger>
                 </TabsList>
-                <button
-                  type="button"
-                  onClick={() => setNotificationsOpen(false)}
-                  className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 dark:border-zinc-800 dark:bg-zinc-800 dark:text-neutral-400 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                  aria-label="Close notifications"
-                >
-                  <X size={14} />
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => markAllRead()}
+                    disabled={allNotificationsRead || markingAllRead}
+                    className="cursor-pointer text-xs text-neutral-500 transition-colors hover:text-neutral-900 disabled:cursor-default disabled:opacity-40 disabled:hover:text-neutral-500 dark:text-neutral-400 dark:hover:text-white"
+                  >
+                    Mark all as read
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNotificationsOpen(false)}
+                    className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 dark:border-zinc-800 dark:bg-zinc-800 dark:text-neutral-400 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                    aria-label="Close notifications"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               </div>
             </Tabs>
 
@@ -239,11 +263,7 @@ const NotificationsMenu = ({
 
           <ScrollArea className="min-h-0 flex-1">
             <div className="text-sm text-muted-foreground">
-              {activeListLoading && (
-                <p className="p-6 text-center text-neutral-500">
-                  Loading {isShowingDropAssets ? "drops" : "notifications"}…
-                </p>
-              )}
+              {activeListLoading && <NotificationListSkeleton />}
               {activeListError && !activeListLoading && (
                 <div className="flex items-center justify-center gap-2 p-6 text-red-600">
                   <Button
@@ -269,6 +289,18 @@ const NotificationsMenu = ({
                   emptyCategory={activeNotificationList.category}
                 />
               )}
+              {!isShowingDropAssets &&
+                !activeListLoading &&
+                !activeListError && (
+                  <>
+                    {loadingMoreNotifications && (
+                      <NotificationListSkeleton rows={2} />
+                    )}
+                    {hasMoreNotifications && !loadingMoreNotifications && (
+                      <LoadMoreSentinel onVisible={loadMoreNotifications} />
+                    )}
+                  </>
+                )}
             </div>
           </ScrollArea>
           {activeMainTab === "drops" && activeInnerTab === "assets" && (

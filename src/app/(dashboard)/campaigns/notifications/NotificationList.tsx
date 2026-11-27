@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { markNotificationsAsRead, notificationQueryKey } from "@/services";
+import {
+  markNotificationsAsRead,
+  notificationQueryKey,
+  unreadNotificationQueryKey,
+} from "@/services";
+import {
+  markNotificationReadInCache,
+  type NotificationQueryData,
+} from "@/lib/notification-cache";
 import { isApiNotification, type ApiNotification } from "@/types/notifications";
 import { NotificationCard } from "./NotificationCard";
 import { NotificationEmptyState } from "./NotificationEmptyState";
@@ -30,13 +38,12 @@ export function NotificationList({
         return;
       }
 
-      queryClient.setQueriesData<ApiNotification[]>(
+      queryClient.setQueriesData(
         { queryKey: notificationQueryKey },
-        (current = []) =>
-          current.map((item) =>
-            item.id === id ? { ...item, read: true } : item,
-          ),
+        (current: NotificationQueryData) =>
+          markNotificationReadInCache(current, id),
       );
+      void queryClient.invalidateQueries({ queryKey: unreadNotificationQueryKey });
       queryClient.setQueriesData<{ notifications?: unknown } | null>(
         { queryKey: ["campaign-detail"] },
         (current) =>

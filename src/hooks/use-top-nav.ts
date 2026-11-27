@@ -1,11 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getNotifications, notificationQueryKey } from "@/services";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  getNotificationPage,
+  markAllNotificationsAsRead,
+  notificationQueryKey,
+  unreadNotificationQueryKey,
+} from "@/services";
 import {
   groupNotifications,
   type NotificationType,
 } from "@/types/notifications";
 import { useAuth } from "@/context/auth-session";
+import {
+  markAllNotificationsReadInCache,
+  type NotificationQueryData,
+} from "@/lib/notification-cache";
 
 export type NotificationMainTab = "updates" | "drops";
 export type NotificationInnerTab =
@@ -38,6 +52,8 @@ const innerTabTypes: Partial<Record<NotificationInnerTab, NotificationType>> = {
   payment: "Payments",
 };
 
+const UNREAD_NOTIFICATION_PAGE_SIZE = 100;
+
 export const useTopNav = () => {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -50,21 +66,31 @@ export const useTopNav = () => {
   const canFetchGlobal = isAuthenticated && !isAuthLoading;
   const activeType = innerTabTypes[activeInnerTab];
 
-  // The untyped feed only drives the unread badge; each tab loads its own type.
-  const { data: globalNotificationItems = [] } = useQuery({
-    queryKey: notificationQueryKey,
-    queryFn: () => getNotifications(),
+  // Only unread items drive the badge, so the full history is never loaded.
+  const { data: unreadPage } = useQuery({
+    queryKey: unreadNotificationQueryKey,
+    queryFn: () =>
+      getNotificationPage({
+        unreadOnly: true,
+        pageSize: UNREAD_NOTIFICATION_PAGE_SIZE,
+      }),
     enabled: canFetchGlobal,
     staleTime: 60_000,
   });
   const {
-    data: tabNotificationItems = [],
+    data: tabNotificationPages,
     isLoading,
     isError: tabNotificationError,
     refetch: refetchTabNotifications,
-  } = useQuery({
-    queryKey: [...notificationQueryKey, activeType],
-    queryFn: () => getNotifications(activeType),
+    hasNextPage: hasMoreNotifications,
+    isFetchingNextPage: loadingMoreNotifications,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: [...notificationQueryKey, "list", activeType],
+    queryFn: ({ pageParam }) =>
+      getNotificationPage({ type: activeType, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.nextPage,
     enabled: canFetchGlobal && isSidebarOpen && Boolean(activeType),
     staleTime: 60_000,
   });
@@ -75,15 +101,42 @@ export const useTopNav = () => {
     void refetchTabNotifications();
   }, [refetchTabNotifications]);
 
+  const loadMoreNotifications = useCallback(() => {
+    if (hasMoreNotifications && !loadingMoreNotifications) {
+      void fetchNextPage();
+    }
+  }, [fetchNextPage, hasMoreNotifications, loadingMoreNotifications]);
+
+  const tabNotificationItems = useMemo(
+    () => tabNotificationPages?.pages.flatMap((page) => page.items) ?? [],
+    [tabNotificationPages],
+  );
   const notifications = useMemo(
     () => groupNotifications(tabNotificationItems),
     [tabNotificationItems],
   );
-  const allNotifications = globalNotificationItems;
-
-  const allNotificationsRead = allNotifications.every(
-    (notification) => notification.read !== false,
+  const unreadNotifications = useMemo(
+    () => unreadPage?.items.filter((item) => item.read === false) ?? [],
+    [unreadPage],
   );
+  const unreadCount = unreadPage?.count ?? 0;
+  const allNotificationsRead = unreadCount === 0;
+
+  const queryClient = useQueryClient();
+  const { mutate: markAllRead, isPending: markingAllRead } = useMutation({
+    mutationFn: markAllNotificationsAsRead,
+    onSuccess: () => {
+      queryClient.setQueriesData(
+        { queryKey: notificationQueryKey },
+        (current: NotificationQueryData) =>
+          markAllNotificationsReadInCache(current),
+      );
+      void queryClient.invalidateQueries({
+        queryKey: unreadNotificationQueryKey,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["campaign-detail"] });
+    },
+  });
 
   const setNotificationsOpen = (open: boolean) => {
     setIsSidebarOpen(open);
@@ -102,16 +155,16 @@ export const useTopNav = () => {
   };
 
   useEffect(() => {
-    const unreadIds = allNotifications
-      .filter((notification) => notification.read === false)
-      .map((notification) => notification.id);
+    const unreadIds = unreadNotifications.map(
+      (notification) => notification.id,
+    );
     const hasNewUnread = unreadIds.some(
       (id) => !knownUnreadIds.current.has(id),
     );
 
     if (hasNewUnread) setHasOpenedNotifications(false);
     unreadIds.forEach((id) => knownUnreadIds.current.add(id));
-  }, [allNotifications]);
+  }, [unreadNotifications]);
 
   useEffect(() => {
     if (!isSidebarOpen) return;
@@ -131,7 +184,13 @@ export const useTopNav = () => {
     notificationLoading,
     notificationError,
     retryNotifications,
+    hasMoreNotifications,
+    loadingMoreNotifications,
+    loadMoreNotifications,
     allNotificationsRead,
+    unreadCount,
+    markAllRead,
+    markingAllRead,
     isSidebarOpen,
     activeMainTab,
     activeInnerTab,

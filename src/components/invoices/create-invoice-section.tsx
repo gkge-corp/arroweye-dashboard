@@ -47,7 +47,7 @@ const CreateInvoiceSection = ({ invoice, className }: CreateInvoiceProps) =>
       )}
     >
       <div className="min-h-0 overflow-hidden">
-        <CreateInvoiceForm />
+        <CreateInvoiceForm agencyAccess={invoice.agencyAccess} />
       </div>
     </div>
   ) : null;
