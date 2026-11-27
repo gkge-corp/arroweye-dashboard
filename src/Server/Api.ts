@@ -5,27 +5,16 @@ import axios, {
   AxiosHeaders,
 } from "axios";
 import type { ToastId } from "@/types/toast";
-import { handleApiError, redirectToLogin } from "../lib/utils";
-import {
-  getAuthSession,
-  setAuthSession,
-  setAuthTokenCookie,
-} from "@/lib/auth-storage";
-import type { AuthSession } from "@/types/api";
+import { handleApiError } from "../lib/utils";
+import { getAuthSession } from "@/lib/auth-storage";
 
 interface AuthenticatedRequestConfig extends AxiosRequestConfig {
   _requiresAuth?: boolean;
-  _retry?: boolean;
 }
 
 interface InternalAuthenticatedRequestConfig
   extends InternalAxiosRequestConfig {
   _requiresAuth?: boolean;
-  _retry?: boolean;
-}
-
-interface RefreshResponse {
-  access: string;
 }
 
 const axiosInstance = axios.create({
@@ -35,16 +24,6 @@ const axiosInstance = axios.create({
     "Content-Type": "application/json",
   },
 });
-
-const refreshClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_APP_SERVER_DOMAIN as string,
-  timeout: 120000,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-let refreshPromise: Promise<string> | null = null;
 
 console.log("Base URL:", process.env.NEXT_PUBLIC_APP_SERVER_DOMAIN);
 
@@ -67,65 +46,6 @@ axiosInstance.interceptors.request.use(
     return authenticatedConfig;
   },
   (error) => {
-    return Promise.reject(error);
-  },
-);
-
-const refreshAccessToken = (session: AuthSession): Promise<string> => {
-  if (!session.refresh) {
-    return Promise.reject(new Error("No refresh token is available."));
-  }
-
-  if (!refreshPromise) {
-    refreshPromise = refreshClient
-      .post<RefreshResponse>("/refresh/", { refresh: session.refresh })
-      .then(({ data }) => {
-        if (!data.access) {
-          throw new Error("The refresh endpoint did not return an access token.");
-        }
-
-        setAuthSession({ ...session, access: data.access });
-        setAuthTokenCookie(data.access);
-        return data.access;
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
-
-  return refreshPromise;
-};
-
-axiosInstance.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response;
-  },
-  async (error) => {
-    const request = error.config as
-      | InternalAuthenticatedRequestConfig
-      | undefined;
-
-    if (
-      error.response?.status === 401 &&
-      request?._requiresAuth &&
-      !request._retry
-    ) {
-      request._retry = true;
-      const session = getAuthSession();
-
-      if (session?.refresh) {
-        try {
-          const accessToken = await refreshAccessToken(session);
-          request.headers = new AxiosHeaders(request.headers);
-          request.headers.set("Authorization", `Bearer ${accessToken}`);
-          return axiosInstance(request);
-        } catch (refreshError) {
-          redirectToLogin();
-          return Promise.reject(refreshError);
-        }
-      }
-    }
-
     return Promise.reject(error);
   },
 );
