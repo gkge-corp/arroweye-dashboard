@@ -7,3 +7,4 @@ export * from "./api/schedule";
 export * from "./api/analytics";
 export * from "./api/payments";
 export * from "./api/notifications";
+export * from "./api/artists";

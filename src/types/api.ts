@@ -148,3 +148,48 @@ export interface ProjectWatcherAction {
   user_id?: string | null;
   role?: string | number;
 }
+
+export interface Artist {
+  id: number;
+  name: string;
+  slug: string;
+  image_url: string | null;
+  countries: string[];
+  verified: boolean;
+}
+
+export interface ArtistPage {
+  count: number;
+  page: number;
+  pages: number;
+  results: Artist[];
+}
+
+export interface ArtistStat {
+  code: string;
+  label: string;
+  value: number;
+  trend: number[];
+}
+
+export interface ArtistProfile {
+  avatar: string | null;
+  country: string;
+  bio: string | null;
+  genres: string[];
+  links: { code: string; label: string; url: string }[];
+  markets: { primary: string | null; secondary: string | null };
+  stats: ArtistStat[];
+  latestRelease: {
+    title: string;
+    image: string | null;
+    releaseDate: string;
+    artists: string;
+  } | null;
+  collaborators: string[];
+  topTracks: { id: string; title: string; artists: string; image: string | null }[];
+}
+
+export interface ArtistPageData extends Artist {
+  profile: ArtistProfile | null;
+}

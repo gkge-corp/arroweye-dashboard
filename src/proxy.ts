@@ -40,10 +40,11 @@ export function proxy(request: NextRequest) {
     pathname === "/spots";
   const isPublicSetupRoute = pathname === "/campaigns/setup";
   const isPublicRsvpRoute = pathname === "/rsvp";
+  const isPublicCanvasRoute = pathname === "/canvas" || pathname.startsWith("/canvas/");
 
-  // The Spins shares, Spots rankings, campaign setup landing page and invite RSVPs are public.
+  // The Spins shares, Spots rankings, campaign setup landing page, invite RSVPs and the artist canvas are public.
   // Setup sub-routes remain protected because they create or fund campaigns.
-  if (isPublicChartRoute || isPublicSetupRoute || isPublicRsvpRoute) {
+  if (isPublicChartRoute || isPublicSetupRoute || isPublicRsvpRoute || isPublicCanvasRoute) {
     return NextResponse.next();
   }
 

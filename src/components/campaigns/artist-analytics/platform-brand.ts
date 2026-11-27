@@ -1,6 +1,7 @@
 import type { IconType } from "react-icons";
 import { FaDeezer } from "react-icons/fa6";
 import {
+  SiApplemusic,
   SiFacebook,
   SiInstagram,
   SiSoundcloud,
@@ -22,6 +23,7 @@ export const PLATFORM_COLORS: Record<string, string> = {
 };
 
 export const PLATFORM_ICONS: Record<string, IconType> = {
+  "apple-music": SiApplemusic,
   spotify: SiSpotify,
   instagram: SiInstagram,
   tiktok: SiTiktok,
